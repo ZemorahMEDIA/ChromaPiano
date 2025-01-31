@@ -1,0 +1,145 @@
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>ChromaPiano</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="https://unpkg.com/soundfont-player@latest/dist/soundfont-player.js"></script>
+  <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
+  <script src="https://cdn.quilljs.com/1.3.6/quill.js"></script>
+</head>
+<body>
+  <h1>ChromaPiano</h1>
+  
+  <!-- Synthesizer container -->
+  <div id="synthesizer">
+    <!-- Synthesizer panel -->
+    <div id="synthesizer-panel">
+      <div id="controls">
+        <button id="record-btn">
+          <!-- Red circle icon -->
+          <svg viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="10" fill="red"></circle>
+          </svg>
+        </button>
+        <button id="play-btn" disabled>
+          <!-- Green triangle pointing right -->
+          <svg viewBox="0 0 24 24">
+            <polygon points="8,5 19,12 8,19" fill="green"></polygon>
+          </svg>
+        </button>
+        <button id="stop-btn" disabled>
+          <!-- Grey square -->
+          <svg viewBox="0 0 24 24">
+            <rect x="5" y="5" width="14" height="14" fill="grey"></rect>
+          </svg>
+        </button>
+        <button id="save-btn">
+          <!-- Floppy disk with arrow pointing out -->
+          <svg viewBox="0 0 24 24">
+            <path d="M4 3h14l3 3v14a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z" fill="#000"/>
+            <path d="M12 8v8m0 0l-3-3m3 3l3-3" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+        <button id="load-btn">
+          <!-- Floppy disk with arrow pointing in -->
+          <svg viewBox="0 0 24 24">
+            <path d="M4 3h14l3 3v14a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z" fill="#000"/>
+            <path d="M12 16V8m0 0l-3 3m3-3l3 3" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+        <button id="clear-btn">
+          <!-- Recycle bin icon -->
+          <svg viewBox="0 0 24 24">
+            <path d="M3 6h18" stroke="#fff" stroke-width="2"/>
+            <path d="M19 6l-1 14a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1L5 6" stroke="#fff" stroke-width="2"/>
+            <path d="M10 11v6" stroke="#fff" stroke-width="2"/>
+            <path d="M14 11v6" stroke="#fff" stroke-width="2"/>
+            <path d="M9 6V4h6v2" stroke="#fff" stroke-width="2"/>
+          </svg>
+        </button>
+        <button id="add-memory-btn">
+          <!-- Plus icon -->
+          <svg viewBox="0 0 24 24">
+            <line x1="12" y1="5" x2="12" y2="19" stroke="#fff" stroke-width="2"/>
+            <line x1="5" y1="12" x2="19" y2="12" stroke="#fff" stroke-width="2"/>
+          </svg>
+        </button>
+        <button id="remove-memory-btn">
+          <!-- Minus icon -->
+          <svg viewBox="0 0 24 24">
+            <line x1="5" y1="12" x2="19" y2="12" stroke="#fff" stroke-width="2"/>
+          </svg>
+        </button>
+      </div>
+      <!-- LCD displays container -->
+      <div id="lcd-displays">
+        <div id="device-section">
+          <div id="device-display">
+            <span id="selected-device">No Device Selected</span>
+            <button id="device-toggle-btn">
+              <!-- Down arrow icon -->
+              <svg viewBox="0 0 24 24">
+                <polyline points="6,9 12,15 18,9" fill="none" stroke="#000" stroke-width="2"/>
+              </svg>
+            </button>
+          </div>
+          <div id="device-list-container">
+            <ul id="device-list"></ul>
+          </div>
+        </div>
+        <div id="memory-section">
+          <div id="memory-display">
+            <span id="selected-memory">No Memory Selected</span>
+            <button id="memory-toggle-btn">
+              <!-- Down arrow icon -->
+              <svg viewBox="0 0 24 24">
+                <polyline points="6,9 12,15 18,9" fill="none" stroke="#000" stroke-width="2"/>
+              </svg>
+            </button>
+          </div>
+          <div id="memory-list-container">
+            <ul id="memory-list"></ul>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div id="piano"></div>
+  </div>
+
+  <div id="editor-container">
+    <!-- Toolbar container -->
+    <div id="toolbar">
+      <select class="ql-font"></select>
+      <select class="ql-size"></select>
+      <button class="ql-bold"></button>
+      <button class="ql-italic"></button>
+      <button class="ql-underline"></button>
+      <button class="ql-strike"></button>
+      <select class="ql-color"></select>
+      <select class="ql-background"></select>
+      <button class="ql-script" value="sub"></button>
+      <button class="ql-script" value="super"></button>
+      <select class="ql-align"></select>
+      <button class="ql-list" value="ordered"></button>
+      <button class="ql-list" value="bullet"></button>
+      <button class="ql-indent" value="-1"></button>
+      <button class="ql-indent" value="+1"></button>
+      <button class="ql-blockquote"></button>
+      <button class="ql-code-block"></button>
+      <button class="ql-clean"></button>
+    </div>
+    <div id="editor"></div>
+    <!-- "Add to Memory" button -->
+    <button id="add-editor-content-btn">
+      <!-- Plus icon -->
+      <svg viewBox="0 0 24 24">
+        <line x1="12" y1="5" x2="12" y2="19" stroke="#fff" stroke-width="2"/>
+        <line x1="5" y1="12" x2="19" y2="12" stroke="#fff" stroke-width="2"/>
+      </svg>
+    </button>
+  </div>
+
+  <!-- Include app.js after all libraries -->
+  <script src="app.js" type="module"></script>
+</body>
+</html>
