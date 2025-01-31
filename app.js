@@ -60,6 +60,7 @@ let playbackStartTime;
 let playbackTimer;
 let memoryList = [];
 let sequenceCounter = 1;
+let selectedMemoryIndex = null;
 
 let midiAccessObject = null;
 let selectedMidiInput = null;
@@ -364,6 +365,7 @@ function initMemoryControls() {
   const memorySelect = document.getElementById('memory-list');
   const addEditorContentBtn = document.getElementById('add-editor-content-btn');
   const memoryToggleBtn = document.getElementById('memory-toggle-btn');
+  const memoryPlayBtn = document.getElementById('memory-play-btn');
 
   addToMemoryBtn.addEventListener('click', addToMemory);
   removeFromMemoryBtn.addEventListener('click', removeFromMemory);
@@ -376,6 +378,13 @@ function initMemoryControls() {
   });
   addEditorContentBtn.addEventListener('click', addEditorContentToMemory);
   memoryToggleBtn.addEventListener('click', toggleMemoryList);
+  memoryPlayBtn.addEventListener('click', () => {
+    if (memoryList.length > 0 && selectedMemoryIndex !== null) {
+      playMemorySequences(selectedMemoryIndex);
+    } else {
+      alert('No memory sequence selected to play.');
+    }
+  });
 }
 
 function toggleMemoryList() {
@@ -402,6 +411,7 @@ function updateMemoryList() {
 
 function selectMemorySequence(index) {
   if (index >= 0 && index < memoryList.length) {
+    selectedMemoryIndex = index;
     const selectedSequence = memoryList[index];
     recordedNotes = JSON.parse(JSON.stringify(selectedSequence.notes));
     quill.setContents(selectedSequence.editorContent);
@@ -530,7 +540,7 @@ function loadMemoryList() {
       try {
         const data = JSON.parse(event.target.result);
         if (data && data.memoryList) {
-          memoryList = data.memoryList;
+          memoryList = memoryList.concat(data.memoryList);
           updateMemoryList();
           document.getElementById('play-btn').disabled = memoryList.length === 0;
         }
@@ -612,6 +622,59 @@ keyboardToggleBtn.addEventListener('click', () => {
   keyboardEnabled = !keyboardEnabled;
   keyboardToggleBtn.classList.toggle('pressed', keyboardEnabled);
 });
+
+function playMemorySequences(startIndex) {
+  if (!isPlaying) {
+    isPlaying = true;
+    playbackStartTime = audioContext.currentTime;
+    document.getElementById('stop-btn').disabled = false;
+    document.getElementById('play-btn').disabled = true;
+
+    let totalOffsetTime = 0;
+    const sequencesToPlay = memoryList.slice(startIndex);
+    let scheduledEvents = [];
+
+    sequencesToPlay.forEach(sequence => {
+      sequence.notes.forEach(noteEvent => {
+        scheduledEvents.push({
+          type: noteEvent.type,
+          note: noteEvent.note,
+          time: noteEvent.time + totalOffsetTime
+        });
+      });
+      if (sequence.notes.length > 0) {
+        const lastEventTime = sequence.notes[sequence.notes.length - 1].time;
+        totalOffsetTime += lastEventTime + 1; // Add 1 second gap between sequences
+      }
+    });
+
+    let eventIndex = 0;
+
+    const scheduleNextEvent = () => {
+      if (!isPlaying || eventIndex >= scheduledEvents.length) {
+        isPlaying = false;
+        document.getElementById('stop-btn').disabled = true;
+        document.getElementById('play-btn').disabled = false;
+        return;
+      }
+
+      const noteEvent = scheduledEvents[eventIndex];
+      const timeUntilEvent = noteEvent.time - (audioContext.currentTime - playbackStartTime);
+
+      playbackTimer = setTimeout(() => {
+        if (noteEvent.type === 'noteOn') {
+          noteOn(noteEvent.note);
+        } else if (noteEvent.type === 'noteOff') {
+          noteOff(noteEvent.note);
+        }
+        eventIndex++;
+        scheduleNextEvent();
+      }, Math.max(0, timeUntilEvent * 1000));
+    };
+
+    scheduleNextEvent();
+  }
+}
 
 document.addEventListener('DOMContentLoaded', () => {
   createPiano();
