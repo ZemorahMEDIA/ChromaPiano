@@ -64,6 +64,24 @@ let sequenceCounter = 1;
 let midiAccessObject = null;
 let selectedMidiInput = null;
 
+// Add variables for keyboard play functionality
+let keyboardEnabled = true;
+const keyNoteMap = {
+  'a': 'C4',
+  'w': 'C#4',
+  's': 'D4',
+  'e': 'D#4',
+  'd': 'E4',
+  'f': 'F4',
+  't': 'F#4',
+  'g': 'G4',
+  'y': 'G#4',
+  'h': 'A4',
+  'u': 'A#4',
+  'j': 'B4',
+  'k': 'C5',
+};
+
 function createPiano() {
   const piano = document.getElementById('piano');
   piano.innerHTML = '';
@@ -560,6 +578,41 @@ function clearActiveNotes() {
   });
 }
 
+// Add event listeners for keyboard events
+function initKeyboardControls() {
+  document.addEventListener('keydown', handleKeyDown);
+  document.addEventListener('keyup', handleKeyUp);
+}
+
+function handleKeyDown(event) {
+  if (!keyboardEnabled) return;
+  const key = event.key.toLowerCase();
+  const note = keyNoteMap[key];
+  if (note && !event.repeat) {
+    event.preventDefault();
+    if (!activeNotes[note]) {
+      noteOn(note);
+    }
+  }
+}
+
+function handleKeyUp(event) {
+  if (!keyboardEnabled) return;
+  const key = event.key.toLowerCase();
+  const note = keyNoteMap[key];
+  if (note) {
+    event.preventDefault();
+    noteOff(note);
+  }
+}
+
+// Add event listener for the keyboard toggle button
+const keyboardToggleBtn = document.getElementById('keyboard-toggle-btn');
+keyboardToggleBtn.addEventListener('click', () => {
+  keyboardEnabled = !keyboardEnabled;
+  keyboardToggleBtn.classList.toggle('pressed', keyboardEnabled);
+});
+
 document.addEventListener('DOMContentLoaded', () => {
   createPiano();
   initMIDI();
@@ -572,4 +625,5 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   initSequencerControls();
+  initKeyboardControls();
 });
