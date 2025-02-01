@@ -5,12 +5,6 @@ body {
   background-color: transparent;
 }
 
-#midi-status {
-  font-size: 16px;
-  margin-bottom: 10px;
-  color: green;
-}
-
 #synthesizer {
   display: inline-block;
   max-width: 800px;
@@ -45,8 +39,8 @@ body {
   padding: 5px;
   border-radius: 4px;
   cursor: pointer;
-  width: 30px;
-  height: 30px;
+  width: 24px;
+  height: 24px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -54,14 +48,14 @@ body {
 
 #controls button.text-button {
   width: auto;
-  height: 30px;
-  padding: 0 10px;
+  height: 24px;
+  padding: 0 8px;
   font-size: 12px;
 }
 
-#controls button.svg {
-  width: 24px;
-  height: 24px;
+#controls button svg {
+  width: 16px;
+  height: 16px;
   fill: white;
 }
 
@@ -107,7 +101,6 @@ body {
 #selected-memory {
   flex-grow: 1;
   font-family: 'Courier New', monospace;
-  text-align: left;
 }
 
 #device-toggle-btn,
@@ -169,10 +162,15 @@ body {
 
 #device-list li,
 #memory-list li {
+  display: flex;
+  align-items: center;
   padding: 5px 10px;
   cursor: pointer;
   font-family: 'Courier New', monospace;
-  text-align: left;
+}
+
+#memory-list li input[type="checkbox"] {
+  margin-right: 5px;
 }
 
 #device-list li:hover,
@@ -238,16 +236,16 @@ body {
   padding: 0;
   border-radius: 4px;
   cursor: pointer;
-  width: 50px;
-  height: 50px;
+  width: 30px;
+  height: 30px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
 }
 
 #add-editor-content-btn svg {
-  width: 24px;
-  height: 24px;
+  width: 16px;
+  height: 16px;
   fill: white;
 }
 
@@ -274,120 +272,4 @@ h1 {
   100% {
     background-position: 100% 50%;
   }
-}
-
-/* Quill Editor Font Classes */
-.ql-font-arial {
-  font-family: 'Arial', sans-serif;
-}
-.ql-font-courier-new {
-  font-family: 'Courier New', monospace;
-}
-.ql-font-georgia {
-  font-family: 'Georgia', serif;
-}
-.ql-font-lucida {
-  font-family: 'Lucida', sans-serif;
-}
-.ql-font-tahoma {
-  font-family: 'Tahoma', sans-serif;
-}
-.ql-font-times-new-roman {
-  font-family: 'Times New Roman', serif;
-}
-.ql-font-verdana {
-  font-family: 'Verdana', sans-serif;
-}
-.ql-font-serif {
-  font-family: serif;
-}
-.ql-font-sans-serif {
-  font-family: sans-serif;
-}
-.ql-font-monospaced {
-  font-family: monospace;
-}
-.ql-font-brush-script-mt {
-  font-family: 'Brush Script MT', cursive;
-}
-.ql-font-roboto {
-  font-family: 'Roboto', sans-serif;
-}
-.ql-font-open-sans {
-  font-family: 'Open Sans', sans-serif;
-}
-.ql-font-montserrat {
-  font-family: 'Montserrat', sans-serif;
-}
-.ql-font-lato {
-  font-family: 'Lato', sans-serif;
-}
-.ql-font-poppins {
-  font-family: 'Poppins', sans-serif;
-}
-.ql-font-oswald {
-  font-family: 'Oswald', sans-serif;
-}
-.ql-font-raleway {
-  font-family: 'Raleway', sans-serif;
-}
-.ql-font-ubuntu {
-  font-family: 'Ubuntu', sans-serif;
-}
-.ql-font-pt-sans {
-  font-family: 'PT Sans', sans-serif;
-}
-.ql-font-cursive {
-  font-family: cursive;
-}
-.ql-font-noto-music {
-  font-family: 'Noto Music', sans-serif;
-}
-
-/* Custom styles for Quill toolbar */
-.ql-toolbar {
-  background: linear-gradient(135deg, #3a3a3a 0%, #1c1c1c 100%);
-  border: 1px solid #000;
-}
-
-.ql-toolbar button,
-.ql-toolbar .ql-picker-label,
-.ql-toolbar .ql-picker-item {
-  background-color: #fff;
-  color: #000;
-  border: 1px solid #000;
-}
-
-.ql-toolbar button:hover,
-.ql-toolbar .ql-picker-label:hover,
-.ql-toolbar .ql-picker-item:hover {
-  background-color: #ddd;
-}
-
-.ql-toolbar button.ql-active,
-.ql-toolbar .ql-picker-label.ql-active,
-.ql-toolbar .ql-picker-item.ql-selected {
-  background-color: #ccc;
-}
-
-.ql-toolbar .ql-picker-options {
-  background-color: #fff;
-  color: #000;
-  border: 1px solid #000;
-}
-
-.ql-toolbar button svg,
-.ql-toolbar .ql-picker-label svg,
-.ql-toolbar .ql-picker-item svg {
-  fill: #000;
-}
-
-.ql-toolbar .ql-picker-item::before {
-  color: #000;
-}
-
-/* Adjust the font size dropdown */
-.ql-toolbar .ql-size .ql-picker-item::before {
-  content: attr(data-value);
-  font-size: 12px;
 }
