@@ -25,8 +25,6 @@ const blackKeyAdjacency = {
 
 let allWhiteKeys = [];
 let allBlackKeys = [];
-let chords = [];
-let chordIndex = -1;
 
 for (let octave = startOctave; octave < startOctave + totalOctaves; octave++) {
   whiteNotes.forEach(note => {
@@ -67,6 +65,7 @@ let selectedMemoryIndex = null;
 let midiAccessObject = null;
 let selectedMidiInput = null;
 
+// Add variables for keyboard play functionality
 let keyboardEnabled = true;
 const keyNoteMap = {
   'a': 'C4',
@@ -83,6 +82,9 @@ const keyNoteMap = {
   'j': 'B4',
   'k': 'C5',
 };
+
+// Add variable for note color functionality
+let colorfulNotesEnabled = true;
 
 function createPiano() {
   const piano = document.getElementById('piano');
@@ -153,17 +155,23 @@ function highlightKey(note, isPressed) {
   pianoKeys.forEach(key => {
     if (key.dataset.note === note) {
       if (isPressed) {
-        const baseNote = note.replace(/[0-9]/g, '');
-        if (baseNote.includes('#')) {
-          // Black key
-          const adjNotes = blackKeyAdjacency[baseNote];
-          const color1 = noteColors[adjNotes[0]];
-          const color2 = noteColors[adjNotes[1]];
-          key.style.background = `linear-gradient(to top, ${color2} 50%, ${color1} 50%)`;
+        if (colorfulNotesEnabled) {
+          // Existing code for colorful notes
+          const baseNote = note.replace(/[0-9]/g, '');
+          if (baseNote.includes('#')) {
+            // Black key
+            const adjNotes = blackKeyAdjacency[baseNote];
+            const color1 = noteColors[adjNotes[0]];
+            const color2 = noteColors[adjNotes[1]];
+            key.style.background = `linear-gradient(to top, ${color2} 50%, ${color1} 50%)`;
+          } else {
+            // White key
+            const color = noteColors[baseNote];
+            key.style.background = color;
+          }
         } else {
-          // White key
-          const color = noteColors[baseNote];
-          key.style.background = color;
+          // Set to light blue
+          key.style.background = 'lightblue';
         }
       } else {
         // Reset to default
@@ -224,6 +232,7 @@ function updateDeviceList() {
   });
 
   if (!selectedMidiInput || !midiAccessObject.inputs.has(selectedMidiInput.id)) {
+    // Select the first available device
     if (midiAccessObject.inputs.size > 0) {
       const firstInput = midiAccessObject.inputs.values().next().value;
       selectMidiDevice(firstInput.id);
@@ -332,6 +341,7 @@ function startRecording() {
 function stopAction() {
   const stopBtn = document.getElementById('stop-btn');
   if (isRecording) {
+    // Stop recording
     isRecording = false;
     const recordBtn = document.getElementById('record-btn');
     recordBtn.classList.remove('pressed');
@@ -339,15 +349,13 @@ function stopAction() {
     document.getElementById('save-btn').disabled = false;
   }
   if (isPlaying) {
+    // Stop playback
     isPlaying = false;
     clearTimeout(playbackTimer);
     document.getElementById('play-btn').disabled = false;
   }
-  stopAllNotes();
-  chordIndex = -1;
-
   if (!isRecording && !isPlaying) {
-    stopBtn.disabled = true;
+    stopBtn.disabled = true; // Disable the stop button when not recording or playing
   }
 }
 
@@ -355,7 +363,7 @@ function startPlayback() {
   if (isPlaying || recordedNotes.length === 0) return;
   isPlaying = true;
   playbackStartTime = audioContext.currentTime;
-  document.getElementById('stop-btn').disabled = false;
+  document.getElementById('stop-btn').disabled = false; // Enable the stop button during playback
   document.getElementById('play-btn').disabled = true;
   playSequence();
 }
@@ -367,8 +375,6 @@ function initMemoryControls() {
   const addEditorContentBtn = document.getElementById('add-editor-content-btn');
   const memoryToggleBtn = document.getElementById('memory-toggle-btn');
   const memoryPlayBtn = document.getElementById('memory-play-btn');
-  const memoryPrevBtn = document.getElementById('memory-prev-btn');
-  const memoryNextBtn = document.getElementById('memory-next-btn');
 
   addToMemoryBtn.addEventListener('click', addToMemory);
   removeFromMemoryBtn.addEventListener('click', removeFromMemory);
@@ -388,10 +394,6 @@ function initMemoryControls() {
       alert('No memory sequence selected to play.');
     }
   });
-  memoryPrevBtn.addEventListener('click', playPreviousChord);
-  memoryNextBtn.addEventListener('click', playNextChord);
-
-  updateMemoryList();
 }
 
 function toggleMemoryList() {
@@ -416,7 +418,7 @@ function updateMemoryList() {
   document.getElementById('save-btn').disabled = memoryList.length === 0;
 }
 
-function selectMemorySequence(index) {
+function selectMemorySequence(index, showAlert = true) {
   if (index >= 0 && index < memoryList.length) {
     selectedMemoryIndex = index;
     const selectedSequence = memoryList[index];
@@ -424,33 +426,10 @@ function selectMemorySequence(index) {
     quill.setContents(selectedSequence.editorContent);
     document.getElementById('play-btn').disabled = false;
     document.getElementById('selected-memory').textContent = selectedSequence.name;
-
-    chords = processChords(recordedNotes);
-    chordIndex = -1;
-  }
-}
-
-function processChords(notes) {
-  let chords = [];
-  let currentChord = null;
-  let previousTime = null;
-
-  for (let i = 0; i < notes.length; i++) {
-    const noteEvent = notes[i];
-    if (noteEvent.type === 'noteOn') {
-      if (currentChord === null || previousTime === null || (noteEvent.time - previousTime) > 0.1) {
-        currentChord = {
-          time: noteEvent.time,
-          notes: [noteEvent.note],
-        };
-        chords.push(currentChord);
-      } else {
-        currentChord.notes.push(noteEvent.note);
-      }
-      previousTime = noteEvent.time;
+    if (showAlert) {
+      alert(`Selected memory: "${selectedSequence.name}".`);
     }
   }
-  return chords;
 }
 
 function addToMemory() {
@@ -621,6 +600,7 @@ function clearActiveNotes() {
   });
 }
 
+// Add event listeners for keyboard events
 function initKeyboardControls() {
   document.addEventListener('keydown', handleKeyDown);
   document.addEventListener('keyup', handleKeyUp);
@@ -648,6 +628,7 @@ function handleKeyUp(event) {
   }
 }
 
+// Add event listener for the keyboard toggle button
 const keyboardToggleBtn = document.getElementById('keyboard-toggle-btn');
 keyboardToggleBtn.addEventListener('click', () => {
   keyboardEnabled = !keyboardEnabled;
@@ -661,87 +642,95 @@ function playMemorySequences(startIndex) {
     document.getElementById('stop-btn').disabled = false;
     document.getElementById('play-btn').disabled = true;
 
-    let totalOffsetTime = 0;
     const sequencesToPlay = memoryList.slice(startIndex);
-    let scheduledEvents = [];
+    let scheduledActions = [];
+    let totalOffsetTime = 0;
 
-    sequencesToPlay.forEach(sequence => {
+    sequencesToPlay.forEach((sequence, seqIndex) => {
+      // Schedule sequence selection at the start of each sequence
+      scheduledActions.push({
+        type: 'selectSequence',
+        index: startIndex + seqIndex,
+        time: totalOffsetTime
+      });
+
       sequence.notes.forEach(noteEvent => {
-        scheduledEvents.push({
-          type: noteEvent.type,
+        scheduledActions.push({
+          type: noteEvent.type, // 'noteOn' or 'noteOff'
           note: noteEvent.note,
           time: noteEvent.time + totalOffsetTime
         });
       });
+
       if (sequence.notes.length > 0) {
         const lastEventTime = sequence.notes[sequence.notes.length - 1].time;
-        totalOffsetTime += lastEventTime + 1;
+        totalOffsetTime += lastEventTime;
       }
     });
 
-    let eventIndex = 0;
+    if (scheduledActions.length === 0) {
+      isPlaying = false;
+      document.getElementById('stop-btn').disabled = true;
+      document.getElementById('play-btn').disabled = false;
+      return;
+    }
 
-    const scheduleNextEvent = () => {
-      if (!isPlaying || eventIndex >= scheduledEvents.length) {
+    // Adjust times to remove initial silence
+    const earliestTime = Math.min(...scheduledActions.map(event => event.time));
+    scheduledActions = scheduledActions.map(event => ({
+      ...event,
+      time: event.time - earliestTime
+    }));
+
+    // Sort actions by time
+    scheduledActions.sort((a, b) => a.time - b.time);
+
+    let actionIndex = 0;
+
+    const scheduleNextAction = () => {
+      if (!isPlaying || actionIndex >= scheduledActions.length) {
         isPlaying = false;
         document.getElementById('stop-btn').disabled = true;
         document.getElementById('play-btn').disabled = false;
         return;
       }
 
-      const noteEvent = scheduledEvents[eventIndex];
-      const timeUntilEvent = noteEvent.time - (audioContext.currentTime - playbackStartTime);
+      const action = scheduledActions[actionIndex];
+      const timeUntilAction = action.time - (audioContext.currentTime - playbackStartTime);
 
       playbackTimer = setTimeout(() => {
-        if (noteEvent.type === 'noteOn') {
-          noteOn(noteEvent.note);
-        } else if (noteEvent.type === 'noteOff') {
-          noteOff(noteEvent.note);
+        if (action.type === 'noteOn') {
+          noteOn(action.note);
+        } else if (action.type === 'noteOff') {
+          noteOff(action.note);
+        } else if (action.type === 'selectSequence') {
+          selectMemorySequence(action.index, false);
         }
-        eventIndex++;
-        scheduleNextEvent();
-      }, Math.max(0, timeUntilEvent * 1000));
+        actionIndex++;
+        scheduleNextAction();
+      }, Math.max(0, timeUntilAction * 1000));
     };
 
-    scheduleNextEvent();
+    scheduleNextAction();
   }
-}
-
-function playPreviousChord() {
-  if (chordIndex > 0) {
-    stopAllNotes();
-    chordIndex--;
-    playChordAtIndex(chordIndex);
-  }
-}
-
-function playNextChord() {
-  if (chordIndex < chords.length - 1) {
-    stopAllNotes();
-    chordIndex++;
-    playChordAtIndex(chordIndex);
-  }
-}
-
-function playChordAtIndex(index) {
-  if (index >= 0 && index < chords.length) {
-    const chord = chords[index];
-    chord.notes.forEach(note => {
-      noteOn(note);
-    });
-  }
-}
-
-function stopAllNotes() {
-  const notesToStop = Object.keys(activeNotes);
-  notesToStop.forEach(note => {
-    noteOff(note);
-  });
 }
 
 document.addEventListener('DOMContentLoaded', () => {
   createPiano();
   initMIDI();
+
+  const Font = Quill.import('formats/font');
+  Font.whitelist = [
+    'arial', 'courier-new', 'georgia', 'lucida', 'tahoma', 'times-new-roman', 'verdana',
+    'serif', 'sans-serif', 'monospaced', 'brush-script-mt', 'roboto', 'open-sans',
+    'montserrat', 'lato', 'poppins', 'oswald', 'raleway', 'ubuntu', 'pt-sans',
+    'cursive', 'noto-music'
+  ];
+  Quill.register(Font, true);
+
+  const SizeStyle = Quill.import('attributors/style/size');
+  SizeStyle.whitelist = ['8pt', '9pt', '10pt', '11pt', '12pt', '14pt', '16pt', '18pt', '24pt', '36pt', '48pt'];
+  Quill.register(SizeStyle, true);
 
   quill = new Quill('#editor', {
     modules: {
@@ -752,4 +741,26 @@ document.addEventListener('DOMContentLoaded', () => {
 
   initSequencerControls();
   initKeyboardControls();
+
+  // Add event listener for the note color toggle button
+  const noteColorToggleBtn = document.getElementById('note-color-toggle-btn');
+  noteColorToggleBtn.style.background = 'linear-gradient(90deg, red, orange, yellow, green, blue, indigo, violet)';
+  noteColorToggleBtn.classList.add('pressed');
+
+  noteColorToggleBtn.addEventListener('click', () => {
+    colorfulNotesEnabled = !colorfulNotesEnabled;
+    if (colorfulNotesEnabled) {
+      noteColorToggleBtn.style.background = 'linear-gradient(90deg, red, orange, yellow, green, blue, indigo, violet)';
+      noteColorToggleBtn.classList.add('pressed');
+    } else {
+      noteColorToggleBtn.style.background = 'lightblue';
+      noteColorToggleBtn.classList.remove('pressed');
+    }
+    // Update the appearance of notes currently pressed
+    for (const note in activeNotes) {
+      if (activeNotes.hasOwnProperty(note)) {
+        highlightKey(note, true);
+      }
+    }
+  });
 });
