@@ -12,7 +12,7 @@ const noteColors = {
   F: '#008000',    // green
   G: '#0000FF',    // blue
   A: '#6109AB',    // violet
-  B: '#FF00FF',    // magenta
+  B: '#FF00FF',    // magenta,
 };
 
 const blackKeyAdjacency = {
@@ -25,6 +25,8 @@ const blackKeyAdjacency = {
 
 let allWhiteKeys = [];
 let allBlackKeys = [];
+let chords = [];
+let chordIndex = -1;
 
 for (let octave = startOctave; octave < startOctave + totalOctaves; octave++) {
   whiteNotes.forEach(note => {
@@ -65,7 +67,6 @@ let selectedMemoryIndex = null;
 let midiAccessObject = null;
 let selectedMidiInput = null;
 
-// Add variables for keyboard play functionality
 let keyboardEnabled = true;
 const keyNoteMap = {
   'a': 'C4',
@@ -223,7 +224,6 @@ function updateDeviceList() {
   });
 
   if (!selectedMidiInput || !midiAccessObject.inputs.has(selectedMidiInput.id)) {
-    // Select the first available device
     if (midiAccessObject.inputs.size > 0) {
       const firstInput = midiAccessObject.inputs.values().next().value;
       selectMidiDevice(firstInput.id);
@@ -332,7 +332,6 @@ function startRecording() {
 function stopAction() {
   const stopBtn = document.getElementById('stop-btn');
   if (isRecording) {
-    // Stop recording
     isRecording = false;
     const recordBtn = document.getElementById('record-btn');
     recordBtn.classList.remove('pressed');
@@ -340,13 +339,15 @@ function stopAction() {
     document.getElementById('save-btn').disabled = false;
   }
   if (isPlaying) {
-    // Stop playback
     isPlaying = false;
     clearTimeout(playbackTimer);
     document.getElementById('play-btn').disabled = false;
   }
+  stopAllNotes();
+  chordIndex = -1;
+
   if (!isRecording && !isPlaying) {
-    stopBtn.disabled = true; // Disable the stop button when not recording or playing
+    stopBtn.disabled = true;
   }
 }
 
@@ -354,7 +355,7 @@ function startPlayback() {
   if (isPlaying || recordedNotes.length === 0) return;
   isPlaying = true;
   playbackStartTime = audioContext.currentTime;
-  document.getElementById('stop-btn').disabled = false; // Enable the stop button during playback
+  document.getElementById('stop-btn').disabled = false;
   document.getElementById('play-btn').disabled = true;
   playSequence();
 }
@@ -366,6 +367,8 @@ function initMemoryControls() {
   const addEditorContentBtn = document.getElementById('add-editor-content-btn');
   const memoryToggleBtn = document.getElementById('memory-toggle-btn');
   const memoryPlayBtn = document.getElementById('memory-play-btn');
+  const memoryPrevBtn = document.getElementById('memory-prev-btn');
+  const memoryNextBtn = document.getElementById('memory-next-btn');
 
   addToMemoryBtn.addEventListener('click', addToMemory);
   removeFromMemoryBtn.addEventListener('click', removeFromMemory);
@@ -385,6 +388,10 @@ function initMemoryControls() {
       alert('No memory sequence selected to play.');
     }
   });
+  memoryPrevBtn.addEventListener('click', playPreviousChord);
+  memoryNextBtn.addEventListener('click', playNextChord);
+
+  updateMemoryList();
 }
 
 function toggleMemoryList() {
@@ -417,7 +424,33 @@ function selectMemorySequence(index) {
     quill.setContents(selectedSequence.editorContent);
     document.getElementById('play-btn').disabled = false;
     document.getElementById('selected-memory').textContent = selectedSequence.name;
+
+    chords = processChords(recordedNotes);
+    chordIndex = -1;
   }
+}
+
+function processChords(notes) {
+  let chords = [];
+  let currentChord = null;
+  let previousTime = null;
+
+  for (let i = 0; i < notes.length; i++) {
+    const noteEvent = notes[i];
+    if (noteEvent.type === 'noteOn') {
+      if (currentChord === null || previousTime === null || (noteEvent.time - previousTime) > 0.1) {
+        currentChord = {
+          time: noteEvent.time,
+          notes: [noteEvent.note],
+        };
+        chords.push(currentChord);
+      } else {
+        currentChord.notes.push(noteEvent.note);
+      }
+      previousTime = noteEvent.time;
+    }
+  }
+  return chords;
 }
 
 function addToMemory() {
@@ -588,7 +621,6 @@ function clearActiveNotes() {
   });
 }
 
-// Add event listeners for keyboard events
 function initKeyboardControls() {
   document.addEventListener('keydown', handleKeyDown);
   document.addEventListener('keyup', handleKeyUp);
@@ -616,7 +648,6 @@ function handleKeyUp(event) {
   }
 }
 
-// Add event listener for the keyboard toggle button
 const keyboardToggleBtn = document.getElementById('keyboard-toggle-btn');
 keyboardToggleBtn.addEventListener('click', () => {
   keyboardEnabled = !keyboardEnabled;
@@ -644,7 +675,7 @@ function playMemorySequences(startIndex) {
       });
       if (sequence.notes.length > 0) {
         const lastEventTime = sequence.notes[sequence.notes.length - 1].time;
-        totalOffsetTime += lastEventTime + 1; // Add 1 second gap between sequences
+        totalOffsetTime += lastEventTime + 1;
       }
     });
 
@@ -674,6 +705,38 @@ function playMemorySequences(startIndex) {
 
     scheduleNextEvent();
   }
+}
+
+function playPreviousChord() {
+  if (chordIndex > 0) {
+    stopAllNotes();
+    chordIndex--;
+    playChordAtIndex(chordIndex);
+  }
+}
+
+function playNextChord() {
+  if (chordIndex < chords.length - 1) {
+    stopAllNotes();
+    chordIndex++;
+    playChordAtIndex(chordIndex);
+  }
+}
+
+function playChordAtIndex(index) {
+  if (index >= 0 && index < chords.length) {
+    const chord = chords[index];
+    chord.notes.forEach(note => {
+      noteOn(note);
+    });
+  }
+}
+
+function stopAllNotes() {
+  const notesToStop = Object.keys(activeNotes);
+  notesToStop.forEach(note => {
+    noteOff(note);
+  });
 }
 
 document.addEventListener('DOMContentLoaded', () => {
