@@ -58,6 +58,7 @@ let recordedNotes = [];
 let recordStartTime;
 let playbackStartTime;
 let playbackTimer;
+let recordingTimers = [];
 let memoryList = [];
 let sequenceCounter = 1;
 let selectedMemoryIndex = null;
@@ -336,10 +337,66 @@ function startRecording() {
   document.getElementById('play-btn').disabled = true;
   document.getElementById('save-btn').disabled = true;
   document.getElementById('stop-btn').disabled = false; // Enable the stop button during recording
+
+  const selectedMemories = memoryList.filter(sequence => sequence.selected);
+  if (selectedMemories.length > 0) {
+    let totalOffsetTime = 0;
+    const combinedNotes = [];
+    selectedMemories.forEach(sequence => {
+      sequence.notes.forEach(noteEvent => {
+        combinedNotes.push({
+          type: noteEvent.type,
+          note: noteEvent.note,
+          time: noteEvent.time + totalOffsetTime
+        });
+      });
+      if (sequence.notes.length > 0) {
+        const lastEventTime = sequence.notes[sequence.notes.length - 1].time;
+        totalOffsetTime += lastEventTime + 1; // Add 1 second gap between sequences
+      }
+    });
+    combinedNotes.sort((a, b) => a.time - b.time);
+    playNotesDuringRecording(combinedNotes);
+  }
+}
+
+function playNotesDuringRecording(events) {
+  if (!isRecording) return;
+
+  let eventIndex = 0;
+
+  const scheduleNextEvent = () => {
+    if (!isRecording || eventIndex >= events.length) {
+      return;
+    }
+
+    const noteEvent = events[eventIndex];
+    const timeUntilEvent = noteEvent.time - (audioContext.currentTime - recordStartTime);
+
+    const timerId = setTimeout(() => {
+      if (isRecording) {
+        if (noteEvent.type === 'noteOn') {
+          noteOn(noteEvent.note);
+        } else if (noteEvent.type === 'noteOff') {
+          noteOff(noteEvent.note);
+        }
+        recordedNotes.push({
+          type: noteEvent.type,
+          note: noteEvent.note,
+          time: audioContext.currentTime - recordStartTime
+        });
+      }
+      eventIndex++;
+      scheduleNextEvent();
+    }, Math.max(0, timeUntilEvent * 1000));
+
+    recordingTimers.push(timerId);
+  };
+
+  scheduleNextEvent();
 }
 
 function stopAction() {
-  const stopBtn = document.getElementById('stop-btn');
   if (isRecording) {
     // Stop recording
     isRecording = false;
@@ -347,6 +404,9 @@ function stopAction() {
     recordBtn.classList.remove('pressed');
     document.getElementById('play-btn').disabled = false;
     document.getElementById('save-btn').disabled = false;
+    // Clear recording timers
+    recordingTimers.forEach(timerId => clearTimeout(timerId));
+    recordingTimers = [];
   }
   if (isPlaying) {
     // Stop playback
@@ -355,17 +415,74 @@ function stopAction() {
     document.getElementById('play-btn').disabled = false;
   }
   if (!isRecording && !isPlaying) {
-    stopBtn.disabled = true; // Disable the stop button when not recording or playing
+    document.getElementById('stop-btn').disabled = true; // Disable the stop button when not recording or playing
   }
 }
 
 function startPlayback() {
-  if (isPlaying || recordedNotes.length === 0) return;
+  if (isPlaying) return;
+
+  const selectedMemories = memoryList.filter(sequence => sequence.selected);
+  if (selectedMemories.length === 0) {
+    alert('No memories selected to play.');
+    return;
+  }
+
   isPlaying = true;
   playbackStartTime = audioContext.currentTime;
-  document.getElementById('stop-btn').disabled = false; // Enable the stop button during playback
+  document.getElementById('stop-btn').disabled = false;
   document.getElementById('play-btn').disabled = true;
-  playSequence();
+
+  playSelectedMemories(selectedMemories);
+}
+
+function playSelectedMemories(sequencesToPlay) {
+  if (!isPlaying) return;
+
+  let totalOffsetTime = 0;
+  let scheduledEvents = [];
+
+  sequencesToPlay.forEach(sequence => {
+    sequence.notes.forEach(noteEvent => {
+      scheduledEvents.push({
+        type: noteEvent.type,
+        note: noteEvent.note,
+        time: noteEvent.time + totalOffsetTime
+      });
+    });
+    if (sequence.notes.length > 0) {
+      const lastEventTime = sequence.notes[sequence.notes.length - 1].time;
+      totalOffsetTime += lastEventTime + 1; // Add 1 second gap between sequences
+    }
+  });
+
+  scheduledEvents.sort((a, b) => a.time - b.time); // Ensure events are ordered by time
+
+  let eventIndex = 0;
+
+  const scheduleNextEvent = () => {
+    if (!isPlaying || eventIndex >= scheduledEvents.length) {
+      isPlaying = false;
+      document.getElementById('stop-btn').disabled = true;
+      document.getElementById('play-btn').disabled = false;
+      return;
+    }
+
+    const noteEvent = scheduledEvents[eventIndex];
+    const timeUntilEvent = noteEvent.time - (audioContext.currentTime - playbackStartTime);
+
+    playbackTimer = setTimeout(() => {
+      if (noteEvent.type === 'noteOn') {
+        noteOn(noteEvent.note);
+      } else if (noteEvent.type === 'noteOff') {
+        noteOff(noteEvent.note);
+      }
+      eventIndex++;
+      scheduleNextEvent();
+    }, Math.max(0, timeUntilEvent * 1000));
+  };
+
+  scheduleNextEvent();
 }
 
 function initMemoryControls() {
@@ -379,21 +496,15 @@ function initMemoryControls() {
   addToMemoryBtn.addEventListener('click', addToMemory);
   removeFromMemoryBtn.addEventListener('click', removeFromMemory);
   memorySelect.addEventListener('click', function(event) {
-    if (event.target && event.target.nodeName === 'LI') {
-      const index = event.target.dataset.index;
+    if (event.target && event.target.nodeName === 'SPAN') {
+      const index = event.target.parentElement.querySelector('input[type="checkbox"]').dataset.index;
       selectMemorySequence(index);
       toggleMemoryList();
     }
   });
   addEditorContentBtn.addEventListener('click', addEditorContentToMemory);
   memoryToggleBtn.addEventListener('click', toggleMemoryList);
-  memoryPlayBtn.addEventListener('click', () => {
-    if (memoryList.length > 0 && selectedMemoryIndex !== null) {
-      playMemorySequences(selectedMemoryIndex);
-    } else {
-      alert('No memory sequence selected to play.');
-    }
-  });
+  memoryPlayBtn.addEventListener('click', startPlayback);
 }
 
 function toggleMemoryList() {
@@ -410,15 +521,27 @@ function updateMemoryList() {
   memoryListContainer.innerHTML = '';
   memoryList.forEach((sequence, index) => {
     const li = document.createElement('li');
-    li.dataset.index = index;
-    li.textContent = sequence.name;
+
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.dataset.index = index;
+    checkbox.checked = sequence.selected || false;
+    checkbox.addEventListener('change', function(e) {
+      memoryList[index].selected = e.target.checked;
+    });
+
+    const label = document.createElement('span');
+    label.textContent = sequence.name;
+
+    li.appendChild(checkbox);
+    li.appendChild(label);
     memoryListContainer.appendChild(li);
   });
   document.getElementById('play-btn').disabled = memoryList.length === 0;
   document.getElementById('save-btn').disabled = memoryList.length === 0;
 }
 
-function selectMemorySequence(index, showAlert = true) {
+function selectMemorySequence(index) {
   if (index >= 0 && index < memoryList.length) {
     selectedMemoryIndex = index;
     const selectedSequence = memoryList[index];
@@ -426,9 +549,6 @@ function selectMemorySequence(index, showAlert = true) {
     quill.setContents(selectedSequence.editorContent);
     document.getElementById('play-btn').disabled = false;
     document.getElementById('selected-memory').textContent = selectedSequence.name;
-    if (showAlert) {
-      alert(`Selected memory: "${selectedSequence.name}".`);
-    }
   }
 }
 
@@ -443,7 +563,8 @@ function addToMemory() {
     const sequenceData = {
       name: sequenceName,
       notes: JSON.parse(JSON.stringify(recordedNotes)),
-      editorContent: quill.getContents()
+      editorContent: quill.getContents(),
+      selected: false
     };
     memoryList.push(sequenceData);
     updateMemoryList();
@@ -457,7 +578,7 @@ function addToMemory() {
 function removeFromMemory() {
   const selectedMemoryName = document.getElementById('selected-memory').textContent;
   const index = memoryList.findIndex(sequence => sequence.name === selectedMemoryName);
-  
+
   if (index >= 0) {
     const removedSequence = memoryList.splice(index, 1)[0];
     updateMemoryList();
@@ -493,37 +614,6 @@ function stopPlayback() {
   clearTimeout(playbackTimer);
   document.getElementById('stop-btn').disabled = true;
   document.getElementById('play-btn').disabled = false;
-}
-
-function playSequence() {
-  if (!isPlaying) return;
-
-  let currentTime = audioContext.currentTime - playbackStartTime;
-  let eventIndex = 0;
-
-  const scheduleNextEvent = () => {
-    if (!isPlaying || eventIndex >= recordedNotes.length) {
-      isPlaying = false;
-      document.getElementById('stop-btn').disabled = true;
-      document.getElementById('play-btn').disabled = false;
-      return;
-    }
-
-    const noteEvent = recordedNotes[eventIndex];
-    const timeUntilEvent = noteEvent.time - (audioContext.currentTime - playbackStartTime);
-
-    playbackTimer = setTimeout(() => {
-      if (noteEvent.type === 'noteOn') {
-        noteOn(noteEvent.note);
-      } else if (noteEvent.type === 'noteOff') {
-        noteOff(noteEvent.note);
-      }
-      eventIndex++;
-      scheduleNextEvent();
-    }, Math.max(0, timeUntilEvent * 1000));
-  };
-
-  scheduleNextEvent();
 }
 
 function saveMemoryList() {
@@ -574,6 +664,8 @@ function clearApp() {
   if (playbackTimer) {
     clearTimeout(playbackTimer);
   }
+  recordingTimers.forEach(timerId => clearTimeout(timerId));
+  recordingTimers = [];
   memoryList = [];
   sequenceCounter = 1;
   updateMemoryList();
@@ -635,102 +727,9 @@ keyboardToggleBtn.addEventListener('click', () => {
   keyboardToggleBtn.classList.toggle('pressed', keyboardEnabled);
 });
 
-function playMemorySequences(startIndex) {
-  if (!isPlaying) {
-    isPlaying = true;
-    playbackStartTime = audioContext.currentTime;
-    document.getElementById('stop-btn').disabled = false;
-    document.getElementById('play-btn').disabled = true;
-
-    const sequencesToPlay = memoryList.slice(startIndex);
-    let scheduledActions = [];
-    let totalOffsetTime = 0;
-
-    sequencesToPlay.forEach((sequence, seqIndex) => {
-      // Schedule sequence selection at the start of each sequence
-      scheduledActions.push({
-        type: 'selectSequence',
-        index: startIndex + seqIndex,
-        time: totalOffsetTime
-      });
-
-      sequence.notes.forEach(noteEvent => {
-        scheduledActions.push({
-          type: noteEvent.type, // 'noteOn' or 'noteOff'
-          note: noteEvent.note,
-          time: noteEvent.time + totalOffsetTime
-        });
-      });
-
-      if (sequence.notes.length > 0) {
-        const lastEventTime = sequence.notes[sequence.notes.length - 1].time;
-        totalOffsetTime += lastEventTime;
-      }
-    });
-
-    if (scheduledActions.length === 0) {
-      isPlaying = false;
-      document.getElementById('stop-btn').disabled = true;
-      document.getElementById('play-btn').disabled = false;
-      return;
-    }
-
-    // Adjust times to remove initial silence
-    const earliestTime = Math.min(...scheduledActions.map(event => event.time));
-    scheduledActions = scheduledActions.map(event => ({
-      ...event,
-      time: event.time - earliestTime
-    }));
-
-    // Sort actions by time
-    scheduledActions.sort((a, b) => a.time - b.time);
-
-    let actionIndex = 0;
-
-    const scheduleNextAction = () => {
-      if (!isPlaying || actionIndex >= scheduledActions.length) {
-        isPlaying = false;
-        document.getElementById('stop-btn').disabled = true;
-        document.getElementById('play-btn').disabled = false;
-        return;
-      }
-
-      const action = scheduledActions[actionIndex];
-      const timeUntilAction = action.time - (audioContext.currentTime - playbackStartTime);
-
-      playbackTimer = setTimeout(() => {
-        if (action.type === 'noteOn') {
-          noteOn(action.note);
-        } else if (action.type === 'noteOff') {
-          noteOff(action.note);
-        } else if (action.type === 'selectSequence') {
-          selectMemorySequence(action.index, false);
-        }
-        actionIndex++;
-        scheduleNextAction();
-      }, Math.max(0, timeUntilAction * 1000));
-    };
-
-    scheduleNextAction();
-  }
-}
-
 document.addEventListener('DOMContentLoaded', () => {
   createPiano();
   initMIDI();
-
-  const Font = Quill.import('formats/font');
-  Font.whitelist = [
-    'arial', 'courier-new', 'georgia', 'lucida', 'tahoma', 'times-new-roman', 'verdana',
-    'serif', 'sans-serif', 'monospaced', 'brush-script-mt', 'roboto', 'open-sans',
-    'montserrat', 'lato', 'poppins', 'oswald', 'raleway', 'ubuntu', 'pt-sans',
-    'cursive', 'noto-music'
-  ];
-  Quill.register(Font, true);
-
-  const SizeStyle = Quill.import('attributors/style/size');
-  SizeStyle.whitelist = ['8pt', '9pt', '10pt', '11pt', '12pt', '14pt', '16pt', '18pt', '24pt', '36pt', '48pt'];
-  Quill.register(SizeStyle, true);
 
   quill = new Quill('#editor', {
     modules: {
