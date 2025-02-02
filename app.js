@@ -53,7 +53,6 @@ let quill;
 let activeNotes = {};
 let pianoKeys = {};
 let isRecording = false;
-let isWaitingToRecord = false;
 let isPlaying = false;
 let recordedNotes = [];
 let recordStartTime;
@@ -91,8 +90,8 @@ let colorfulNotesEnabled = true;
 
 let tempo = 100; // Default tempo in BPM
 
-// Variable to keep track of the current note index for navigation
-let currentNoteIndex = -1;
+let isWaitingToRecord = false;
+let recordBlinkInterval = null;
 
 function createPiano() {
   const piano = document.getElementById('piano');
@@ -471,9 +470,6 @@ function stopAction() {
     document.getElementById('stop-btn').disabled = true;
     document.getElementById('play-btn').disabled = false;
   }
-
-  // Reset currentNoteIndex when stopping
-  currentNoteIndex = -1;
 }
 
 function startPlayback() {
@@ -638,8 +634,6 @@ function selectMemorySequence(index) {
     quill.setContents(selectedSequence.editorContent);
     document.getElementById('play-btn').disabled = false;
     document.getElementById('selected-memory').textContent = selectedSequence.name;
-    // Reset currentNoteIndex when selecting a new memory
-    currentNoteIndex = -1;
   }
 }
 
@@ -776,8 +770,6 @@ function clearApp() {
   stopRecordBlink();
   clearActiveNotes();
   document.getElementById('selected-memory').textContent = 'No Memory Selected';
-  // Reset currentNoteIndex when clearing the app
-  currentNoteIndex = -1;
 }
 
 function clearActiveNotes() {
@@ -800,21 +792,10 @@ function initKeyboardControls() {
 }
 
 function handleKeyDown(event) {
-  // Handle spacebar as a shortcut to play or stop
+  // Handle spacebar as a shortcut to the stop button
   if (event.code === 'Space') {
     event.preventDefault();
-    if (isPlaying || isRecording) {
-      stopAction();
-    } else {
-      startPlayback();
-    }
-    return;
-  }
-
-  // Handle left and right arrow keys for note navigation
-  if (event.code === 'ArrowLeft' || event.code === 'ArrowRight') {
-    event.preventDefault();
-    navigateNotes(event.code === 'ArrowLeft' ? -1 : 1);
+    stopAction();
     return;
   }
 
@@ -845,86 +826,6 @@ keyboardToggleBtn.addEventListener('click', () => {
   keyboardEnabled = !keyboardEnabled;
   keyboardToggleBtn.classList.toggle('pressed', keyboardEnabled);
 });
-
-function navigateNotes(direction) {
-  const selectedMemoryName = document.getElementById('selected-memory').textContent;
-  const index = memoryList.findIndex(sequence => sequence.name === selectedMemoryName);
-
-  if (index === -1 || selectedMemoryName === 'No Memory Selected') {
-    alert('No memory sequence selected to navigate.');
-    return;
-  }
-
-  const selectedSequence = memoryList[index];
-  const notes = selectedSequence.notes;
-
-  if (notes.length === 0) {
-    alert('Selected memory has no notes.');
-    return;
-  }
-
-  // Clear any active notes
-  clearActiveNotes();
-
-  // Move currentNoteIndex
-  if (currentNoteIndex === -1) {
-    // Not initialized, start at position depending on direction
-    currentNoteIndex = direction === 1 ? 0 : notes.length - 1;
-  } else {
-    let newIndex = currentNoteIndex;
-    let currentTime = notes[currentNoteIndex].time;
-
-    if (direction === 1) {
-      // Move forward to the next note that is at least 100ms apart
-      newIndex++;
-      while (newIndex < notes.length && notes[newIndex].time - currentTime <= 0.1) {
-        newIndex++;
-      }
-    } else {
-      // Move backward to the previous note that is at least 100ms apart
-      newIndex--;
-      while (newIndex >= 0 && currentTime - notes[newIndex].time <= 0.1) {
-        newIndex--;
-      }
-    }
-
-    // Clamp the index within valid range
-    if (newIndex < 0) newIndex = 0;
-    if (newIndex >= notes.length) newIndex = notes.length - 1;
-
-    currentNoteIndex = newIndex;
-  }
-
-  // Get the time of the current note
-  const currentTime = notes[currentNoteIndex].time;
-
-  // Collect notes that are within 100ms to form a chord
-  const chordNotes = [];
-  let i = currentNoteIndex;
-
-  // Collect previous notes within 100ms
-  while (i >= 0 && Math.abs(notes[i].time - currentTime) <= 0.1) {
-    chordNotes.push(notes[i]);
-    i--;
-  }
-
-  // Collect next notes within 100ms
-  i = currentNoteIndex + 1;
-  while (i < notes.length && Math.abs(notes[i].time - currentTime) <= 0.1) {
-    chordNotes.push(notes[i]);
-    i++;
-  }
-
-  // Remove duplicates and sort by time
-  const uniqueChordNotes = Array.from(new Set(chordNotes)).sort((a, b) => a.time - b.time);
-
-  // Play the chord notes
-  uniqueChordNotes.forEach(noteEvent => {
-    if (noteEvent.type === 'noteOn') {
-      noteOn(noteEvent.note);
-    }
-  });
-}
 
 document.addEventListener('DOMContentLoaded', () => {
   createPiano();
