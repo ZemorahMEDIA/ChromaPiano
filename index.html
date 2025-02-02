@@ -6,6 +6,10 @@
   <script src="https://unpkg.com/soundfont-player@latest/dist/soundfont-player.js"></script>
   <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
   <script src="https://cdn.quilljs.com/1.3.6/quill.js"></script>
+  <!-- Include Google Fonts -->
+  <link href="https://fonts.googleapis.com/css?family=Arial|Times+New+Roman|Courier+New|Georgia|Verdana|Tahoma|Trebuchet+MS|Impact|Comic+Sans+MS|Palatino+Linotype|Lucida+Console|Garamond|Bookman|Helvetica|Gill+Sans|Optima|Calibri|Candara|Century+Gothic|Franklin+Gothic+Medium|Futura|Geneva|Rockwell|Baskerville|Bodoni+MT|Brush+Script+MT|Didot|Goudy+Old+Style|Perpetua|Symbol|Copperplate|Papyrus|Segoe+UI|Segoe+Print|Segoe+Script|Arial+Black|Arial+Narrow|Lucida+Grande|Consolas|Monaco|Menlo|Helvetica+Neue|Cochin|Bradley+Hand|Snell+Roundhand|Chalkduster|Hiragino+Maru+Gothic+Pro|Apple+Chancery|Luminari|Marker+Felt|Noteworthy|Zapfino|Roboto|Open+Sans|Lato|Montserrat|Oswald|Roboto+Condensed|Source+Sans+Pro|Raleway|Slabo+27px|PT+Sans&display=swap" rel="stylesheet">
+  <!-- Include Noto Music Font for musical symbols -->
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Music&display=swap" rel="stylesheet">
 </head>
 <body>
   <h1>ChromaPiano</h1>
@@ -15,6 +19,12 @@
     <!-- Synthesizer panel -->
     <div id="synthesizer-panel">
       <div id="controls">
+        <button id="loop-btn">
+          <!-- Loop icon -->
+          <svg viewBox="0 0 24 24">
+            <path d="M7 7h5v2H7v2l-3-3 3-3v2zm10 8h-5v2h5v2l3-3-3-3v2zM4 12c0-4.41 3.59-8 8-8v2a6 6 0 0 0 0 12v2c-4.41 0-8-3.59-8-8zm16 0c0 4.41-3.59 8-8 8v-2a6 6 0 0 0 0-12V4c4.41 0 8 3.59 8 8z"></path>
+          </svg>
+        </button>
         <button id="record-btn">
           <!-- Red circle icon -->
           <svg viewBox="0 0 24 24">
@@ -104,6 +114,13 @@
             <ul id="memory-list"></ul>
           </div>
         </div>
+        <div id="tempo-section">
+          <div id="tempo-display">
+            <label for="tempo-input">Tempo:</label>
+            <input type="number" id="tempo-input" value="100" min="20" max="200" step="1">
+            <span>BPM</span>
+          </div>
+        </div>
       </div>
     </div>
     <div id="piano"></div>
@@ -112,14 +129,20 @@
   <div id="editor-container">
     <!-- Toolbar container -->
     <div id="toolbar">
-      <select class="ql-font"></select>
+      <select class="ql-font">
+        <!-- Fonts will be populated by app.js -->
+      </select>
       <select class="ql-size"></select>
       <button class="ql-bold"></button>
       <button class="ql-italic"></button>
       <button class="ql-underline"></button>
       <button class="ql-strike"></button>
-      <select class="ql-color"></select>
-      <select class="ql-background"></select>
+      <select class="ql-color">
+        <!-- Colors will be populated by app.js -->
+      </select>
+      <select class="ql-background">
+        <!-- Background colors will be populated by app.js -->
+      </select>
       <button class="ql-script" value="sub"></button>
       <button class="ql-script" value="super"></button>
       <select class="ql-align"></select>
