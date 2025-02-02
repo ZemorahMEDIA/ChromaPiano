@@ -57,11 +57,12 @@ let isPlaying = false;
 let recordedNotes = [];
 let recordStartTime;
 let playbackStartTime;
-let playbackTimer;
+let playbackTimers = [];
 let recordingTimers = [];
 let memoryList = [];
 let sequenceCounter = 1;
 let selectedMemoryIndex = null;
+let isLooping = false;
 
 let midiAccessObject = null;
 let selectedMidiInput = null;
@@ -86,6 +87,8 @@ const keyNoteMap = {
 
 // Add variable for note color functionality
 let colorfulNotesEnabled = true;
+
+let tempo = 100; // Default tempo in BPM
 
 function createPiano() {
   const piano = document.getElementById('piano');
@@ -116,6 +119,20 @@ function createPiano() {
     key.addEventListener('mousedown', () => noteOn(key.dataset.note));
     key.addEventListener('mouseup', () => noteOff(key.dataset.note));
     key.addEventListener('mouseleave', () => noteOff(key.dataset.note));
+
+    // Add touch events for mobile and tablet support
+    key.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      noteOn(key.dataset.note);
+    });
+    key.addEventListener('touchend', (e) => {
+      e.preventDefault();
+      noteOff(key.dataset.note);
+    });
+    key.addEventListener('touchcancel', (e) => {
+      e.preventDefault();
+      noteOff(key.dataset.note);
+    });
   });
 }
 
@@ -355,8 +372,17 @@ function startRecording() {
         totalOffsetTime += lastEventTime + 1; // Add 1 second gap between sequences
       }
     });
-    combinedNotes.sort((a, b) => a.time - b.time);
-    playNotesDuringRecording(combinedNotes);
+
+    const tempoInput = document.getElementById('tempo-input');
+    tempo = parseInt(tempoInput.value) || 100;
+    const tempoScale = 100 / tempo;
+
+    const scaledNotes = combinedNotes.map(noteEvent => ({
+      ...noteEvent,
+      time: noteEvent.time * tempoScale
+    }));
+
+    playNotesDuringRecording(scaledNotes);
   }
 }
 
@@ -398,29 +424,28 @@ function playNotesDuringRecording(events) {
 
 function stopAction() {
   if (isRecording) {
-    // Stop recording
     isRecording = false;
     const recordBtn = document.getElementById('record-btn');
     recordBtn.classList.remove('pressed');
     document.getElementById('play-btn').disabled = false;
     document.getElementById('save-btn').disabled = false;
-    // Clear recording timers
     recordingTimers.forEach(timerId => clearTimeout(timerId));
     recordingTimers = [];
   }
   if (isPlaying) {
-    // Stop playback
     isPlaying = false;
-    clearTimeout(playbackTimer);
+    playbackTimers.forEach(timerId => clearTimeout(timerId));
+    playbackTimers = [];
+    document.getElementById('stop-btn').disabled = true;
     document.getElementById('play-btn').disabled = false;
-  }
-  if (!isRecording && !isPlaying) {
-    document.getElementById('stop-btn').disabled = true; // Disable the stop button when not recording or playing
   }
 }
 
 function startPlayback() {
   if (isPlaying) return;
+
+  const tempoInput = document.getElementById('tempo-input');
+  tempo = parseInt(tempoInput.value) || 100;
 
   const selectedMemories = memoryList.filter(sequence => sequence.selected);
   if (selectedMemories.length === 0) {
@@ -440,38 +465,65 @@ function playSelectedMemories(sequencesToPlay) {
   if (!isPlaying) return;
 
   let totalOffsetTime = 0;
-  let scheduledEvents = [];
+  const scheduledEvents = [];
+  const tempoScale = 100 / tempo; // Scale factor based on default tempo of 100 BPM
 
   sequencesToPlay.forEach(sequence => {
+    const sequenceStartTime = totalOffsetTime * tempoScale;
+
+    // Schedule the update of selected-memory display and editor content
+    const timeUntilSequenceStart = sequenceStartTime - (audioContext.currentTime - playbackStartTime);
+    const displayTimer = setTimeout(() => {
+      if (!isPlaying) return;
+      document.getElementById('selected-memory').textContent = sequence.name;
+      quill.setContents(sequence.editorContent);
+    }, Math.max(0, timeUntilSequenceStart * 1000));
+    playbackTimers.push(displayTimer);
+
+    // Schedule note events
     sequence.notes.forEach(noteEvent => {
       scheduledEvents.push({
         type: noteEvent.type,
         note: noteEvent.note,
-        time: noteEvent.time + totalOffsetTime
+        time: (noteEvent.time + totalOffsetTime) * tempoScale
       });
     });
+
     if (sequence.notes.length > 0) {
       const lastEventTime = sequence.notes[sequence.notes.length - 1].time;
       totalOffsetTime += lastEventTime + 1; // Add 1 second gap between sequences
     }
   });
 
-  scheduledEvents.sort((a, b) => a.time - b.time); // Ensure events are ordered by time
+  scheduledEvents.sort((a, b) => a.time - b.time);
 
   let eventIndex = 0;
 
   const scheduleNextEvent = () => {
-    if (!isPlaying || eventIndex >= scheduledEvents.length) {
-      isPlaying = false;
-      document.getElementById('stop-btn').disabled = true;
-      document.getElementById('play-btn').disabled = false;
-      return;
+    if (!isPlaying) return;
+
+    if (eventIndex >= scheduledEvents.length) {
+      if (isLooping) {
+        // Restart playback from the beginning
+        eventIndex = 0;
+        playbackStartTime = audioContext.currentTime;
+        playSelectedMemories(sequencesToPlay); // Restart the playback
+        return;
+      } else {
+        // Playback finished
+        isPlaying = false;
+        playbackTimers = [];
+        document.getElementById('stop-btn').disabled = true;
+        document.getElementById('play-btn').disabled = false;
+        return;
+      }
     }
 
     const noteEvent = scheduledEvents[eventIndex];
     const timeUntilEvent = noteEvent.time - (audioContext.currentTime - playbackStartTime);
 
-    playbackTimer = setTimeout(() => {
+    const noteTimer = setTimeout(() => {
+      if (!isPlaying) return;
       if (noteEvent.type === 'noteOn') {
         noteOn(noteEvent.note);
       } else if (noteEvent.type === 'noteOff') {
@@ -480,6 +532,8 @@ function playSelectedMemories(sequencesToPlay) {
       eventIndex++;
       scheduleNextEvent();
     }, Math.max(0, timeUntilEvent * 1000));
+
+    playbackTimers.push(noteTimer);
   };
 
   scheduleNextEvent();
@@ -558,8 +612,14 @@ function addToMemory() {
     return;
   }
 
-  const sequenceName = prompt('Enter a name for this sequence:', `Sequence ${sequenceCounter}`);
+  const maxNameLength = 30;
+  let sequenceName = prompt('Enter a name for this sequence:', `Sequence ${sequenceCounter}`);
   if (sequenceName !== null) {
+    if (sequenceName.length > maxNameLength) {
+      alert(`Sequence name too long. It will be truncated to ${maxNameLength} characters.`);
+      sequenceName = sequenceName.substring(0, maxNameLength);
+    }
+
     const sequenceData = {
       name: sequenceName,
       notes: JSON.parse(JSON.stringify(recordedNotes)),
@@ -611,7 +671,8 @@ function addEditorContentToMemory() {
 function stopPlayback() {
   if (!isPlaying) return;
   isPlaying = false;
-  clearTimeout(playbackTimer);
+  playbackTimers.forEach(timerId => clearTimeout(timerId));
+  playbackTimers = [];
   document.getElementById('stop-btn').disabled = true;
   document.getElementById('play-btn').disabled = false;
 }
@@ -661,11 +722,10 @@ function clearApp() {
   recordedNotes = [];
   recordStartTime = null;
   playbackStartTime = null;
-  if (playbackTimer) {
-    clearTimeout(playbackTimer);
-  }
   recordingTimers.forEach(timerId => clearTimeout(timerId));
   recordingTimers = [];
+  playbackTimers.forEach(timerId => clearTimeout(timerId));
+  playbackTimers = [];
   memoryList = [];
   sequenceCounter = 1;
   updateMemoryList();
@@ -731,11 +791,76 @@ document.addEventListener('DOMContentLoaded', () => {
   createPiano();
   initMIDI();
 
+  // Define custom fonts including musical fonts
+  const fontNames = [
+    'Arial', 'Times New Roman', 'Courier New', 'Georgia', 'Verdana', 'Tahoma', 'Trebuchet MS', 'Impact', 'Comic Sans MS',
+    'Palatino Linotype', 'Lucida Console', 'Lucida Sans Unicode', 'Garamond', 'Bookman', 'Helvetica', 'Gill Sans',
+    'Optima', 'Calibri', 'Candara', 'Century Gothic', 'Franklin Gothic Medium', 'Futura', 'Geneva', 'Rockwell',
+    'Baskerville', 'Bodoni MT', 'Brush Script MT', 'Didot', 'Goudy Old Style', 'Perpetua', 'Symbol', 'Copperplate',
+    'Papyrus', 'Segoe UI', 'Segoe Print', 'Segoe Script', 'Arial Black', 'Arial Narrow', 'Lucida Grande', 'Consolas',
+    'Monaco', 'Menlo', 'Helvetica Neue', 'Courier', 'Cochin', 'Arial Rounded MT Bold', 'Bradley Hand', 'Snell Roundhand',
+    'Chalkduster', 'Hiragino Maru Gothic Pro', 'Apple Chancery', 'Luminari', 'Marker Felt', 'Noteworthy', 'Zapfino',
+    'Roboto', 'Open Sans', 'Lato', 'Montserrat', 'Oswald', 'Roboto Condensed', 'Source Sans Pro', 'Raleway', 'Slabo 27px',
+    'PT Sans', 'Noto Music' // Musical font
+  ];
+
+  // Register fonts with Quill
+  const Font = Quill.import('formats/font');
+  Font.whitelist = fontNames.map(font => font.replace(/\s+/g, '-'));
+  Quill.register(Font, true);
+
+  // Define custom sizes in points
+  const Size = Quill.import('attributors/style/size');
+  Size.whitelist = ['8pt', '10pt', '12pt', '14pt', '18pt', '24pt', '36pt', '48pt', '72pt'];
+  Quill.register(Size, true);
+
+  // Initialize Quill editor with custom fonts and sizes
   quill = new Quill('#editor', {
     modules: {
-      toolbar: '#toolbar',
+      toolbar: '#toolbar'
     },
     theme: 'snow',
+  });
+
+  // Populate font options
+  const fontSelect = document.querySelector('select.ql-font');
+  fontNames.forEach(fontName => {
+    const option = document.createElement('option');
+    option.value = fontName.replace(/\s+/g, '-');
+    option.textContent = fontName;
+    option.style.fontFamily = fontName;
+    fontSelect.appendChild(option);
+  });
+
+  // Populate size options
+  const sizeSelect = document.querySelector('select.ql-size');
+  ['8pt', '10pt', '12pt', '14pt', '18pt', '24pt', '36pt', '48pt', '72pt'].forEach(size => {
+    const option = document.createElement('option');
+    option.value = size;
+    option.textContent = size;
+    sizeSelect.appendChild(option);
+  });
+
+  // Populate color options
+  const pianoNoteColors = ['#FF0000', '#FFA500', '#FFFF00', '#008000', '#0000FF', '#6109AB', '#FF00FF'];
+  const colors = [
+    '#000000', '#e60000', '#ff9900', '#ffff00', '#008a00', '#0066cc', '#9933ff',
+    '#ffffff', '#facccc', '#ffebcc', '#ffffcc', '#cce8cc', '#cce0f5', '#ebd6ff',
+    '#dddddd', '#ff0000', '#ff9c00', '#ffff00', '#00ff00', '#0000ff', '#cc66ff',
+    '#eeeeee', '#ffcccc', '#ffe5cc', '#ffffcc', '#d9f2d9', '#ccd4ff', '#e6ccff',
+    'magenta', // Added magenta color
+    ...pianoNoteColors
+  ];
+
+  const colorSelect = document.querySelector('select.ql-color');
+  const backgroundSelect = document.querySelector('select.ql-background');
+
+  colors.forEach(color => {
+    const option = document.createElement('option');
+    option.value = color;
+    option.style.backgroundColor = color;
+    colorSelect.appendChild(option.cloneNode());
+    backgroundSelect.appendChild(option.cloneNode());
   });
 
   initSequencerControls();
@@ -762,4 +887,12 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }
   });
+
+  // Add event listener for the loop button
+  const loopBtn = document.getElementById('loop-btn');
+  loopBtn.addEventListener('click', () => {
+    isLooping = !isLooping;
+    loopBtn.classList.toggle('pressed', isLooping);
+  });
+
 });
