@@ -36,26 +36,27 @@ body {
   box-shadow: inset -2px -2px 5px rgba(0, 0, 0, 0.7), inset 2px 2px 5px rgba(255, 255, 255, 0.1);
   color: white;
   margin: 5px;
-  padding: 5px;
+  padding: 3px;
   border-radius: 4px;
   cursor: pointer;
-  width: 24px;
-  height: 24px;
+  width: 20px;
+  height: 20px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  touch-action: manipulation;
 }
 
 #controls button.text-button {
   width: auto;
-  height: 24px;
-  padding: 0 8px;
-  font-size: 12px;
+  height: 20px;
+  padding: 0 5px;
+  font-size: 10px;
 }
 
 #controls button svg {
-  width: 16px;
-  height: 16px;
+  width: 12px;
+  height: 12px;
   fill: white;
 }
 
@@ -80,14 +81,16 @@ body {
 }
 
 #device-section,
-#memory-section {
+#memory-section,
+#tempo-section {
   position: relative;
   margin: 0 5px;
   display: inline-block;
 }
 
 #device-display,
-#memory-display {
+#memory-display,
+#tempo-display {
   background-color: #0f0;
   color: #000;
   padding: 5px 10px;
@@ -100,6 +103,31 @@ body {
 #selected-device,
 #selected-memory {
   flex-grow: 1;
+  font-family: 'Courier New', monospace;
+}
+
+#selected-memory {
+  flex-grow: 0;
+  flex-shrink: 0;
+  width: 30ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: 'Courier New', monospace;
+}
+
+#tempo-display label {
+  margin-right: 5px;
+  font-family: 'Courier New', monospace;
+}
+
+#tempo-input {
+  width: 50px;
+  margin: 0 5px;
+  font-family: 'Courier New', monospace;
+}
+
+#tempo-display span {
   font-family: 'Courier New', monospace;
 }
 
@@ -204,6 +232,7 @@ body {
   border: 1px solid #000;
   background: linear-gradient(to bottom, #fff, #ccc);
   box-sizing: border-box;
+  touch-action: manipulation;
 }
 
 .key.black {
@@ -236,16 +265,16 @@ body {
   padding: 0;
   border-radius: 4px;
   cursor: pointer;
-  width: 30px;
-  height: 30px;
+  width: 20px;
+  height: 20px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
 }
 
 #add-editor-content-btn svg {
-  width: 16px;
-  height: 16px;
+  width: 12px;
+  height: 12px;
   fill: white;
 }
 
@@ -273,3 +302,82 @@ h1 {
     background-position: 100% 50%;
   }
 }
+
+/* Add custom font styles for Quill editor */
+.ql-font-arial { font-family: Arial; }
+.ql-font-Times-New-Roman { font-family: 'Times New Roman'; }
+.ql-font-Courier-New { font-family: 'Courier New'; }
+.ql-font-Georgia { font-family: Georgia; }
+.ql-font-Verdana { font-family: Verdana; }
+.ql-font-Tahoma { font-family: Tahoma; }
+.ql-font-Trebuchet-MS { font-family: 'Trebuchet MS'; }
+.ql-font-Impact { font-family: Impact; }
+.ql-font-Comic-Sans-MS { font-family: 'Comic Sans MS'; }
+.ql-font-Palatino-Linotype { font-family: 'Palatino Linotype'; }
+.ql-font-Lucida-Console { font-family: 'Lucida Console'; }
+.ql-font-Lucida-Sans-Unicode { font-family: 'Lucida Sans Unicode'; }
+.ql-font-Garamond { font-family: Garamond; }
+.ql-font-Bookman { font-family: Bookman; }
+.ql-font-Helvetica { font-family: Helvetica; }
+.ql-font-Gill-Sans { font-family: 'Gill Sans'; }
+.ql-font-Optima { font-family: Optima; }
+.ql-font-Calibri { font-family: Calibri; }
+.ql-font-Candara { font-family: Candara; }
+.ql-font-Century-Gothic { font-family: 'Century Gothic'; }
+.ql-font-Franklin-Gothic-Medium { font-family: 'Franklin Gothic Medium'; }
+.ql-font-Futura { font-family: Futura; }
+.ql-font-Geneva { font-family: Geneva; }
+.ql-font-Rockwell { font-family: Rockwell; }
+.ql-font-Baskerville { font-family: Baskerville; }
+.ql-font-Bodoni-MT { font-family: 'Bodoni MT'; }
+.ql-font-Brush-Script-MT { font-family: 'Brush Script MT'; }
+.ql-font-Didot { font-family: Didot; }
+.ql-font-Goudy-Old-Style { font-family: 'Goudy Old Style'; }
+.ql-font-Perpetua { font-family: Perpetua; }
+.ql-font-Symbol { font-family: Symbol; }
+.ql-font-Copperplate { font-family: Copperplate; }
+.ql-font-Papyrus { font-family: Papyrus; }
+.ql-font-Segoe-UI { font-family: 'Segoe UI'; }
+.ql-font-Segoe-Print { font-family: 'Segoe Print'; }
+.ql-font-Segoe-Script { font-family: 'Segoe Script'; }
+.ql-font-Arial-Black { font-family: 'Arial Black'; }
+.ql-font-Arial-Narrow { font-family: 'Arial Narrow'; }
+.ql-font-Lucida-Grande { font-family: 'Lucida Grande'; }
+.ql-font-Consolas { font-family: Consolas; }
+.ql-font-Monaco { font-family: Monaco; }
+.ql-font-Menlo { font-family: Menlo; }
+.ql-font-Helvetica-Neue { font-family: 'Helvetica Neue'; }
+.ql-font-Courier { font-family: Courier; }
+.ql-font-Cochin { font-family: Cochin; }
+.ql-font-Arial-Rounded-MT-Bold { font-family: 'Arial Rounded MT Bold'; }
+.ql-font-Bradley-Hand { font-family: 'Bradley Hand'; }
+.ql-font-Snell-Roundhand { font-family: 'Snell Roundhand'; }
+.ql-font-Chalkduster { font-family: Chalkduster; }
+.ql-font-Hiragino-Maru-Gothic-Pro { font-family: 'Hiragino Maru Gothic Pro'; }
+.ql-font-Apple-Chancery { font-family: 'Apple Chancery'; }
+.ql-font-Luminari { font-family: Luminari; }
+.ql-font-Marker-Felt { font-family: 'Marker Felt'; }
+.ql-font-Noteworthy { font-family: Noteworthy; }
+.ql-font-Zapfino { font-family: Zapfino; }
+.ql-font-Roboto { font-family: Roboto; }
+.ql-font-Open-Sans { font-family: 'Open Sans'; }
+.ql-font-Lato { font-family: Lato; }
+.ql-font-Montserrat { font-family: Montserrat; }
+.ql-font-Oswald { font-family: Oswald; }
+.ql-font-Roboto-Condensed { font-family: 'Roboto Condensed'; }
+.ql-font-Source-Sans-Pro { font-family: 'Source Sans Pro'; }
+.ql-font-Raleway { font-family: Raleway; }
+.ql-font-Slabo-27px { font-family: 'Slabo 27px'; }
+.ql-font-PT-Sans { font-family: 'PT Sans'; }
+.ql-font-Noto-Music { font-family: 'Noto Music'; }
+
+/* Custom font sizes in points */
+.ql-size-8pt { font-size: 8pt; }
+.ql-size-10pt { font-size: 10pt; }
+.ql-size-12pt { font-size: 12pt; }
+.ql-size-14pt { font-size: 14pt; }
+.ql-size-18pt { font-size: 18pt; }
+.ql-size-24pt { font-size: 24pt; }
+.ql-size-36pt { font-size: 36pt; }
+.ql-size-48pt { font-size: 48pt; }
+.ql-size-72pt { font-size: 72pt; }
