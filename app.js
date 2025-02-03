@@ -12,7 +12,7 @@ const noteColors = {
   F: '#008000',    // green
   G: '#0000FF',    // blue
   A: '#6109AB',    // violet
-  B: '#FF00FF',    // magenta,
+  B: '#FF00FF',    // magenta
 };
 
 const blackKeyAdjacency = {
@@ -63,6 +63,7 @@ let memoryList = [];
 let sequenceCounter = 1;
 let selectedMemoryIndex = null;
 let isLooping = false;
+let navigationActiveNotes = {}; // Added for navigation holding functionality
 
 let midiAccessObject = null;
 let selectedMidiInput = null;
@@ -90,8 +91,9 @@ let colorfulNotesEnabled = true;
 
 let tempo = 100; // Default tempo in BPM
 
-let isWaitingToRecord = false;
-let recordBlinkInterval = null;
+// Variables for navigation functionality
+let noteChordEvents = [];
+let currentNoteIndex = -1;
 
 function createPiano() {
   const piano = document.getElementById('piano');
@@ -140,13 +142,6 @@ function createPiano() {
 }
 
 function noteOn(note) {
-  if (isWaitingToRecord) {
-    // Start recording
-    isRecording = true;
-    isWaitingToRecord = false;
-    recordStartTime = audioContext.currentTime;
-  }
-
   if (activeNotes[note]) return;
   if (!pianoInstrument) return;
 
@@ -304,7 +299,11 @@ function initDeviceControls() {
 
 function toggleDeviceList() {
   const deviceListContainer = document.getElementById('device-list-container');
-  deviceListContainer.style.display = deviceListContainer.style.display === 'block' ? 'none' : 'block';
+  if (deviceListContainer.style.display === 'none' || deviceListContainer.style.display === '') {
+    deviceListContainer.style.display = 'block';
+  } else {
+    deviceListContainer.style.display = 'none';
+  }
 }
 
 function handleMIDIMessage(event) {
@@ -352,19 +351,25 @@ function initSequencerControls() {
   clearBtn.addEventListener('click', clearApp);
 
   initMemoryControls();
+  
+  // Add event listeners for navigation buttons
+  const prevNoteBtn = document.getElementById('prev-note-btn');
+  const nextNoteBtn = document.getElementById('next-note-btn');
+
+  prevNoteBtn.addEventListener('click', goToPreviousNoteOrChord);
+  nextNoteBtn.addEventListener('click', goToNextNoteOrChord);
 }
 
 function startRecording() {
-  if (isRecording || isWaitingToRecord) return; // Already recording or waiting to record.
-  isWaitingToRecord = true;
+  if (isRecording) return; // Already recording
+  isRecording = true;
   recordedNotes = [];
+  recordStartTime = audioContext.currentTime;
   const recordBtn = document.getElementById('record-btn');
   recordBtn.classList.add('pressed');
   document.getElementById('play-btn').disabled = true;
   document.getElementById('save-btn').disabled = true;
   document.getElementById('stop-btn').disabled = false; // Enable the stop button during recording
-
-  startRecordBlink();
 
   const selectedMemories = memoryList.filter(sequence => sequence.selected);
   if (selectedMemories.length > 0) {
@@ -394,24 +399,6 @@ function startRecording() {
     }));
 
     playNotesDuringRecording(scaledNotes);
-  }
-}
-
-function startRecordBlink() {
-  const recordBtn = document.getElementById('record-btn');
-  const blinkInterval = (60000 / tempo) / 2; // Half beat interval in milliseconds
-
-  recordBlinkInterval = setInterval(() => {
-    recordBtn.classList.toggle('blinking');
-  }, blinkInterval);
-}
-
-function stopRecordBlink() {
-  const recordBtn = document.getElementById('record-btn');
-  if (recordBlinkInterval) {
-    clearInterval(recordBlinkInterval);
-    recordBlinkInterval = null;
-    recordBtn.classList.remove('blinking');
   }
 }
 
@@ -452,16 +439,14 @@ function playNotesDuringRecording(events) {
 }
 
 function stopAction() {
-  if (isRecording || isWaitingToRecord) {
+  if (isRecording) {
     isRecording = false;
-    isWaitingToRecord = false;
     const recordBtn = document.getElementById('record-btn');
     recordBtn.classList.remove('pressed');
     document.getElementById('play-btn').disabled = false;
     document.getElementById('save-btn').disabled = false;
     recordingTimers.forEach(timerId => clearTimeout(timerId));
     recordingTimers = [];
-    stopRecordBlink();
   }
   if (isPlaying) {
     isPlaying = false;
@@ -470,6 +455,8 @@ function stopAction() {
     document.getElementById('stop-btn').disabled = true;
     document.getElementById('play-btn').disabled = false;
   }
+  // Stop any notes held by navigation buttons
+  stopNavigationActiveNotes();
 }
 
 function startPlayback() {
@@ -634,6 +621,10 @@ function selectMemorySequence(index) {
     quill.setContents(selectedSequence.editorContent);
     document.getElementById('play-btn').disabled = false;
     document.getElementById('selected-memory').textContent = selectedSequence.name;
+
+    // Process the selected sequence's notes to create noteChordEvents
+    processSequenceNotes(selectedSequence);
+    currentNoteIndex = -1; // Reset navigation index
   }
 }
 
@@ -749,7 +740,6 @@ function loadMemoryList() {
 
 function clearApp() {
   isRecording = false;
-  isWaitingToRecord = false;
   isPlaying = false;
   recordedNotes = [];
   recordStartTime = null;
@@ -767,7 +757,6 @@ function clearApp() {
   document.getElementById('save-btn').disabled = false;
   const recordBtn = document.getElementById('record-btn');
   recordBtn.classList.remove('pressed');
-  stopRecordBlink();
   clearActiveNotes();
   document.getElementById('selected-memory').textContent = 'No Memory Selected';
 }
@@ -792,13 +781,6 @@ function initKeyboardControls() {
 }
 
 function handleKeyDown(event) {
-  // Handle spacebar as a shortcut to the stop button
-  if (event.code === 'Space') {
-    event.preventDefault();
-    stopAction();
-    return;
-  }
-
   if (!keyboardEnabled) return;
   const key = event.key.toLowerCase();
   const note = keyNoteMap[key];
@@ -826,6 +808,85 @@ keyboardToggleBtn.addEventListener('click', () => {
   keyboardEnabled = !keyboardEnabled;
   keyboardToggleBtn.classList.toggle('pressed', keyboardEnabled);
 });
+
+// Navigation Functions
+function processSequenceNotes(sequence) {
+  noteChordEvents = [];
+  const events = sequence.notes;
+  if (events.length === 0) return;
+
+  let i = 0;
+  while (i < events.length) {
+    if (events[i].type === 'noteOn') {
+      const chordNotes = [events[i].note];
+      const startTime = events[i].time;
+      let j = i + 1;
+      while (j < events.length && events[j].time - events[i].time <= 0.2) { // 200ms threshold
+        if (events[j].type === 'noteOn') {
+          chordNotes.push(events[j].note);
+        }
+        j++;
+      }
+      noteChordEvents.push({ notes: chordNotes, time: startTime });
+      i = j;
+    } else {
+      i++;
+    }
+  }
+}
+
+function goToNextNoteOrChord() {
+  if (!noteChordEvents.length) return;
+  stopNavigationActiveNotes();
+  currentNoteIndex = (currentNoteIndex + 1) % noteChordEvents.length;
+  playChordAtIndex(currentNoteIndex);
+}
+
+function goToPreviousNoteOrChord() {
+  if (!noteChordEvents.length) return;
+  stopNavigationActiveNotes();
+  currentNoteIndex = (currentNoteIndex - 1 + noteChordEvents.length) % noteChordEvents.length;
+  playChordAtIndex(currentNoteIndex);
+}
+
+function playChordAtIndex(index) {
+  const chordEvent = noteChordEvents[index];
+  if (!chordEvent) return;
+
+  // Stop any currently held navigation notes
+  stopNavigationActiveNotes();
+
+  // Play the new chord and hold the notes
+  chordEvent.notes.forEach(note => {
+    noteOnNavigation(note);
+  });
+}
+
+function noteOnNavigation(note) {
+  if (navigationActiveNotes[note]) return;
+  if (!pianoInstrument) return;
+
+  const playedNote = pianoInstrument.play(note);
+  navigationActiveNotes[note] = playedNote;
+  highlightKey(note, true);
+}
+
+function noteOffNavigation(note) {
+  if (!navigationActiveNotes[note]) return;
+  navigationActiveNotes[note].stop();
+  delete navigationActiveNotes[note];
+  highlightKey(note, false);
+}
+
+function stopNavigationActiveNotes() {
+  for (const note in navigationActiveNotes) {
+    if (navigationActiveNotes.hasOwnProperty(note)) {
+      navigationActiveNotes[note].stop();
+      highlightKey(note, false);
+    }
+  }
+  navigationActiveNotes = {};
+}
 
 document.addEventListener('DOMContentLoaded', () => {
   createPiano();
