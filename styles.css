@@ -39,8 +39,8 @@ body {
   padding: 6px;
   border-radius: 4px;
   cursor: pointer;
-  width: 24px;
-  height: 24px;
+  width: 28px;
+  height: 28px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -49,14 +49,14 @@ body {
 
 #controls button.text-button {
   width: auto;
-  height: 24px;
+  height: 28px;
   padding: 0 6px;
-  font-size: 16px;
+  font-size: 18px;
 }
 
 #controls button svg {
-  width: 16px;
-  height: 16px;
+  width: 18px;
+  height: 18px;
   fill: white;
 }
 
@@ -75,15 +75,15 @@ body {
 
 #controls button#prev-note-btn,
 #controls button#next-note-btn {
-  width: 24px;
-  height: 24px;
+  width: 28px;
+  height: 28px;
   transform: scale(0.9);
 }
 
 #controls button#prev-note-btn svg,
 #controls button#next-note-btn svg {
-  width: 16px;
-  height: 16px;
+  width: 18px;
+  height: 18px;
 }
 
 #lcd-displays {
@@ -273,17 +273,16 @@ body {
   padding: 0;
   border-radius: 4px;
   cursor: pointer;
-  width: 12px;
-  height: 12px;
+  width: 24px;
+  height: 24px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  transform: scale(0.6); 
 }
 
 #add-editor-content-btn svg {
-  width: 8px;
-  height: 8px;
+  width: 16px;
+  height: 16px;
   fill: white;
 }
 
