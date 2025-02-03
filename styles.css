@@ -33,14 +33,14 @@ body {
 #controls button {
   background-color: #444;
   border: 1px solid #000;
-  box-shadow: inset -2px -2px 5px rgba(0, 0, 0, 0.7), inset 2px 2px 5px rgba(255, 255, 255, 0.1);
+  box-shadow: inset -1.2px -1.2px 3px rgba(0, 0, 0, 0.7), inset 1.2px 1.2px 3px rgba(255, 255, 255, 0.1);
   color: white;
-  margin: 5px;
-  padding: 3px;
+  margin: 10px;
+  padding: 6px;
   border-radius: 4px;
   cursor: pointer;
-  width: 20px;
-  height: 20px;
+  width: 24px;
+  height: 24px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -49,19 +49,19 @@ body {
 
 #controls button.text-button {
   width: auto;
-  height: 20px;
-  padding: 0 5px;
-  font-size: 10px;
+  height: 24px;
+  padding: 0 6px;
+  font-size: 16px;
 }
 
 #controls button svg {
-  width: 12px;
-  height: 12px;
+  width: 16px;
+  height: 16px;
   fill: white;
 }
 
 #controls button:active {
-  box-shadow: inset 2px 2px 5px rgba(0, 0, 0, 0.7), inset -2px -2px 5px rgba(255, 255, 255, 0.1);
+  box-shadow: inset 1.2px 1.2px 3px rgba(0, 0, 0, 0.7), inset -1.2px -1.2px 3px rgba(255, 255, 255, 0.1);
 }
 
 #controls button:hover {
@@ -69,8 +69,21 @@ body {
 }
 
 #controls button.pressed {
-  box-shadow: inset 2px 2px 5px rgba(0, 0, 0, 0.7), inset -2px -2px 5px rgba(255, 255, 255, 0.1);
+  box-shadow: inset 1.2px 1.2px 3px rgba(0, 0, 0, 0.7), inset -1.2px -1.2px 3px rgba(255, 255, 255, 0.1);
   background-color: #333;
+}
+
+#controls button#prev-note-btn,
+#controls button#next-note-btn {
+  width: 24px;
+  height: 24px;
+  transform: scale(0.9);
+}
+
+#controls button#prev-note-btn svg,
+#controls button#next-note-btn svg {
+  width: 16px;
+  height: 16px;
 }
 
 #lcd-displays {
@@ -91,7 +104,7 @@ body {
 #device-display,
 #memory-display,
 #tempo-display {
-  background-color: #0f0;
+  background-color: #ADD8E6; 
   color: #000;
   padding: 5px 10px;
   border: 2px solid #004400;
@@ -102,14 +115,9 @@ body {
 
 #selected-device,
 #selected-memory {
-  flex-grow: 1;
-  font-family: 'Courier New', monospace;
-}
-
-#selected-memory {
   flex-grow: 0;
   flex-shrink: 0;
-  width: 30ch;
+  width: 24ch; 
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -122,7 +130,7 @@ body {
 }
 
 #tempo-input {
-  width: 50px;
+  width: 40px; 
   margin: 0 5px;
   font-family: 'Courier New', monospace;
 }
@@ -171,7 +179,7 @@ body {
   position: absolute;
   top: 100%;
   left: 0;
-  background-color: #0f0;
+  background-color: #ADD8E6; 
   border: 2px solid #004400;
   border-top: none;
   width: 100%;
@@ -197,13 +205,13 @@ body {
   font-family: 'Courier New', monospace;
 }
 
-#memory-list li input[type="checkbox"] {
+#memory-list li input[type='checkbox'] {
   margin-right: 5px;
 }
 
 #device-list li:hover,
 #memory-list li:hover {
-  background-color: #0c0;
+  background-color: #7EC0EE; 
 }
 
 #piano {
@@ -259,27 +267,28 @@ body {
 #add-editor-content-btn {
   background-color: #444;
   border: 1px solid #000;
-  box-shadow: inset -2px -2px 5px rgba(0, 0, 0, 0.7), inset 2px 2px 5px rgba(255, 255, 255, 0.1);
+  box-shadow: inset -1.2px -1.2px 3px rgba(0, 0, 0, 0.7), inset 1.2px 1.2px 3px rgba(255, 255, 255, 0.1);
   color: white;
   margin: 10px 0;
   padding: 0;
   border-radius: 4px;
   cursor: pointer;
-  width: 20px;
-  height: 20px;
+  width: 12px;
+  height: 12px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  transform: scale(0.6); 
 }
 
 #add-editor-content-btn svg {
-  width: 12px;
-  height: 12px;
+  width: 8px;
+  height: 8px;
   fill: white;
 }
 
 #add-editor-content-btn:active {
-  box-shadow: inset 2px 2px 5px rgba(0, 0, 0, 0.7), inset -2px -2px 5px rgba(255, 255, 255, 0.1);
+  box-shadow: inset 1.2px 1.2px 3px rgba(0, 0, 0, 0.7), inset -1.2px -1.2px 3px rgba(255, 255, 255, 0.1);
 }
 
 #add-editor-content-btn:hover {
@@ -303,75 +312,205 @@ h1 {
   }
 }
 
-/* Add custom font styles for Quill editor */
-.ql-font-arial { font-family: Arial; }
-.ql-font-Times-New-Roman { font-family: 'Times New Roman'; }
-.ql-font-Courier-New { font-family: 'Courier New'; }
-.ql-font-Georgia { font-family: Georgia; }
-.ql-font-Verdana { font-family: Verdana; }
-.ql-font-Tahoma { font-family: Tahoma; }
-.ql-font-Trebuchet-MS { font-family: 'Trebuchet MS'; }
-.ql-font-Impact { font-family: Impact; }
-.ql-font-Comic-Sans-MS { font-family: 'Comic Sans MS'; }
-.ql-font-Palatino-Linotype { font-family: 'Palatino Linotype'; }
-.ql-font-Lucida-Console { font-family: 'Lucida Console'; }
-.ql-font-Lucida-Sans-Unicode { font-family: 'Lucida Sans Unicode'; }
-.ql-font-Garamond { font-family: Garamond; }
-.ql-font-Bookman { font-family: Bookman; }
-.ql-font-Helvetica { font-family: Helvetica; }
-.ql-font-Gill-Sans { font-family: 'Gill Sans'; }
-.ql-font-Optima { font-family: Optima; }
-.ql-font-Calibri { font-family: Calibri; }
-.ql-font-Candara { font-family: Candara; }
-.ql-font-Century-Gothic { font-family: 'Century Gothic'; }
-.ql-font-Franklin-Gothic-Medium { font-family: 'Franklin Gothic Medium'; }
-.ql-font-Futura { font-family: Futura; }
-.ql-font-Geneva { font-family: Geneva; }
-.ql-font-Rockwell { font-family: Rockwell; }
-.ql-font-Baskerville { font-family: Baskerville; }
-.ql-font-Bodoni-MT { font-family: 'Bodoni MT'; }
-.ql-font-Brush-Script-MT { font-family: 'Brush Script MT'; }
-.ql-font-Didot { font-family: Didot; }
-.ql-font-Goudy-Old-Style { font-family: 'Goudy Old Style'; }
-.ql-font-Perpetua { font-family: Perpetua; }
-.ql-font-Symbol { font-family: Symbol; }
-.ql-font-Copperplate { font-family: Copperplate; }
-.ql-font-Papyrus { font-family: Papyrus; }
-.ql-font-Segoe-UI { font-family: 'Segoe UI'; }
-.ql-font-Segoe-Print { font-family: 'Segoe Print'; }
-.ql-font-Segoe-Script { font-family: 'Segoe Script'; }
-.ql-font-Arial-Black { font-family: 'Arial Black'; }
-.ql-font-Arial-Narrow { font-family: 'Arial Narrow'; }
-.ql-font-Lucida-Grande { font-family: 'Lucida Grande'; }
-.ql-font-Consolas { font-family: Consolas; }
-.ql-font-Monaco { font-family: Monaco; }
-.ql-font-Menlo { font-family: Menlo; }
-.ql-font-Helvetica-Neue { font-family: 'Helvetica Neue'; }
-.ql-font-Courier { font-family: Courier; }
-.ql-font-Cochin { font-family: Cochin; }
-.ql-font-Arial-Rounded-MT-Bold { font-family: 'Arial Rounded MT Bold'; }
-.ql-font-Bradley-Hand { font-family: 'Bradley Hand'; }
-.ql-font-Snell-Roundhand { font-family: 'Snell Roundhand'; }
-.ql-font-Chalkduster { font-family: Chalkduster; }
-.ql-font-Hiragino-Maru-Gothic-Pro { font-family: 'Hiragino Maru Gothic Pro'; }
-.ql-font-Apple-Chancery { font-family: 'Apple Chancery'; }
-.ql-font-Luminari { font-family: Luminari; }
-.ql-font-Marker-Felt { font-family: 'Marker Felt'; }
-.ql-font-Noteworthy { font-family: Noteworthy; }
-.ql-font-Zapfino { font-family: Zapfino; }
-.ql-font-Roboto { font-family: Roboto; }
-.ql-font-Open-Sans { font-family: 'Open Sans'; }
-.ql-font-Lato { font-family: Lato; }
-.ql-font-Montserrat { font-family: Montserrat; }
-.ql-font-Oswald { font-family: Oswald; }
-.ql-font-Roboto-Condensed { font-family: 'Roboto Condensed'; }
-.ql-font-Source-Sans-Pro { font-family: 'Source Sans Pro'; }
-.ql-font-Raleway { font-family: Raleway; }
-.ql-font-Slabo-27px { font-family: 'Slabo 27px'; }
-.ql-font-PT-Sans { font-family: 'PT Sans'; }
-.ql-font-Noto-Music { font-family: 'Noto Music'; }
+.ql-font-arial {
+  font-family: Arial;
+}
+.ql-font-Times-New-Roman {
+  font-family: 'Times New Roman';
+}
+.ql-font-Courier-New {
+  font-family: 'Courier New';
+}
+.ql-font-Georgia {
+  font-family: Georgia;
+}
+.ql-font-Verdana {
+  font-family: Verdana;
+}
+.ql-font-Tahoma {
+  font-family: Tahoma;
+}
+.ql-font-Trebuchet-MS {
+  font-family: 'Trebuchet MS';
+}
+.ql-font-Impact {
+  font-family: Impact;
+}
+.ql-font-Comic-Sans-MS {
+  font-family: 'Comic Sans MS';
+}
+.ql-font-Palatino-Linotype {
+  font-family: 'Palatino Linotype';
+}
+.ql-font-Lucida-Console {
+  font-family: 'Lucida Console';
+}
+.ql-font-Lucida-Sans-Unicode {
+  font-family: 'Lucida Sans Unicode';
+}
+.ql-font-Garamond {
+  font-family: Garamond;
+}
+.ql-font-Bookman {
+  font-family: Bookman;
+}
+.ql-font-Helvetica {
+  font-family: Helvetica;
+}
+.ql-font-Gill-Sans {
+  font-family: 'Gill Sans';
+}
+.ql-font-Optima {
+  font-family: Optima;
+}
+.ql-font-Calibri {
+  font-family: Calibri;
+}
+.ql-font-Candara {
+  font-family: Candara;
+}
+.ql-font-Century-Gothic {
+  font-family: 'Century Gothic';
+}
+.ql-font-Franklin-Gothic-Medium {
+  font-family: 'Franklin Gothic Medium';
+}
+.ql-font-Futura {
+  font-family: Futura;
+}
+.ql-font-Geneva {
+  font-family: Geneva;
+}
+.ql-font-Rockwell {
+  font-family: Rockwell;
+}
+.ql-font-Baskerville {
+  font-family: Baskerville;
+}
+.ql-font-Bodoni-MT {
+  font-family: 'Bodoni MT';
+}
+.ql-font-Brush-Script-MT {
+  font-family: 'Brush Script MT';
+}
+.ql-font-Didot {
+  font-family: Didot;
+}
+.ql-font-Goudy-Old-Style {
+  font-family: 'Goudy Old Style';
+}
+.ql-font-Perpetua {
+  font-family: Perpetua;
+}
+.ql-font-Symbol {
+  font-family: Symbol;
+}
+.ql-font-Copperplate {
+  font-family: Copperplate;
+}
+.ql-font-Papyrus {
+  font-family: Papyrus;
+}
+.ql-font-Segoe-UI {
+  font-family: 'Segoe UI';
+}
+.ql-font-Segoe-Print {
+  font-family: 'Segoe Print';
+}
+.ql-font-Segoe-Script {
+  font-family: 'Segoe Script';
+}
+.ql-font-Arial-Black {
+  font-family: 'Arial Black';
+}
+.ql-font-Arial-Narrow {
+  font-family: 'Arial Narrow';
+}
+.ql-font-Lucida-Grande {
+  font-family: 'Lucida Grande';
+}
+.ql-font-Consolas {
+  font-family: Consolas;
+}
+.ql-font-Monaco {
+  font-family: Monaco;
+}
+.ql-font-Menlo {
+  font-family: Menlo;
+}
+.ql-font-Helvetica-Neue {
+  font-family: 'Helvetica Neue';
+}
+.ql-font-Courier {
+  font-family: Courier;
+}
+.ql-font-Cochin {
+  font-family: Cochin;
+}
+.ql-font-Arial-Rounded-MT-Bold {
+  font-family: 'Arial Rounded MT Bold';
+}
+.ql-font-Bradley-Hand {
+  font-family: 'Bradley Hand';
+}
+.ql-font-Snell-Roundhand {
+  font-family: 'Snell Roundhand';
+}
+.ql-font-Chalkduster {
+  font-family: Chalkduster;
+}
+.ql-font-Hiragino-Maru-Gothic-Pro {
+  font-family: 'Hiragino Maru Gothic Pro';
+}
+.ql-font-Apple-Chancery {
+  font-family: 'Apple Chancery';
+}
+.ql-font-Luminari {
+  font-family: Luminari;
+}
+.ql-font-Marker-Felt {
+  font-family: 'Marker Felt';
+}
+.ql-font-Noteworthy {
+  font-family: Noteworthy;
+}
+.ql-font-Zapfino {
+  font-family: Zapfino;
+}
+.ql-font-Roboto {
+  font-family: Roboto;
+}
+.ql-font-Open-Sans {
+  font-family: 'Open Sans';
+}
+.ql-font-Lato {
+  font-family: Lato;
+}
+.ql-font-Montserrat {
+  font-family: Montserrat;
+}
+.ql-font-Oswald {
+  font-family: Oswald;
+}
+.ql-font-Roboto-Condensed {
+  font-family: 'Roboto Condensed';
+}
+.ql-font-Source-Sans-Pro {
+  font-family: 'Source Sans Pro';
+}
+.ql-font-Raleway {
+  font-family: Raleway;
+}
+.ql-font-Slabo-27px {
+  font-family: 'Slabo 27px';
+}
+.ql-font-PT-Sans {
+  font-family: 'PT Sans';
+}
+.ql-font-Noto-Music {
+  font-family: 'Noto Music';
+}
 
-/* Custom font sizes in points */
 .ql-size-8pt { font-size: 8pt; }
 .ql-size-10pt { font-size: 10pt; }
 .ql-size-12pt { font-size: 12pt; }
@@ -381,8 +520,3 @@ h1 {
 .ql-size-36pt { font-size: 36pt; }
 .ql-size-48pt { font-size: 48pt; }
 .ql-size-72pt { font-size: 72pt; }
-
-/* Blinking effect for record button */
-#record-btn.blinking svg {
-  opacity: 0;
-}
