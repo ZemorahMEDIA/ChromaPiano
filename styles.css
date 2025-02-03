@@ -305,11 +305,29 @@ body {
   background-color: #555;
 }
 
-h1 {
-  color: white;
+#title-container {
+  width: 100%;
+  background: linear-gradient(135deg, #2c2c2c 0%, #1c1c1c 100%);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 5px 0;
 }
 
-.rainbow-text {
+#title-container h1 {
+  margin: 0;
+  font-size: 2em;
+  display: flex;
+  align-items: center;
+}
+
+#title-container .handscript {
+  color: white;
+  font-family: 'Great Vibes', cursive;
+  margin-right: 10px;
+}
+
+#title-container .rainbow {
   background: linear-gradient(90deg, red, orange, yellow, green, blue, indigo, violet);
   background-size: 400%;
   -webkit-background-clip: text;
@@ -324,10 +342,6 @@ h1 {
   100% {
     background-position: 100% 50%;
   }
-}
-
-.handwritten {
-  font-family: 'Allura', cursive;
 }
 
 .ql-font-arial {
