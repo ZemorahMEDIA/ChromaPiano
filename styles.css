@@ -16,6 +16,17 @@ body {
   background: linear-gradient(135deg, #2c2c2c 0%, #1c1c1c 100%);
 }
 
+#synthesizer h1 {
+  width: 100%;
+  margin: 0;
+  padding: 20px;
+  background: linear-gradient(135deg, #555 0%, #222 100%);
+  color: white;
+  text-align: center;
+  box-sizing: border-box;
+  border-bottom: 1px solid #333;
+}
+
 #synthesizer-panel {
   background: linear-gradient(135deg, #3a3a3a 0%, #1c1c1c 100%);
   padding: 15px;
@@ -295,6 +306,10 @@ body {
 }
 
 h1 {
+  color: white;
+}
+
+.rainbow-text {
   background: linear-gradient(90deg, red, orange, yellow, green, blue, indigo, violet);
   background-size: 400%;
   -webkit-background-clip: text;
@@ -309,6 +324,10 @@ h1 {
   100% {
     background-position: 100% 50%;
   }
+}
+
+.handwritten {
+  font-family: 'Allura', cursive;
 }
 
 .ql-font-arial {
