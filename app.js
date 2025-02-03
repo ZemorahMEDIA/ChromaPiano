@@ -457,6 +457,8 @@ function stopAction() {
   }
   // Stop any notes held by navigation buttons
   stopNavigationActiveNotes();
+  // Reset any keybed note to its default color value
+  clearActiveNotes();
 }
 
 function startPlayback() {
@@ -467,7 +469,6 @@ function startPlayback() {
 
   const selectedMemories = memoryList.filter(sequence => sequence.selected);
   if (selectedMemories.length === 0) {
-    alert('No memories selected to play.');
     return;
   }
 
@@ -630,31 +631,23 @@ function selectMemorySequence(index) {
 
 function addToMemory() {
   if (recordedNotes.length === 0) {
-    alert('No recording available to add to memory.');
     return;
   }
 
   const maxNameLength = 30;
-  let sequenceName = prompt('Enter a name for this sequence:', `Sequence ${sequenceCounter}`);
-  if (sequenceName !== null) {
-    if (sequenceName.length > maxNameLength) {
-      alert(`Sequence name too long. It will be truncated to ${maxNameLength} characters.`);
-      sequenceName = sequenceName.substring(0, maxNameLength);
-    }
+  let sequenceName = `Sequence ${sequenceCounter}`;
 
-    const sequenceData = {
-      name: sequenceName,
-      notes: JSON.parse(JSON.stringify(recordedNotes)),
-      editorContent: quill.getContents(),
-      selected: false
-    };
-    memoryList.push(sequenceData);
-    updateMemoryList();
-    sequenceCounter++;
-    document.getElementById('play-btn').disabled = false;
-    selectMemorySequence(memoryList.length - 1);
-    alert(`"${sequenceName}" has been added to memory.`);
-  }
+  const sequenceData = {
+    name: sequenceName,
+    notes: JSON.parse(JSON.stringify(recordedNotes)),
+    editorContent: quill.getContents(),
+    selected: false
+  };
+  memoryList.push(sequenceData);
+  updateMemoryList();
+  sequenceCounter++;
+  document.getElementById('play-btn').disabled = false;
+  selectMemorySequence(memoryList.length - 1);
 }
 
 function removeFromMemory() {
@@ -669,12 +662,11 @@ function removeFromMemory() {
     } else {
       selectMemorySequence(index >= memoryList.length ? memoryList.length - 1 : index);
     }
-    alert(`"${removedSequence.name}" has been removed from memory.`);
     if (memoryList.length === 0) {
       document.getElementById('play-btn').disabled = true;
     }
   } else {
-    alert('No sequence selected to remove.');
+    // No sequence selected to remove
   }
 }
 
@@ -684,9 +676,8 @@ function addEditorContentToMemory() {
   if (index >= 0) {
     const selectedSequence = memoryList[index];
     selectedSequence.editorContent = quill.getContents();
-    alert(`Editor content has been added to "${selectedSequence.name}".`);
   } else {
-    alert('No memory sequence selected to add editor content.');
+    // No memory sequence selected to add editor content
   }
 }
 
@@ -781,8 +772,41 @@ function initKeyboardControls() {
 }
 
 function handleKeyDown(event) {
-  if (!keyboardEnabled) return;
   const key = event.key.toLowerCase();
+
+  // Handle Spacebar shortcut for stop/play
+  if (event.key === ' ' && !event.repeat) {
+    event.preventDefault();
+    if (isRecording || isPlaying) {
+      stopAction();
+    } else {
+      startPlayback();
+    }
+    return;
+  }
+
+  // Handle Record key shortcut
+  if (key === 'r' && !event.repeat) {
+    event.preventDefault();
+    startRecording();
+    return;
+  }
+
+  // Handle Left/Right Arrow keys for memory navigation
+  if (event.key === 'ArrowLeft' && !event.repeat) {
+    event.preventDefault();
+    selectPreviousMemory();
+    startPlayback();
+    return;
+  }
+  if (event.key === 'ArrowRight' && !event.repeat) {
+    event.preventDefault();
+    selectNextMemory();
+    startPlayback();
+    return;
+  }
+
+  if (!keyboardEnabled) return;
   const note = keyNoteMap[key];
   if (note && !event.repeat) {
     event.preventDefault();
@@ -802,14 +826,42 @@ function handleKeyUp(event) {
   }
 }
 
-// Add event listener for the keyboard toggle button
-const keyboardToggleBtn = document.getElementById('keyboard-toggle-btn');
-keyboardToggleBtn.addEventListener('click', () => {
-  keyboardEnabled = !keyboardEnabled;
-  keyboardToggleBtn.classList.toggle('pressed', keyboardEnabled);
-});
+function selectPreviousMemory() {
+  if (memoryList.length === 0) return;
+  if (selectedMemoryIndex === null) {
+    selectedMemoryIndex = memoryList.length - 1;
+  } else {
+    selectedMemoryIndex--;
+    if (selectedMemoryIndex < 0) {
+      selectedMemoryIndex = memoryList.length - 1;
+    }
+  }
+  selectMemorySequence(selectedMemoryIndex);
+}
 
-// Navigation Functions
+function selectNextMemory() {
+  if (memoryList.length === 0) return;
+  if (selectedMemoryIndex === null) {
+    selectedMemoryIndex = 0;
+  } else {
+    selectedMemoryIndex++;
+    if (selectedMemoryIndex >= memoryList.length) {
+      selectedMemoryIndex = 0;
+    }
+  }
+  selectMemorySequence(selectedMemoryIndex);
+}
+
+function stopNavigationActiveNotes() {
+  for (const note in navigationActiveNotes) {
+    if (navigationActiveNotes.hasOwnProperty(note)) {
+      navigationActiveNotes[note].stop();
+      highlightKey(note, false);
+    }
+  }
+  navigationActiveNotes = {};
+}
+
 function processSequenceNotes(sequence) {
   noteChordEvents = [];
   const events = sequence.notes;
@@ -876,16 +928,6 @@ function noteOffNavigation(note) {
   navigationActiveNotes[note].stop();
   delete navigationActiveNotes[note];
   highlightKey(note, false);
-}
-
-function stopNavigationActiveNotes() {
-  for (const note in navigationActiveNotes) {
-    if (navigationActiveNotes.hasOwnProperty(note)) {
-      navigationActiveNotes[note].stop();
-      highlightKey(note, false);
-    }
-  }
-  navigationActiveNotes = {};
 }
 
 document.addEventListener('DOMContentLoaded', () => {
