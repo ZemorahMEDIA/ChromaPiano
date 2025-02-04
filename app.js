@@ -1006,7 +1006,12 @@ document.addEventListener('DOMContentLoaded', () => {
     'Monaco', 'Menlo', 'Helvetica Neue', 'Courier', 'Cochin', 'Arial Rounded MT Bold', 'Bradley Hand', 'Snell Roundhand',
     'Chalkduster', 'Hiragino Maru Gothic Pro', 'Apple Chancery', 'Luminari', 'Marker Felt', 'Noteworthy', 'Zapfino',
     'Roboto', 'Open Sans', 'Lato', 'Montserrat', 'Oswald', 'Roboto Condensed', 'Source Sans Pro', 'Raleway', 'Slabo 27px',
-    'PT Sans', 'Noto Music' 
+    'PT Sans', 'Noto Music',
+    'Merriweather', 'Ubuntu', 'Playfair Display', 'Fira Sans', 'Poppins', 'Nunito', 'PT Serif', 'Noto Sans', 'Inconsolata', 'Cabin',
+    'Droid Sans', 'Roboto Mono', 'Muli', 'Indie Flower', 'Pacifico', 'Lobster', 'Dancing Script', 'Shadows Into Light',
+    'Lora', 'Karla', 'Rubik', 'Anton', 'Varela Round', 'Mukta', 'Noto Serif', 'Bitter', 'Arvo', 'Crimson Text',
+    'Roboto Slab', 'Abril Fatface', 'Work Sans', 'Nanum Gothic', 'Josefin Sans', 'Righteous', 'Cinzel', 'Open Sans Condensed',
+    'Dosis', 'Quicksand', 'Comfortaa', 'Old Standard TT', 'Pangolin', 'Alfa Slab One', 'Satisfy'
   ];
 
   const Font = Quill.import('formats/font');
@@ -1025,6 +1030,11 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   const fontSelect = document.querySelector('select.ql-font');
+  fontSelect.innerHTML = '';
+  const defaultOption = document.createElement('option');
+  defaultOption.setAttribute('value', '');
+  defaultOption.textContent = 'Default';
+  fontSelect.appendChild(defaultOption);
   fontNames.forEach(fontName => {
     const option = document.createElement('option');
     option.value = fontName.replace(/\s+/g, '-');
@@ -1098,4 +1108,55 @@ document.addEventListener('DOMContentLoaded', () => {
     keyboardToggleBtn.classList.toggle('pressed', keyboardEnabled);
   });
 
+  const BlockEmbed = Quill.import('blots/block/embed');
+  class IframeBlot extends BlockEmbed {
+    static create(value) {
+      const node = super.create();
+      node.setAttribute('src', value.src);
+      node.setAttribute('frameborder', '0');
+      node.setAttribute('allowfullscreen', true);
+      node.setAttribute('width', value.width || '560');
+      node.setAttribute('height', value.height || '315');
+      return node;
+    }
+
+    static value(node) {
+      return {
+        src: node.getAttribute('src'),
+        width: node.getAttribute('width'),
+        height: node.getAttribute('height')
+      };
+    }
+  }
+  IframeBlot.blotName = 'iframe';
+  IframeBlot.tagName = 'iframe';
+  Quill.register(IframeBlot);
+
+  document.getElementById('insert-iframe-btn').addEventListener('click', () => {
+    const embedCode = prompt('Paste the embed code:');
+    if (embedCode) {
+      const range = quill.getSelection(true);
+      quill.clipboard.dangerouslyPasteHTML(range.index, embedCode);
+    }
+  });
+
+  initSequencerControls();
+  initKeyboardControls();
+
+  // Adjust editor height when content changes
+  quill.on('text-change', adjustEditorHeight);
+
+  function adjustEditorHeight() {
+    const editorElement = document.querySelector('#editor');
+    const iframe = editorElement.querySelector('iframe');
+    if (iframe) {
+      const iframeHeight = iframe.getAttribute('height') || '315';
+      editorElement.style.height = iframeHeight + 'px';
+    } else {
+      editorElement.style.height = '200px';
+    }
+  }
+
+  // Initial adjustment
+  adjustEditorHeight();
 });
