@@ -124,15 +124,25 @@ body {
   align-items: center;
 }
 
+#selected-memory,
 #selected-device,
-#selected-memory {
-  flex-grow: 0;
+#memory-display input {
+  flex-grow: 1;
   flex-shrink: 0;
-  width: 24ch; 
+  width: 24ch;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   font-family: 'Courier New', monospace;
+  border: none;
+  outline: none;
+  background-color: transparent;
+  color: #000;
+}
+
+#memory-display input {
+  padding: 0;
+  margin: 0;
 }
 
 #tempo-display label {
