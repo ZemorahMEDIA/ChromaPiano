@@ -754,7 +754,18 @@ function initKeyboardControls() {
   document.addEventListener('keyup', handleKeyUp);
 }
 
+function isInputFocused() {
+  const activeEl = document.activeElement;
+  if (!activeEl) return false;
+  if (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA' || activeEl.isContentEditable) {
+    return true;
+  }
+  return false;
+}
+
 function handleKeyDown(event) {
+  if (isInputFocused()) return;
+
   const key = event.key.toLowerCase();
 
   if (event.key === ' ' && !event.repeat) {
@@ -804,6 +815,8 @@ function handleKeyDown(event) {
 }
 
 function handleKeyUp(event) {
+  if (isInputFocused()) return;
+
   if (!keyboardEnabled) return;
   const key = event.key.toLowerCase();
   const noteBase = keyNoteMap[key];
