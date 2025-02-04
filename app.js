@@ -63,35 +63,33 @@ let memoryList = [];
 let sequenceCounter = 1;
 let selectedMemoryIndex = null;
 let isLooping = false;
-let navigationActiveNotes = {}; // Added for navigation holding functionality
+let navigationActiveNotes = {};
 
 let midiAccessObject = null;
 let selectedMidiInput = null;
 
-// Add variables for keyboard play functionality
-let keyboardEnabled = true;
+let keyboardEnabled = true; 
+let keyboardOctave = 4; // Default octave for keyboard input
 const keyNoteMap = {
-  'a': 'C4',
-  'w': 'C#4',
-  's': 'D4',
-  'e': 'D#4',
-  'd': 'E4',
-  'f': 'F4',
-  't': 'F#4',
-  'g': 'G4',
-  'y': 'G#4',
-  'h': 'A4',
-  'u': 'A#4',
-  'j': 'B4',
-  'k': 'C5',
+  'a': 'C',
+  'w': 'C#',
+  's': 'D',
+  'e': 'D#',
+  'd': 'E',
+  'f': 'F',
+  't': 'F#',
+  'g': 'G',
+  'y': 'G#',
+  'h': 'A',
+  'u': 'A#',
+  'j': 'B',
+  'k': 'C',
 };
 
-// Add variable for note color functionality
 let colorfulNotesEnabled = true;
 
-let tempo = 100; // Default tempo in BPM
+let tempo = 100;
 
-// Variables for navigation functionality
 let noteChordEvents = [];
 let currentNoteIndex = -1;
 
@@ -125,7 +123,6 @@ function createPiano() {
     key.addEventListener('mouseup', () => noteOff(key.dataset.note));
     key.addEventListener('mouseleave', () => noteOff(key.dataset.note));
 
-    // Add touch events for mobile and tablet support
     key.addEventListener('touchstart', (e) => {
       e.preventDefault();
       noteOn(key.dataset.note);
@@ -179,25 +176,20 @@ function highlightKey(note, isPressed) {
     if (key.dataset.note === note) {
       if (isPressed) {
         if (colorfulNotesEnabled) {
-          // Existing code for colorful notes
           const baseNote = note.replace(/[0-9]/g, '');
           if (baseNote.includes('#')) {
-            // Black key
             const adjNotes = blackKeyAdjacency[baseNote];
             const color1 = noteColors[adjNotes[0]];
             const color2 = noteColors[adjNotes[1]];
             key.style.background = `linear-gradient(to top, ${color2} 50%, ${color1} 50%)`;
           } else {
-            // White key
             const color = noteColors[baseNote];
             key.style.background = color;
           }
         } else {
-          // Set to light blue
           key.style.background = 'lightblue';
         }
       } else {
-        // Reset to default
         key.style.background = '';
       }
       key.classList.toggle('pressed', isPressed);
@@ -255,7 +247,6 @@ function updateDeviceList() {
   });
 
   if (!selectedMidiInput || !midiAccessObject.inputs.has(selectedMidiInput.id)) {
-    // Select the first available device
     if (midiAccessObject.inputs.size > 0) {
       const firstInput = midiAccessObject.inputs.values().next().value;
       selectMidiDevice(firstInput.id);
@@ -312,9 +303,9 @@ function handleMIDIMessage(event) {
   const [command, noteNumber, velocity] = event.data;
   const note = midiNoteToName(noteNumber);
   if (note) {
-    if (command === 144 && velocity > 0) { // Note On
+    if (command === 144 && velocity > 0) { 
       noteOn(note);
-    } else if (command === 128 || (command === 144 && velocity === 0)) { // Note Off
+    } else if (command === 128 || (command === 144 && velocity === 0)) { 
       noteOff(note);
     }
   }
@@ -352,7 +343,6 @@ function initSequencerControls() {
 
   initMemoryControls();
   
-  // Add event listeners for navigation buttons
   const prevNoteBtn = document.getElementById('prev-note-btn');
   const nextNoteBtn = document.getElementById('next-note-btn');
 
@@ -361,7 +351,7 @@ function initSequencerControls() {
 }
 
 function startRecording() {
-  if (isRecording) return; // Already recording
+  if (isRecording) return; 
   isRecording = true;
   recordedNotes = [];
   recordStartTime = audioContext.currentTime;
@@ -369,7 +359,7 @@ function startRecording() {
   recordBtn.classList.add('pressed');
   document.getElementById('play-btn').disabled = true;
   document.getElementById('save-btn').disabled = true;
-  document.getElementById('stop-btn').disabled = false; // Enable the stop button during recording
+  document.getElementById('stop-btn').disabled = false; 
 
   const selectedMemories = memoryList.filter(sequence => sequence.selected);
   if (selectedMemories.length > 0) {
@@ -385,7 +375,7 @@ function startRecording() {
       });
       if (sequence.notes.length > 0) {
         const lastEventTime = sequence.notes[sequence.notes.length - 1].time;
-        totalOffsetTime += lastEventTime + 1; // Add 1 second gap between sequences
+        totalOffsetTime += lastEventTime + 1; 
       }
     });
 
@@ -455,9 +445,7 @@ function stopAction() {
     document.getElementById('stop-btn').disabled = true;
     document.getElementById('play-btn').disabled = false;
   }
-  // Stop any notes held by navigation buttons
   stopNavigationActiveNotes();
-  // Reset any keybed note to its default color value
   clearActiveNotes();
 }
 
@@ -485,12 +473,11 @@ function playSelectedMemories(sequencesToPlay) {
 
   let totalOffsetTime = 0;
   const scheduledEvents = [];
-  const tempoScale = 100 / tempo; // Scale factor based on default tempo of 100 BPM
+  const tempoScale = 100 / tempo; 
 
   sequencesToPlay.forEach(sequence => {
     const sequenceStartTime = totalOffsetTime * tempoScale;
 
-    // Schedule the update of selected-memory display and editor content
     const timeUntilSequenceStart = sequenceStartTime - (audioContext.currentTime - playbackStartTime);
     const displayTimer = setTimeout(() => {
       if (!isPlaying) return;
@@ -499,7 +486,6 @@ function playSelectedMemories(sequencesToPlay) {
     }, Math.max(0, timeUntilSequenceStart * 1000));
     playbackTimers.push(displayTimer);
 
-    // Schedule note events
     sequence.notes.forEach(noteEvent => {
       scheduledEvents.push({
         type: noteEvent.type,
@@ -510,7 +496,7 @@ function playSelectedMemories(sequencesToPlay) {
 
     if (sequence.notes.length > 0) {
       const lastEventTime = sequence.notes[sequence.notes.length - 1].time;
-      totalOffsetTime += lastEventTime + 1; // Add 1 second gap between sequences
+      totalOffsetTime += lastEventTime + 1; 
     }
   });
 
@@ -523,13 +509,11 @@ function playSelectedMemories(sequencesToPlay) {
 
     if (eventIndex >= scheduledEvents.length) {
       if (isLooping) {
-        // Restart playback from the beginning
         eventIndex = 0;
         playbackStartTime = audioContext.currentTime;
-        playSelectedMemories(sequencesToPlay); // Restart the playback
+        playSelectedMemories(sequencesToPlay); 
         return;
       } else {
-        // Playback finished
         isPlaying = false;
         playbackTimers = [];
         document.getElementById('stop-btn').disabled = true;
@@ -561,6 +545,7 @@ function playSelectedMemories(sequencesToPlay) {
 function initMemoryControls() {
   const addToMemoryBtn = document.getElementById('add-memory-btn');
   const removeFromMemoryBtn = document.getElementById('remove-memory-btn');
+  const editMemoryBtn = document.getElementById('edit-memory-btn');
   const memorySelect = document.getElementById('memory-list');
   const addEditorContentBtn = document.getElementById('add-editor-content-btn');
   const memoryToggleBtn = document.getElementById('memory-toggle-btn');
@@ -568,6 +553,7 @@ function initMemoryControls() {
 
   addToMemoryBtn.addEventListener('click', addToMemory);
   removeFromMemoryBtn.addEventListener('click', removeFromMemory);
+  editMemoryBtn.addEventListener('click', editMemoryName);
   memorySelect.addEventListener('click', function(event) {
     if (event.target && event.target.nodeName === 'SPAN') {
       const index = event.target.parentElement.querySelector('input[type="checkbox"]').dataset.index;
@@ -623,9 +609,8 @@ function selectMemorySequence(index) {
     document.getElementById('play-btn').disabled = false;
     document.getElementById('selected-memory').textContent = selectedSequence.name;
 
-    // Process the selected sequence's notes to create noteChordEvents
     processSequenceNotes(selectedSequence);
-    currentNoteIndex = -1; // Reset navigation index
+    currentNoteIndex = -1; 
   }
 }
 
@@ -634,7 +619,6 @@ function addToMemory() {
     return;
   }
 
-  const maxNameLength = 30;
   let sequenceName = `Sequence ${sequenceCounter}`;
 
   const sequenceData = {
@@ -765,7 +749,6 @@ function clearActiveNotes() {
   });
 }
 
-// Add event listeners for keyboard events
 function initKeyboardControls() {
   document.addEventListener('keydown', handleKeyDown);
   document.addEventListener('keyup', handleKeyUp);
@@ -774,7 +757,6 @@ function initKeyboardControls() {
 function handleKeyDown(event) {
   const key = event.key.toLowerCase();
 
-  // Handle Spacebar shortcut for stop/play
   if (event.key === ' ' && !event.repeat) {
     event.preventDefault();
     if (isRecording || isPlaying) {
@@ -785,14 +767,12 @@ function handleKeyDown(event) {
     return;
   }
 
-  // Handle Record key shortcut
   if (key === 'r' && !event.repeat) {
     event.preventDefault();
     startRecording();
     return;
   }
 
-  // Handle Left/Right Arrow keys for memory navigation
   if (event.key === 'ArrowLeft' && !event.repeat) {
     event.preventDefault();
     selectPreviousMemory();
@@ -806,10 +786,17 @@ function handleKeyDown(event) {
     return;
   }
 
-  if (!keyboardEnabled) return;
-  const note = keyNoteMap[key];
-  if (note && !event.repeat) {
+  if (key >= '1' && key <= '6' && !event.repeat) {
     event.preventDefault();
+    keyboardOctave = parseInt(key);
+    return;
+  }
+
+  if (!keyboardEnabled) return;
+  const noteBase = keyNoteMap[key];
+  if (noteBase && !event.repeat) {
+    event.preventDefault();
+    const note = noteBase + keyboardOctave;
     if (!activeNotes[note]) {
       noteOn(note);
     }
@@ -819,9 +806,10 @@ function handleKeyDown(event) {
 function handleKeyUp(event) {
   if (!keyboardEnabled) return;
   const key = event.key.toLowerCase();
-  const note = keyNoteMap[key];
-  if (note) {
+  const noteBase = keyNoteMap[key];
+  if (noteBase) {
     event.preventDefault();
+    const note = noteBase + keyboardOctave;
     noteOff(note);
   }
 }
@@ -873,7 +861,7 @@ function processSequenceNotes(sequence) {
       const chordNotes = [events[i].note];
       const startTime = events[i].time;
       let j = i + 1;
-      while (j < events.length && events[j].time - events[i].time <= 0.2) { // 200ms threshold
+      while (j < events.length && events[j].time - events[i].time <= 0.2) { 
         if (events[j].type === 'noteOn') {
           chordNotes.push(events[j].note);
         }
@@ -905,10 +893,8 @@ function playChordAtIndex(index) {
   const chordEvent = noteChordEvents[index];
   if (!chordEvent) return;
 
-  // Stop any currently held navigation notes
   stopNavigationActiveNotes();
 
-  // Play the new chord and hold the notes
   chordEvent.notes.forEach(note => {
     noteOnNavigation(note);
   });
@@ -930,11 +916,74 @@ function noteOffNavigation(note) {
   highlightKey(note, false);
 }
 
+function editMemoryName() {
+  if (selectedMemoryIndex === null) {
+    return;
+  }
+
+  const selectedMemoryDisplay = document.getElementById('selected-memory');
+  const currentName = selectedMemoryDisplay.textContent;
+
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.value = currentName;
+  input.style.width = '100%';
+  input.style.boxSizing = 'border-box';
+
+  selectedMemoryDisplay.parentNode.replaceChild(input, selectedMemoryDisplay);
+
+  input.focus();
+  input.select();
+
+  function handleBlur() {
+    input.removeEventListener('blur', handleBlur);
+    input.removeEventListener('keydown', handleKeyDown);
+    saveNewMemoryName(input.value, input);
+  }
+
+  function handleKeyDown(e) {
+    if (e.key === 'Enter') {
+      input.removeEventListener('blur', handleBlur);
+      input.removeEventListener('keydown', handleKeyDown);
+      saveNewMemoryName(input.value, input);
+    } else if (e.key === 'Escape') {
+      input.removeEventListener('blur', handleBlur);
+      input.removeEventListener('keydown', handleKeyDown);
+      cancelEditMemoryName(currentName, input);
+    }
+  }
+
+  input.addEventListener('blur', handleBlur);
+  input.addEventListener('keydown', handleKeyDown);
+}
+
+function saveNewMemoryName(newName, input) {
+  if (selectedMemoryIndex !== null) {
+    memoryList[selectedMemoryIndex].name = newName;
+    updateMemoryList(); 
+
+    const selectedMemoryDisplay = document.createElement('span');
+    selectedMemoryDisplay.id = 'selected-memory';
+    selectedMemoryDisplay.textContent = newName;
+    if (input.parentNode) {
+      input.parentNode.replaceChild(selectedMemoryDisplay, input);
+    }
+  }
+}
+
+function cancelEditMemoryName(originalName, input) {
+  const selectedMemoryDisplay = document.createElement('span');
+  selectedMemoryDisplay.id = 'selected-memory';
+  selectedMemoryDisplay.textContent = originalName;
+  if (input.parentNode) {
+    input.parentNode.replaceChild(selectedMemoryDisplay, input);
+  }
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   createPiano();
   initMIDI();
 
-  // Define custom fonts including musical fonts
   const fontNames = [
     'Arial', 'Times New Roman', 'Courier New', 'Georgia', 'Verdana', 'Tahoma', 'Trebuchet MS', 'Impact', 'Comic Sans MS',
     'Palatino Linotype', 'Lucida Console', 'Lucida Sans Unicode', 'Garamond', 'Bookman', 'Helvetica', 'Gill Sans',
@@ -944,20 +993,17 @@ document.addEventListener('DOMContentLoaded', () => {
     'Monaco', 'Menlo', 'Helvetica Neue', 'Courier', 'Cochin', 'Arial Rounded MT Bold', 'Bradley Hand', 'Snell Roundhand',
     'Chalkduster', 'Hiragino Maru Gothic Pro', 'Apple Chancery', 'Luminari', 'Marker Felt', 'Noteworthy', 'Zapfino',
     'Roboto', 'Open Sans', 'Lato', 'Montserrat', 'Oswald', 'Roboto Condensed', 'Source Sans Pro', 'Raleway', 'Slabo 27px',
-    'PT Sans', 'Noto Music' // Musical font
+    'PT Sans', 'Noto Music' 
   ];
 
-  // Register fonts with Quill
   const Font = Quill.import('formats/font');
   Font.whitelist = fontNames.map(font => font.replace(/\s+/g, '-'));
   Quill.register(Font, true);
 
-  // Define custom sizes in points
   const Size = Quill.import('attributors/style/size');
   Size.whitelist = ['8pt', '10pt', '12pt', '14pt', '18pt', '24pt', '36pt', '48pt', '72pt'];
   Quill.register(Size, true);
 
-  // Initialize Quill editor with custom fonts and sizes
   quill = new Quill('#editor', {
     modules: {
       toolbar: '#toolbar'
@@ -965,7 +1011,6 @@ document.addEventListener('DOMContentLoaded', () => {
     theme: 'snow',
   });
 
-  // Populate font options
   const fontSelect = document.querySelector('select.ql-font');
   fontNames.forEach(fontName => {
     const option = document.createElement('option');
@@ -975,7 +1020,6 @@ document.addEventListener('DOMContentLoaded', () => {
     fontSelect.appendChild(option);
   });
 
-  // Populate size options
   const sizeSelect = document.querySelector('select.ql-size');
   ['8pt', '10pt', '12pt', '14pt', '18pt', '24pt', '36pt', '48pt', '72pt'].forEach(size => {
     const option = document.createElement('option');
@@ -984,14 +1028,13 @@ document.addEventListener('DOMContentLoaded', () => {
     sizeSelect.appendChild(option);
   });
 
-  // Populate color options
   const pianoNoteColors = ['#FF0000', '#FFA500', '#FFFF00', '#008000', '#0000FF', '#6109AB', '#FF00FF'];
   const colors = [
     '#000000', '#e60000', '#ff9900', '#ffff00', '#008a00', '#0066cc', '#9933ff',
     '#ffffff', '#facccc', '#ffebcc', '#ffffcc', '#cce8cc', '#cce0f5', '#ebd6ff',
     '#dddddd', '#ff0000', '#ff9c00', '#ffff00', '#00ff00', '#0000ff', '#cc66ff',
     '#eeeeee', '#ffcccc', '#ffe5cc', '#ffffcc', '#d9f2d9', '#ccd4ff', '#e6ccff',
-    'magenta', // Added magenta color
+    'magenta', 
     ...pianoNoteColors
   ];
 
@@ -1009,7 +1052,6 @@ document.addEventListener('DOMContentLoaded', () => {
   initSequencerControls();
   initKeyboardControls();
 
-  // Add event listener for the note color toggle button
   const noteColorToggleBtn = document.getElementById('note-color-toggle-btn');
   noteColorToggleBtn.style.background = 'linear-gradient(90deg, red, orange, yellow, green, blue, indigo, violet)';
   noteColorToggleBtn.classList.add('pressed');
@@ -1023,7 +1065,6 @@ document.addEventListener('DOMContentLoaded', () => {
       noteColorToggleBtn.style.background = 'lightblue';
       noteColorToggleBtn.classList.remove('pressed');
     }
-    // Update the appearance of notes currently pressed
     for (const note in activeNotes) {
       if (activeNotes.hasOwnProperty(note)) {
         highlightKey(note, true);
@@ -1031,11 +1072,17 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // Add event listener for the loop button
   const loopBtn = document.getElementById('loop-btn');
   loopBtn.addEventListener('click', () => {
     isLooping = !isLooping;
     loopBtn.classList.toggle('pressed', isLooping);
+  });
+
+  const keyboardToggleBtn = document.getElementById('keyboard-toggle-btn');
+  keyboardToggleBtn.classList.toggle('pressed', keyboardEnabled);
+  keyboardToggleBtn.addEventListener('click', () => {
+    keyboardEnabled = !keyboardEnabled;
+    keyboardToggleBtn.classList.toggle('pressed', keyboardEnabled);
   });
 
 });
