@@ -449,6 +449,9 @@ function stopAction() {
     playbackTimers = [];
     document.getElementById('stop-btn').disabled = true;
     document.getElementById('play-btn').disabled = false;
+
+    const playBtn = document.getElementById('play-btn');
+    playBtn.classList.remove('pressed');
   }
   stopNavigationActiveNotes();
   clearActiveNotes();
@@ -466,6 +469,9 @@ function startPlayback() {
   playbackStartTime = audioContext.currentTime;
   document.getElementById('stop-btn').disabled = false;
   document.getElementById('play-btn').disabled = true;
+
+  const playBtn = document.getElementById('play-btn');
+  playBtn.classList.add('pressed');
 
   playSelectedMemories(selectedMemories);
 }
@@ -520,6 +526,8 @@ function playSelectedMemories(sequencesToPlay) {
         playbackTimers = [];
         document.getElementById('stop-btn').disabled = true;
         document.getElementById('play-btn').disabled = false;
+        const playBtn = document.getElementById('play-btn');
+        playBtn.classList.remove('pressed');
         return;
       }
     }
