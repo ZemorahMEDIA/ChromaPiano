@@ -398,4 +398,55 @@ body {
   flex-grow: 1;
 }
 
-/* ...existing font classes... */
+/* Control groups */
+.control-group {
+  display: inline-block;
+  margin: 0 5px;
+  vertical-align: top;
+  text-align: center;
+}
+
+.group-label {
+  position: relative;
+  text-align: center;
+  font-size: 10px;
+  color: white;
+  margin-bottom: 5px;
+}
+
+.group-label::before {
+  content: '';
+  border-top: 1px solid white;
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 100%;
+  z-index: 0;
+}
+
+.group-label span {
+  background-color: #1c1c1c;
+  padding: 0 5px;
+  position: relative;
+  z-index: 1;
+}
+
+.group-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+/* Reduce button size in control groups */
+.control-group .group-buttons button {
+  width: 24px;
+  height: 24px;
+  margin: 2px;
+}
+
+/* Adjust font size for text buttons in control groups */
+.control-group .group-buttons button.text-button {
+  font-size: 12px;
+  padding: 0 4px;
+  height: 24px;
+}
