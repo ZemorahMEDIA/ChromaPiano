@@ -450,3 +450,11 @@ body {
   padding: 0 4px;
   height: 24px;
 }
+
+#controls button#play-btn svg {
+  fill: green;
+}
+
+#controls button#play-btn.pressed svg {
+  fill: limegreen;
+}
