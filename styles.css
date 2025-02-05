@@ -222,7 +222,8 @@ body {
 #tempo-section {
   position: relative;
   margin: 0 5px;
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
 }
 
 #tempo-display {
@@ -270,6 +271,33 @@ body {
   cursor: pointer;
 }
 
+#metronome-btn {
+  background-color: #444;
+  border: 1px solid #000;
+  box-shadow: inset -1.2px -1.2px 3px rgba(0, 0, 0, 0.7), inset 1.2px 1.2px 3px rgba(255, 255, 255, 0.1);
+  color: white;
+  margin: 2px;
+  padding: 4px;
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  touch-action: manipulation;
+}
+
+#metronome-btn.pressed {
+  background-color: #333;
+}
+
+#metronome-btn svg {
+  width: 16px;
+  height: 16px;
+  fill: white;
+}
+
 #piano {
   width: 100%;
   display: flex;
@@ -312,9 +340,6 @@ body {
 
 #editor-container {
   display: none;
-  max-width: 800px;
-  width: 100%;
-  margin: 0 auto;
 }
 
 #editor {
@@ -350,6 +375,18 @@ body {
 
 #add-editor-content-btn:hover {
   background-color: #555;
+}
+
+#record-btn.blinking {
+  animation-name: blink-animation;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+}
+
+@keyframes blink-animation {
+  0% { opacity: 1; }
+  50% { opacity: 0; }
+  100% { opacity: 1; }
 }
 
 #title-container {
@@ -452,12 +489,4 @@ body {
   font-size: 12px;
   padding: 0 4px;
   height: 24px;
-}
-
-#controls button#play-btn svg {
-  fill: green;
-}
-
-#controls button#play-btn.pressed svg {
-  fill: limegreen;
 }
