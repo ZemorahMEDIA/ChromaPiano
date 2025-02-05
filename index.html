@@ -25,89 +25,110 @@
     <!-- Synthesizer panel -->
     <div id="synthesizer-panel">
       <div id="controls">
-        <button id="loop-btn">
-          <!-- Loop icon -->
-          <svg viewBox="0 0 24 24">
-            <path d="M7 7h5v2H7v2l-3-3 3-3v2zm10 8h-5v2h5v2l3-3-3-3v2zM4 12c0-4.41 3.59-8 8-8v2a6 6 0 0 0 0 12v2c-4.41 0-8-3.59-8-8zm16 0c0 4.41-3.59 8-8 8v-2a6 6 0 0 0 0-12V4c4.41 0 8 3.59 8 8z"></path>
-          </svg>
-        </button>
-        <button id="record-btn">
-          <!-- Red circle icon -->
-          <svg viewBox="0 0 24 24">
-            <circle cx="12" cy="12" r="10" fill="red"></circle>
-          </svg>
-        </button>
-        <button id="play-btn" disabled>
-          <!-- Green triangle pointing right -->
-          <svg viewBox="0 0 24 24">
-            <polygon points="8,5 19,12 8,19" fill="green"></polygon>
-          </svg>
-        </button>
-        <button id="stop-btn" disabled>
-          <!-- Grey square -->
-          <svg viewBox="0 0 24 24">
-            <rect x="5" y="5" width="14" height="14" fill="grey"></rect>
-          </svg>
-        </button>
-        <!-- Navigation buttons -->
-        <button id="prev-note-btn">
-          <!-- Left arrow icon -->
-          <svg viewBox="0 0 24 24">
-            <polygon points="14,18 8,12 14,6" fill="white"></polygon>
-          </svg>
-        </button>
-        <button id="next-note-btn">
-          <!-- Right arrow icon -->
-          <svg viewBox="0 0 24 24">
-            <polygon points="10,6 16,12 10,18" fill="white"></polygon>
-          </svg>
-        </button>
-        <button id="save-btn" class="text-button">Save</button>
-        <button id="load-btn" class="text-button">Load</button>
-        <button id="clear-btn">
-          <!-- Recycle bin icon -->
-          <svg viewBox="0 0 24 24">
-            <path d="M3 6h18" stroke="#fff" stroke-width="2"/>
-            <path d="M19 6l-1 14a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1L5 6" stroke="#fff" stroke-width="2"/>
-            <path d="M10 11v6" stroke="#fff" stroke-width="2"/>
-            <path d="M14 11v6" stroke="#fff" stroke-width="2"/>
-            <path d="M9 6V4h6v2" stroke="#fff" stroke-width="2"/>
-          </svg>
-        </button>
-        <button id="add-memory-btn" class="text-button">M+</button>
-        <button id="remove-memory-btn" class="text-button">M-</button>
-        <button id="edit-memory-btn" class="text-button">E</button>
-        <!-- Keyboard Toggle Button -->
-        <button id="keyboard-toggle-btn" class="pressed">
-          <!-- Keyboard icon -->
-          <svg viewBox="0 0 24 24">
-            <rect x="2" y="6" width="20" height="12" fill="#fff" stroke="#000" stroke-width="1"/>
-            <line x1="2" y1="10" x2="22" y2="10" stroke="#000" stroke-width="1"/>
-            <line x1="2" y1="14" x2="22" y2="14" stroke="#000" stroke-width="1"/>
-            <line x1="6" y1="6" x2="6" y2="18" stroke="#000" stroke-width="1"/>
-            <line x1="10" y1="6" x2="10" y2="18" stroke="#000" stroke-width="1"/>
-            <line x1="14" y1="6" x2="14" y2="18" stroke="#000" stroke-width="1"/>
-            <line x1="18" y1="6" x2="18" y2="18" stroke="#000" stroke-width="1"/>
-          </svg>
-        </button>
-        <!-- Note Color Toggle Button -->
-        <button id="note-color-toggle-btn" class="pressed">
-          <!-- Note icon -->
-          <svg viewBox="0 0 24 24">
-            <path d="M12 3v10.15A4 4 0 1 0 14 17V7h4V3z" fill="#fff"/>
-          </svg>
-        </button>
-        <!-- Toggle Editor Button with Notepad and Pencil Icon -->
-        <button id="toggle-editor-btn">
-          <!-- Notepad with pencil icon -->
-          <svg viewBox="0 0 24 24">
-            <path d="M3 3h14v14H3V3zm2 2v10h10V5H5zm12 2l2 2v8a1 1 0 0 1-1 1h-8l-2-2h8V7z" fill="#fff"/>
-            <path d="M5.5 9L11 14.5l1.5-1.5L7 7.5 5.5 9z" fill="#fff"/>
-            <path d="M14.172 8.828l-1.414-1.414L8 12.172V14h1.828l4.344-4.344z" fill="#fff"/>
-            <path d="M15.05 9.95l1.414-1.414-2.121-2.122-1.415 1.415z" fill="#fff"/>
-          </svg>
-        </button>
-        <button id="add-editor-content-btn">M+</button>
+        <div class="control-group">
+          <div class="group-label"><span>Transport</span></div>
+          <div class="group-buttons">
+            <button id="loop-btn">
+              <!-- Loop icon -->
+              <svg viewBox="0 0 24 24">
+                <path d="M7 7h5v2H7v2l-3-3 3-3v2zm10 8h-5v2h5v2l3-3-3-3v2zM4 12c0-4.41 3.59-8 8-8v2a6 6 0 0 0 0 12v2c-4.41 0-8-3.59-8-8zm16 0c0 4.41-3.59 8-8 8v-2a6 6 0 0 0 0-12V4c4.41 0 8 3.59 8 8z"></path>
+              </svg>
+            </button>
+            <button id="record-btn">
+              <!-- Red circle icon -->
+              <svg viewBox="0 0 24 24">
+                <circle cx="12" cy="12" r="10" fill="red"></circle>
+              </svg>
+            </button>
+            <button id="play-btn" disabled>
+              <!-- Green triangle pointing right -->
+              <svg viewBox="0 0 24 24">
+                <polygon points="8,5 19,12 8,19" fill="green"></polygon>
+              </svg>
+            </button>
+            <button id="stop-btn" disabled>
+              <!-- Grey square -->
+              <svg viewBox="0 0 24 24">
+                <rect x="5" y="5" width="14" height="14" fill="grey"></rect>
+              </svg>
+            </button>
+            <button id="prev-note-btn">
+              <!-- Left arrow icon -->
+              <svg viewBox="0 0 24 24">
+                <polygon points="14,18 8,12 14,6" fill="white"></polygon>
+              </svg>
+            </button>
+            <button id="next-note-btn">
+              <!-- Right arrow icon -->
+              <svg viewBox="0 0 24 24">
+                <polygon points="10,6 16,12 10,18" fill="white"></polygon>
+              </svg>
+            </button>
+          </div>
+        </div>
+        <div class="control-group">
+          <div class="group-label"><span>File</span></div>
+          <div class="group-buttons">
+            <button id="save-btn" class="text-button">Save</button>
+            <button id="load-btn" class="text-button">Load</button>
+          </div>
+        </div>
+        <div class="control-group">
+          <div class="group-label"><span>Memory</span></div>
+          <div class="group-buttons">
+            <button id="clear-btn">
+              <!-- Recycle bin icon -->
+              <svg viewBox="0 0 24 24">
+                <path d="M3 6h18" stroke="#fff" stroke-width="2"/>
+                <path d="M19 6l-1 14a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1L5 6" stroke="#fff" stroke-width="2"/>
+                <path d="M10 11v6" stroke="#fff" stroke-width="2"/>
+                <path d="M14 11v6" stroke="#fff" stroke-width="2"/>
+                <path d="M9 6V4h6v2" stroke="#fff" stroke-width="2"/>
+              </svg>
+            </button>
+            <button id="add-memory-btn" class="text-button">M+</button>
+            <button id="remove-memory-btn" class="text-button">M-</button>
+            <button id="edit-memory-btn" class="text-button">E</button>
+          </div>
+        </div>
+        <div class="control-group">
+          <div class="group-label"><span>Display</span></div>
+          <div class="group-buttons">
+            <button id="keyboard-toggle-btn" class="pressed">
+              <!-- Keyboard icon -->
+              <svg viewBox="0 0 24 24">
+                <rect x="2" y="6" width="20" height="12" fill="#fff" stroke="#000" stroke-width="1"/>
+                <line x1="2" y1="10" x2="22" y2="10" stroke="#000" stroke-width="1"/>
+                <line x1="2" y1="14" x2="22" y2="14" stroke="#000" stroke-width="1"/>
+                <line x1="6" y1="6" x2="6" y2="18" stroke="#000" stroke-width="1"/>
+                <line x1="10" y1="6" x2="10" y2="18" stroke="#000" stroke-width="1"/>
+                <line x1="14" y1="6" x2="14" y2="18" stroke="#000" stroke-width="1"/>
+                <line x1="18" y1="6" x2="18" y2="18" stroke="#000" stroke-width="1"/>
+              </svg>
+            </button>
+            <button id="note-color-toggle-btn" class="pressed">
+              <!-- Note icon -->
+              <svg viewBox="0 0 24 24">
+                <path d="M12 3v10.15A4 4 0 1 0 14 17V7h4V3z" fill="#fff"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+        <div class="control-group">
+          <div class="group-label"><span>Notepad</span></div>
+          <div class="group-buttons">
+            <button id="toggle-editor-btn">
+              <!-- Notepad with pencil icon -->
+              <svg viewBox="0 0 24 24">
+                <path d="M3 3h14v14H3V3zm2 2v10h10V5H5zm12 2l2 2v8a1 1 0 0 1-1 1h-8l-2-2h8V7z" fill="#fff"/>
+                <path d="M5.5 9L11 14.5l1.5-1.5L7 7.5 5.5 9z" fill="#fff"/>
+                <path d="M14.172 8.828l-1.414-1.414L8 12.172V14h1.828l4.344-4.344z" fill="#fff"/>
+                <path d="M15.05 9.95l1.414-1.414-2.121-2.122-1.415 1.415z" fill="#fff"/>
+              </svg>
+            </button>
+            <button id="add-editor-content-btn">M+</button>
+          </div>
+        </div>
       </div>
       <!-- LCD displays container -->
       <div id="lcd-displays">
