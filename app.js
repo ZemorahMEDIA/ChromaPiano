@@ -95,6 +95,9 @@ let tempo = parseInt(tempoSlider.value) || 100;
 tempoSlider.addEventListener('input', () => {
   tempo = parseInt(tempoSlider.value);
   tempoValueDisplay.textContent = tempo + ' BPM';
+  if (isMetronomeActive) {
+    startMetronome();
+  }
 });
 
 let noteChordEvents = [];
@@ -355,7 +358,12 @@ function initSequencerControls() {
 
   prevNoteBtn.addEventListener('click', goToPreviousNoteOrChord);
   nextNoteBtn.addEventListener('click', goToNextNoteOrChord);
+  
+  const metronomeBtn = document.getElementById('metronome-btn');
+  metronomeBtn.addEventListener('click', toggleMetronome);
 }
+
+let isMetronomeActive = false;
 
 function startRecording() {
   if (isRecording) return; 
@@ -449,9 +457,6 @@ function stopAction() {
     playbackTimers = [];
     document.getElementById('stop-btn').disabled = true;
     document.getElementById('play-btn').disabled = false;
-
-    const playBtn = document.getElementById('play-btn');
-    playBtn.classList.remove('pressed');
   }
   stopNavigationActiveNotes();
   clearActiveNotes();
@@ -469,9 +474,6 @@ function startPlayback() {
   playbackStartTime = audioContext.currentTime;
   document.getElementById('stop-btn').disabled = false;
   document.getElementById('play-btn').disabled = true;
-
-  const playBtn = document.getElementById('play-btn');
-  playBtn.classList.add('pressed');
 
   playSelectedMemories(selectedMemories);
 }
@@ -526,8 +528,6 @@ function playSelectedMemories(sequencesToPlay) {
         playbackTimers = [];
         document.getElementById('stop-btn').disabled = true;
         document.getElementById('play-btn').disabled = false;
-        const playBtn = document.getElementById('play-btn');
-        playBtn.classList.remove('pressed');
         return;
       }
     }
@@ -1059,6 +1059,30 @@ function exportSelectedMemoryAsMidi() {
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
+}
+
+function toggleMetronome() {
+  isMetronomeActive = !isMetronomeActive;
+  const metronomeBtn = document.getElementById('metronome-btn');
+  metronomeBtn.classList.toggle('pressed', isMetronomeActive);
+  if (isMetronomeActive) {
+    startMetronome();
+  } else {
+    stopMetronome();
+  }
+}
+
+function startMetronome() {
+  const interval = 60 / tempo; // duration in seconds
+  const recordBtn = document.getElementById('record-btn');
+  recordBtn.classList.add('blinking');
+  recordBtn.style.animationDuration = interval + 's';
+}
+
+function stopMetronome() {
+  const recordBtn = document.getElementById('record-btn');
+  recordBtn.classList.remove('blinking');
+  recordBtn.style.animationDuration = '';
 }
 
 document.addEventListener('DOMContentLoaded', () => {
