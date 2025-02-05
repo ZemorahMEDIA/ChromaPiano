@@ -86,9 +86,16 @@ const keyNoteMap = {
   'k': 'C',
 };
 
-let colorfulNotesEnabled = true;
+let colorfulNotesEnabled = false;
 
-let tempo = 100;
+const tempoSlider = document.getElementById('tempo-slider');
+const tempoValueDisplay = document.getElementById('tempo-value');
+let tempo = parseInt(tempoSlider.value) || 100;
+
+tempoSlider.addEventListener('input', () => {
+  tempo = parseInt(tempoSlider.value);
+  tempoValueDisplay.textContent = tempo + ' BPM';
+});
 
 let noteChordEvents = [];
 let currentNoteIndex = -1;
@@ -379,8 +386,6 @@ function startRecording() {
       }
     });
 
-    const tempoInput = document.getElementById('tempo-input');
-    tempo = parseInt(tempoInput.value) || 100;
     const tempoScale = 100 / tempo;
 
     const scaledNotes = combinedNotes.map(noteEvent => ({
@@ -451,9 +456,6 @@ function stopAction() {
 
 function startPlayback() {
   if (isPlaying) return;
-
-  const tempoInput = document.getElementById('tempo-input');
-  tempo = parseInt(tempoInput.value) || 100;
 
   const selectedMemories = memoryList.filter(sequence => sequence.selected);
   if (selectedMemories.length === 0) {
@@ -549,7 +551,6 @@ function initMemoryControls() {
   const memorySelect = document.getElementById('memory-list');
   const addEditorContentBtn = document.getElementById('add-editor-content-btn');
   const memoryToggleBtn = document.getElementById('memory-toggle-btn');
-  const memoryPlayBtn = document.getElementById('memory-play-btn');
 
   addToMemoryBtn.addEventListener('click', addToMemory);
   removeFromMemoryBtn.addEventListener('click', removeFromMemory);
@@ -563,7 +564,6 @@ function initMemoryControls() {
   });
   addEditorContentBtn.addEventListener('click', addEditorContentToMemory);
   memoryToggleBtn.addEventListener('click', toggleMemoryList);
-  memoryPlayBtn.addEventListener('click', startPlayback);
 }
 
 function toggleMemoryList() {
@@ -993,6 +993,66 @@ function cancelEditMemoryName(originalName, input) {
   }
 }
 
+function exportSelectedMemoryAsMidi() {
+  if (selectedMemoryIndex === null) {
+    alert('No memory selected to export.');
+    return;
+  }
+
+  const selectedSequence = memoryList[selectedMemoryIndex];
+
+  // Create a new track
+  const track = new MidiWriter.Track();
+
+  // Set tempo
+  track.setTempo(tempo);
+
+  // Process the recorded notes to get events with durations
+  let noteOnEvents = {};
+  const events = selectedSequence.notes;
+
+  events.forEach(event => {
+    if (event.type === 'noteOn') {
+      noteOnEvents[event.note] = event.time;
+    } else if (event.type === 'noteOff') {
+      if (noteOnEvents[event.note] !== undefined) {
+        const startTime = noteOnEvents[event.note];
+        const duration = event.time - startTime;
+
+        // Calculate start tick and duration in ticks (assuming 128 ticks per beat)
+        const startTick = Math.round(startTime * (tempo / 60) * 128);
+        const durationTicks = Math.round(duration * (tempo / 60) * 128) || 1;
+
+        const noteEvent = new MidiWriter.NoteEvent({
+          pitch: [event.note],
+          duration: 'T' + durationTicks,
+          startTick: startTick
+        });
+        track.addEvent(noteEvent);
+
+        delete noteOnEvents[event.note];
+      }
+    }
+  });
+
+  // Create a writer and build the MIDI file
+  const write = new MidiWriter.Writer([track]);
+  const midiFileData = write.buildFile();
+
+  // Create a Blob from the MIDI data
+  const blob = new Blob([midiFileData], { type: 'audio/midi' });
+
+  // Trigger download of the MIDI file
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `${selectedSequence.name}.mid`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   createPiano();
   initMIDI();
@@ -1075,9 +1135,26 @@ document.addEventListener('DOMContentLoaded', () => {
   initSequencerControls();
   initKeyboardControls();
 
+  // Adjust editor height when content changes
+  quill.on('text-change', adjustEditorHeight);
+
+  function adjustEditorHeight() {
+    const editorElement = document.querySelector('#editor');
+    const iframe = editorElement.querySelector('iframe');
+    if (iframe) {
+      const iframeHeight = iframe.getAttribute('height') || '315';
+      editorElement.style.height = iframeHeight + 'px';
+    } else {
+      editorElement.style.height = '600px';
+    }
+  }
+
+  // Initial adjustment
+  adjustEditorHeight();
+  
   const noteColorToggleBtn = document.getElementById('note-color-toggle-btn');
-  noteColorToggleBtn.style.background = 'linear-gradient(90deg, red, orange, yellow, green, blue, indigo, violet)';
-  noteColorToggleBtn.classList.add('pressed');
+  noteColorToggleBtn.style.background = 'lightblue';
+  noteColorToggleBtn.classList.remove('pressed');
 
   noteColorToggleBtn.addEventListener('click', () => {
     colorfulNotesEnabled = !colorfulNotesEnabled;
@@ -1143,20 +1220,14 @@ document.addEventListener('DOMContentLoaded', () => {
   initSequencerControls();
   initKeyboardControls();
 
-  // Adjust editor height when content changes
-  quill.on('text-change', adjustEditorHeight);
+  const toggleEditorBtn = document.getElementById('toggle-editor-btn');
 
-  function adjustEditorHeight() {
-    const editorElement = document.querySelector('#editor');
-    const iframe = editorElement.querySelector('iframe');
-    if (iframe) {
-      const iframeHeight = iframe.getAttribute('height') || '315';
-      editorElement.style.height = iframeHeight + 'px';
+  toggleEditorBtn.addEventListener('click', () => {
+    const editorContainer = document.getElementById('editor-container');
+    if (editorContainer.style.display === 'none' || editorContainer.style.display === '') {
+      editorContainer.style.display = 'block';
     } else {
-      editorElement.style.height = '200px';
+      editorContainer.style.display = 'none';
     }
-  }
-
-  // Initial adjustment
-  adjustEditorHeight();
+  });
 });
