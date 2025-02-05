@@ -49,7 +49,7 @@
             <rect x="5" y="5" width="14" height="14" fill="grey"></rect>
           </svg>
         </button>
-        <!-- New navigation buttons -->
+        <!-- Navigation buttons -->
         <button id="prev-note-btn">
           <!-- Left arrow icon -->
           <svg viewBox="0 0 24 24">
@@ -97,6 +97,17 @@
             <path d="M12 3v10.15A4 4 0 1 0 14 17V7h4V3z" fill="#fff"/>
           </svg>
         </button>
+        <!-- Toggle Editor Button with Notepad and Pencil Icon -->
+        <button id="toggle-editor-btn">
+          <!-- Notepad with pencil icon -->
+          <svg viewBox="0 0 24 24">
+            <path d="M3 3h14v14H3V3zm2 2v10h10V5H5zm12 2l2 2v8a1 1 0 0 1-1 1h-8l-2-2h8V7z" fill="#fff"/>
+            <path d="M5.5 9L11 14.5l1.5-1.5L7 7.5 5.5 9z" fill="#fff"/>
+            <path d="M14.172 8.828l-1.414-1.414L8 12.172V14h1.828l4.344-4.344z" fill="#fff"/>
+            <path d="M15.05 9.95l1.414-1.414-2.121-2.122-1.415 1.415z" fill="#fff"/>
+          </svg>
+        </button>
+        <button id="add-editor-content-btn">M+</button>
       </div>
       <!-- LCD displays container -->
       <div id="lcd-displays">
@@ -123,12 +134,6 @@
                 <polyline points="6,9 12,15 18,9" fill="none" stroke="#000" stroke-width="2"/>
               </svg>
             </button>
-            <button id="memory-play-btn">
-              <!-- Play icon -->
-              <svg viewBox="0 0 24 24">
-                <polygon points="8,5 19,12 8,19" fill="green"></polygon>
-              </svg>
-            </button>
           </div>
           <div id="memory-list-container">
             <ul id="memory-list"></ul>
@@ -136,9 +141,10 @@
         </div>
         <div id="tempo-section">
           <div id="tempo-display">
-            <label for="tempo-input">Tempo:</label>
-            <input type="number" id="tempo-input" value="100" min="20" max="200" step="1">
-            <span>BPM</span>
+            <!-- Display the current tempo -->
+            <div id="tempo-value">100 BPM</div>
+            <!-- Slider input for tempo -->
+            <input type="range" id="tempo-slider" min="20" max="200" value="100">
           </div>
         </div>
       </div>
@@ -175,20 +181,14 @@
       <button class="ql-clean"></button>
       <!-- Modified Embed button -->
       <button id="insert-iframe-btn">Embed</button>
-      <!-- ...existing code... -->
+      <div class="spacer"></div>
+      <button id="add-editor-content-btn">M+</button>
     </div>
     <div id="editor"></div>
-    <!-- "Add to Memory" button -->
-    <button id="add-editor-content-btn">
-      <!-- Plus icon -->
-      <svg viewBox="0 0 24 24">
-        <line x1="12" y1="5" x2="12" y2="19" stroke="#fff" stroke-width="2"/>
-        <line x1="5" y1="12" x2="19" y2="12" stroke="#fff" stroke-width="2"/>
-      </svg>
-    </button>
   </div>
 
   <!-- Include app.js after all libraries -->
-  <script src="app.js" type="module"></script>
+  <script src="https://unpkg.com/midiwriter-js@2.1.1/dist/MidiWriter.min.js"></script>
+  <script src="app.js"></script>
 </body>
 </html>
