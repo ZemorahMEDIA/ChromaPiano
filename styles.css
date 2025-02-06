@@ -297,6 +297,7 @@ body {
   background: linear-gradient(to bottom, #fff, #ccc);
   box-sizing: border-box;
   touch-action: manipulation;
+  position: relative;
 }
 
 .key.black {
@@ -308,6 +309,15 @@ body {
   z-index: 1;
   background: linear-gradient(to bottom, #333, #000);
   color: #fff;
+}
+
+.key-label {
+  position: absolute;
+  bottom: 2px;
+  width: 100%;
+  text-align: center;
+  font-size: 0.8em;
+  pointer-events: none;
 }
 
 #editor-container {
