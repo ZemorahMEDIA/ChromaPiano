@@ -95,9 +95,6 @@ let tempo = parseInt(tempoSlider.value) || 100;
 tempoSlider.addEventListener('input', () => {
   tempo = parseInt(tempoSlider.value);
   tempoValueDisplay.textContent = tempo + ' BPM';
-  if (isMetronomeActive) {
-    startMetronome();
-  }
 });
 
 let noteChordEvents = [];
@@ -358,12 +355,13 @@ function initSequencerControls() {
 
   prevNoteBtn.addEventListener('click', goToPreviousNoteOrChord);
   nextNoteBtn.addEventListener('click', goToNextNoteOrChord);
-  
-  const metronomeBtn = document.getElementById('metronome-btn');
-  metronomeBtn.addEventListener('click', toggleMetronome);
-}
 
-let isMetronomeActive = false;
+  const transposeDownBtn = document.getElementById('transpose-down-btn');
+  const transposeUpBtn = document.getElementById('transpose-up-btn');
+
+  transposeDownBtn.addEventListener('click', transposeSelectedMemoryDown);
+  transposeUpBtn.addEventListener('click', transposeSelectedMemoryUp);
+}
 
 function startRecording() {
   if (isRecording) return; 
@@ -1061,28 +1059,69 @@ function exportSelectedMemoryAsMidi() {
   URL.revokeObjectURL(url);
 }
 
-function toggleMetronome() {
-  isMetronomeActive = !isMetronomeActive;
-  const metronomeBtn = document.getElementById('metronome-btn');
-  metronomeBtn.classList.toggle('pressed', isMetronomeActive);
-  if (isMetronomeActive) {
-    startMetronome();
-  } else {
-    stopMetronome();
+function transposeSelectedMemoryDown() {
+  transposeSelectedMemory(-1);
+}
+
+function transposeSelectedMemoryUp() {
+  transposeSelectedMemory(1);
+}
+
+function transposeSelectedMemory(semitones) {
+  if (selectedMemoryIndex === null || selectedMemoryIndex >= memoryList.length) {
+    alert('No memory selected to transpose.');
+    return;
   }
+
+  const sequence = memoryList[selectedMemoryIndex];
+  sequence.notes = sequence.notes.map(noteEvent => {
+    return {
+      ...noteEvent,
+      note: transposeNoteBySemitones(noteEvent.note, semitones)
+    };
+  });
+
+  // Update the recordedNotes if it's the same sequence
+  const selectedMemoryName = document.getElementById('selected-memory').textContent;
+  if (selectedMemoryName === sequence.name) {
+    recordedNotes = JSON.parse(JSON.stringify(sequence.notes));
+  }
+
+  // Reprocess sequence notes for navigation
+  processSequenceNotes(sequence);
+  currentNoteIndex = -1;
 }
 
-function startMetronome() {
-  const interval = 60 / tempo; // duration in seconds
-  const recordBtn = document.getElementById('record-btn');
-  recordBtn.classList.add('blinking');
-  recordBtn.style.animationDuration = interval + 's';
-}
+function transposeNoteBySemitones(note, semitones) {
+  const noteRegex = /^([A-G]#?)(\d)$/;
+  const match = note.match(noteRegex);
+  if (!match) return note;
 
-function stopMetronome() {
-  const recordBtn = document.getElementById('record-btn');
-  recordBtn.classList.remove('blinking');
-  recordBtn.style.animationDuration = '';
+  let [_, noteName, octave] = match;
+  octave = parseInt(octave);
+
+  const noteIndex = noteNames.indexOf(noteName);
+  if (noteIndex === -1) return note;
+
+  let newNoteIndex = noteIndex + semitones;
+  let newOctave = octave;
+
+  while (newNoteIndex < 0) {
+    newNoteIndex += 12;
+    newOctave -= 1;
+  }
+  while (newNoteIndex >= 12) {
+    newNoteIndex -= 12;
+    newOctave += 1;
+  }
+
+  if (newOctave < startOctave || newOctave >= startOctave + totalOctaves) {
+    alert('Transposition goes out of piano range.');
+    return note;
+  }
+
+  const newNoteName = noteNames[newNoteIndex];
+  return newNoteName + newOctave;
 }
 
 document.addEventListener('DOMContentLoaded', () => {
