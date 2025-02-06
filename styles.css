@@ -222,8 +222,7 @@ body {
 #tempo-section {
   position: relative;
   margin: 0 5px;
-  display: inline-flex;
-  align-items: center;
+  display: inline-block;
 }
 
 #tempo-display {
@@ -269,33 +268,6 @@ body {
   border: 1px solid #333;
   border-radius: 3px;
   cursor: pointer;
-}
-
-#metronome-btn {
-  background-color: #444;
-  border: 1px solid #000;
-  box-shadow: inset -1.2px -1.2px 3px rgba(0, 0, 0, 0.7), inset 1.2px 1.2px 3px rgba(255, 255, 255, 0.1);
-  color: white;
-  margin: 2px;
-  padding: 4px;
-  width: 24px;
-  height: 24px;
-  border-radius: 4px;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  touch-action: manipulation;
-}
-
-#metronome-btn.pressed {
-  background-color: #333;
-}
-
-#metronome-btn svg {
-  width: 16px;
-  height: 16px;
-  fill: white;
 }
 
 #piano {
@@ -375,18 +347,6 @@ body {
 
 #add-editor-content-btn:hover {
   background-color: #555;
-}
-
-#record-btn.blinking {
-  animation-name: blink-animation;
-  animation-timing-function: linear;
-  animation-iteration-count: infinite;
-}
-
-@keyframes blink-animation {
-  0% { opacity: 1; }
-  50% { opacity: 0; }
-  100% { opacity: 1; }
 }
 
 #title-container {
@@ -489,4 +449,25 @@ body {
   font-size: 12px;
   padding: 0 4px;
   height: 24px;
+}
+
+.metal-button {
+  background: linear-gradient(135deg, #444, #222);
+  color: white;
+  border: 1px solid #000;
+  box-shadow: inset -1px -1px 2px rgba(255, 255, 255, 0.1), inset 1px 1px 2px rgba(0, 0, 0, 0.7);
+}
+
+#key-section {
+  position: relative;
+  margin: 0 5px;
+  display: inline-block;
+}
+
+#key-section .group-buttons button {
+  width: 24px;
+  height: 24px;
+  margin: 2px;
+  padding: 0;
+  font-size: 14px;
 }
