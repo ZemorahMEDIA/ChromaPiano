@@ -1229,14 +1229,13 @@ document.addEventListener('DOMContentLoaded', () => {
     sizeSelect.appendChild(option);
   });
 
-  const pianoNoteColors = ['#FF0000', '#FFA500', '#FFFF00', '#008000', '#0000FF', '#6109AB', '#FF00FF'];
   const colors = [
     '#000000', '#e60000', '#ff9900', '#ffff00', '#008a00', '#0066cc', '#9933ff',
     '#ffffff', '#facccc', '#ffebcc', '#ffffcc', '#cce8cc', '#cce0f5', '#ebd6ff',
     '#dddddd', '#ff0000', '#ff9c00', '#ffff00', '#00ff00', '#0000ff', '#cc66ff',
     '#eeeeee', '#ffcccc', '#ffe5cc', '#ffffcc', '#d9f2d9', '#ccd4ff', '#e6ccff',
     'magenta', 
-    ...pianoNoteColors
+    '#FF0000', '#FFA500', '#FFFF00', '#008000', '#0000FF', '#6109AB', '#FF00FF'
   ];
 
   const colorSelect = document.querySelector('select.ql-color');
@@ -1353,4 +1352,26 @@ document.addEventListener('DOMContentLoaded', () => {
       editorContainer.style.display = 'none';
     }
   });
+
+  quill.root.addEventListener('click', function(event) {
+    let link = event.target.closest('a');
+    if (link) {
+      event.preventDefault();
+      const href = link.getAttribute('href');
+      if (href.startsWith('http://') || href.startsWith('https://') || href.startsWith('mailto:')) {
+        window.open(href, '_blank');
+      } else {
+        selectMemoryByName(href);
+      }
+    }
+  });
 });
+
+function selectMemoryByName(name) {
+  const index = memoryList.findIndex(sequence => sequence.name === name);
+  if (index >= 0) {
+    selectMemorySequence(index);
+  } else {
+    alert('Memory "' + name + '" not found.');
+  }
+}
