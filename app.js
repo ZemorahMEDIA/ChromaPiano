@@ -100,6 +100,9 @@ tempoSlider.addEventListener('input', () => {
 let noteChordEvents = [];
 let currentNoteIndex = -1;
 
+let waitingForEnter = false;
+let enterKeyHandler = null;
+
 function createPiano() {
   const piano = document.getElementById('piano');
   piano.innerHTML = '';
@@ -500,6 +503,13 @@ function stopAction() {
     document.getElementById('stop-btn').disabled = true;
     document.getElementById('play-btn').disabled = false;
   }
+  if (waitingForEnter) {
+    waitingForEnter = false;
+    if (enterKeyHandler) {
+      document.removeEventListener('keydown', enterKeyHandler);
+      enterKeyHandler = null;
+    }
+  }
   stopNavigationActiveNotes();
   clearActiveNotes();
 }
@@ -507,8 +517,9 @@ function stopAction() {
 function startPlayback() {
   if (isPlaying) return;
 
-  const selectedMemories = memoryList.filter(sequence => sequence.selected);
-  if (selectedMemories.length === 0) {
+  const sequencesToPlay = memoryList.filter(sequence => sequence.selected || sequence.notes.length === 0);
+
+  if (sequencesToPlay.length === 0) {
     return;
   }
 
@@ -517,81 +528,87 @@ function startPlayback() {
   document.getElementById('stop-btn').disabled = false;
   document.getElementById('play-btn').disabled = true;
 
-  playSelectedMemories(selectedMemories);
+  playSelectedMemories(sequencesToPlay);
 }
 
 function playSelectedMemories(sequencesToPlay) {
   if (!isPlaying) return;
 
-  let totalOffsetTime = 0;
-  const scheduledEvents = [];
-  const tempoScale = 100 / tempo; 
+  let sequenceIndex = 0;
+  const tempoScale = 100 / tempo;
 
-  sequencesToPlay.forEach(sequence => {
-    const sequenceStartTime = totalOffsetTime * tempoScale;
+  const playNextSequence = () => {
+    if (!isPlaying || sequenceIndex >= sequencesToPlay.length) {
+      isPlaying = false;
+      playbackTimers = [];
+      document.getElementById('stop-btn').disabled = true;
+      document.getElementById('play-btn').disabled = false;
+      return;
+    }
 
-    const timeUntilSequenceStart = sequenceStartTime - (audioContext.currentTime - playbackStartTime);
-    const displayTimer = setTimeout(() => {
-      if (!isPlaying) return;
-      document.getElementById('selected-memory').textContent = sequence.name;
-      quill.setContents(sequence.editorContent);
-    }, Math.max(0, timeUntilSequenceStart * 1000));
-    playbackTimers.push(displayTimer);
+    const sequence = sequencesToPlay[sequenceIndex];
+    document.getElementById('selected-memory').textContent = sequence.name;
+    quill.setContents(sequence.editorContent);
 
-    sequence.notes.forEach(noteEvent => {
-      scheduledEvents.push({
-        type: noteEvent.type,
-        note: noteEvent.note,
-        time: (noteEvent.time + totalOffsetTime) * tempoScale
+    if (sequence.notes.length === 0) {
+      waitingForEnter = true;
+      enterKeyHandler = (event) => {
+        if (event.key === 'Enter') {
+          document.removeEventListener('keydown', enterKeyHandler);
+          enterKeyHandler = null;
+          waitingForEnter = false;
+          sequenceIndex++;
+          playNextSequence();
+        }
+      };
+      document.addEventListener('keydown', enterKeyHandler);
+    } else {
+      const scheduledEvents = [];
+      sequence.notes.forEach(noteEvent => {
+        scheduledEvents.push({
+          type: noteEvent.type,
+          note: noteEvent.note,
+          time: noteEvent.time * tempoScale
+        });
       });
-    });
 
-    if (sequence.notes.length > 0) {
-      const lastEventTime = sequence.notes[sequence.notes.length - 1].time;
-      totalOffsetTime += lastEventTime + 1; 
-    }
-  });
+      let eventIndex = 0;
+      const sequenceStartTime = audioContext.currentTime;
 
-  scheduledEvents.sort((a, b) => a.time - b.time);
+      const scheduleNextEvent = () => {
+        if (!isPlaying) return;
 
-  let eventIndex = 0;
+        if (eventIndex >= scheduledEvents.length) {
+          const nextSequenceTimer = setTimeout(() => {
+            sequenceIndex++;
+            playNextSequence();
+          }, 1000);
+          playbackTimers.push(nextSequenceTimer);
+          return;
+        }
 
-  const scheduleNextEvent = () => {
-    if (!isPlaying) return;
+        const noteEvent = scheduledEvents[eventIndex];
+        const timeUntilEvent = noteEvent.time - (audioContext.currentTime - sequenceStartTime);
 
-    if (eventIndex >= scheduledEvents.length) {
-      if (isLooping) {
-        eventIndex = 0;
-        playbackStartTime = audioContext.currentTime;
-        playSelectedMemories(sequencesToPlay); 
-        return;
-      } else {
-        isPlaying = false;
-        playbackTimers = [];
-        document.getElementById('stop-btn').disabled = true;
-        document.getElementById('play-btn').disabled = false;
-        return;
-      }
-    }
+        const noteTimer = setTimeout(() => {
+          if (!isPlaying) return;
+          if (noteEvent.type === 'noteOn') {
+            noteOn(noteEvent.note);
+          } else if (noteEvent.type === 'noteOff') {
+            noteOff(noteEvent.note);
+          }
+          eventIndex++;
+          scheduleNextEvent();
+        }, Math.max(0, timeUntilEvent * 1000));
 
-    const noteEvent = scheduledEvents[eventIndex];
-    const timeUntilEvent = noteEvent.time - (audioContext.currentTime - playbackStartTime);
+        playbackTimers.push(noteTimer);
+      };
 
-    const noteTimer = setTimeout(() => {
-      if (!isPlaying) return;
-      if (noteEvent.type === 'noteOn') {
-        noteOn(noteEvent.note);
-      } else if (noteEvent.type === 'noteOff') {
-        noteOff(noteEvent.note);
-      }
-      eventIndex++;
       scheduleNextEvent();
-    }, Math.max(0, timeUntilEvent * 1000));
-
-    playbackTimers.push(noteTimer);
+    }
   };
 
-  scheduleNextEvent();
+  playNextSequence();
 }
 
 function initMemoryControls() {
@@ -623,19 +640,21 @@ function updateMemoryList() {
   memoryList.forEach((sequence, index) => {
     const li = document.createElement('li');
 
-    const checkbox = document.createElement('input');
-    checkbox.type = 'checkbox';
-    checkbox.dataset.index = index;
-    checkbox.checked = sequence.selected || false;
-    checkbox.addEventListener('change', function(e) {
-      e.stopPropagation();
-      memoryList[index].selected = e.target.checked;
-    });
+    if (sequence.hasNotes) {
+      const checkbox = document.createElement('input');
+      checkbox.type = 'checkbox';
+      checkbox.dataset.index = index;
+      checkbox.checked = sequence.selected || false;
+      checkbox.addEventListener('change', function(e) {
+        e.stopPropagation();
+        memoryList[index].selected = e.target.checked;
+      });
+      li.appendChild(checkbox);
+    }
 
     const label = document.createElement('span');
     label.textContent = sequence.name;
 
-    li.appendChild(checkbox);
     li.appendChild(label);
 
     li.addEventListener('click', function(e) {
@@ -666,17 +685,14 @@ function selectMemorySequence(index) {
 }
 
 function addToMemory() {
-  if (recordedNotes.length === 0) {
-    return;
-  }
-
   let sequenceName = `Sequence ${sequenceCounter}`;
 
   const sequenceData = {
     name: sequenceName,
     notes: JSON.parse(JSON.stringify(recordedNotes)),
     editorContent: quill.getContents(),
-    selected: false
+    selected: false,
+    hasNotes: recordedNotes.length > 0
   };
   memoryList.push(sequenceData);
   sequenceCounter++;
@@ -692,11 +708,15 @@ function removeFromMemory() {
 
   if (index >= 0) {
     const removedSequence = memoryList.splice(index, 1)[0];
-    updateMemoryList();
-    if (memoryList.length === 0) {
-      document.getElementById('selected-memory').textContent = 'No Memory Selected';
-    } else {
-      selectMemorySequence(index >= memoryList.length ? memoryList.length - 1 : index);
+    updateMemoryList(); 
+
+    const selectedMemoryName = document.getElementById('selected-memory').textContent;
+    if (selectedMemoryName === removedSequence.name) {
+      if (memoryList.length === 0) {
+        document.getElementById('selected-memory').textContent = 'No Memory Selected';
+      } else {
+        selectMemorySequence(index >= memoryList.length ? memoryList.length - 1 : index);
+      }
     }
     if (memoryList.length === 0) {
       document.getElementById('play-btn').disabled = true;
@@ -819,6 +839,11 @@ function handleKeyDown(event) {
   if (isInputFocused()) return;
 
   const key = event.key.toLowerCase();
+
+  if (waitingForEnter && key === 'enter') {
+    event.preventDefault();
+    return; // Enter key will be handled by enterKeyHandler
+  }
 
   if (event.key === ' ' && !event.repeat) {
     event.preventDefault();
@@ -1333,10 +1358,14 @@ document.addEventListener('DOMContentLoaded', () => {
   Quill.register(IframeBlot);
 
   document.getElementById('insert-iframe-btn').addEventListener('click', () => {
-    const embedCode = prompt('Paste the embed code:');
+    const embedCode = prompt('Paste the embed code or image data URL:');
     if (embedCode) {
       const range = quill.getSelection(true);
-      quill.clipboard.dangerouslyPasteHTML(range.index, embedCode);
+      if (embedCode.startsWith('data:image/')) {
+        quill.insertEmbed(range.index, 'image', embedCode);
+      } else {
+        quill.clipboard.dangerouslyPasteHTML(range.index, embedCode);
+      }
     }
   });
 
