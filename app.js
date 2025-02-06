@@ -71,19 +71,19 @@ let selectedMidiInput = null;
 let keyboardEnabled = true; 
 let keyboardOctave = 4; // Default octave for keyboard input
 const keyNoteMap = {
-  'a': 'C',
-  'w': 'C#',
-  's': 'D',
-  'e': 'D#',
-  'd': 'E',
-  'f': 'F',
-  't': 'F#',
-  'g': 'G',
-  'y': 'G#',
-  'h': 'A',
-  'u': 'A#',
-  'j': 'B',
-  'k': 'C',
+  'a': { note: 'C', octaveOffset: 0 },
+  'w': { note: 'C#', octaveOffset: 0 },
+  's': { note: 'D', octaveOffset: 0 },
+  'e': { note: 'D#', octaveOffset: 0 },
+  'd': { note: 'E', octaveOffset: 0 },
+  'f': { note: 'F', octaveOffset: 0 },
+  't': { note: 'F#', octaveOffset: 0 },
+  'g': { note: 'G', octaveOffset: 0 },
+  'y': { note: 'G#', octaveOffset: 0 },
+  'h': { note: 'A', octaveOffset: 0 },
+  'u': { note: 'A#', octaveOffset: 0 },
+  'j': { note: 'B', octaveOffset: 0 },
+  'k': { note: 'C', octaveOffset: 1 },
 };
 
 let colorfulNotesEnabled = false;
@@ -142,6 +142,50 @@ function createPiano() {
       e.preventDefault();
       noteOff(key.dataset.note);
     });
+  });
+
+  updateKeyLabels();
+}
+
+function updateKeyLabels() {
+  pianoKeys.forEach(key => {
+    const note = key.dataset.note;
+    const octaveMatch = note.match(/([A-G]#?)(\d)/);
+    if (!octaveMatch) return;
+    const noteBase = octaveMatch[1];
+    const noteOctave = parseInt(octaveMatch[2], 10);
+    let keyShortcut = null;
+
+    for (const keyChar in keyNoteMap) {
+      const mapping = keyNoteMap[keyChar];
+      const octaveOffset = mapping.octaveOffset || 0;
+      const mappedOctave = keyboardOctave + octaveOffset;
+      const mappedNote = mapping.note + mappedOctave;
+      if (mappedNote === note) {
+        keyShortcut = keyChar.toUpperCase();
+        break;
+      }
+    }
+
+    let label = key.querySelector('.key-label');
+    if (keyShortcut && keyboardEnabled) {
+      if (!label) {
+        label = document.createElement('span');
+        label.classList.add('key-label');
+        key.appendChild(label);
+      }
+      label.textContent = keyShortcut;
+      label.style.display = 'block';
+      if (key.classList.contains('black')) {
+        label.style.color = 'white';
+      } else {
+        label.style.color = 'black';
+      }
+    } else {
+      if (label) {
+        label.style.display = 'none';
+      }
+    }
   });
 }
 
@@ -806,14 +850,17 @@ function handleKeyDown(event) {
   if (key >= '1' && key <= '6' && !event.repeat) {
     event.preventDefault();
     keyboardOctave = parseInt(key);
+    updateKeyLabels();
     return;
   }
 
   if (!keyboardEnabled) return;
-  const noteBase = keyNoteMap[key];
-  if (noteBase && !event.repeat) {
+  const mapping = keyNoteMap[key];
+  if (mapping && !event.repeat) {
     event.preventDefault();
-    const note = noteBase + keyboardOctave;
+    const { note: noteBase, octaveOffset } = mapping;
+    const noteOctave = keyboardOctave + (octaveOffset || 0);
+    const note = noteBase + noteOctave;
     if (!activeNotes[note]) {
       noteOn(note);
     }
@@ -825,10 +872,12 @@ function handleKeyUp(event) {
 
   if (!keyboardEnabled) return;
   const key = event.key.toLowerCase();
-  const noteBase = keyNoteMap[key];
-  if (noteBase) {
+  const mapping = keyNoteMap[key];
+  if (mapping) {
     event.preventDefault();
-    const note = noteBase + keyboardOctave;
+    const { note: noteBase, octaveOffset } = mapping;
+    const noteOctave = keyboardOctave + (octaveOffset || 0);
+    const note = noteBase + noteOctave;
     noteOff(note);
   }
 }
@@ -1254,6 +1303,7 @@ document.addEventListener('DOMContentLoaded', () => {
   keyboardToggleBtn.addEventListener('click', () => {
     keyboardEnabled = !keyboardEnabled;
     keyboardToggleBtn.classList.toggle('pressed', keyboardEnabled);
+    updateKeyLabels();
   });
 
   const BlockEmbed = Quill.import('blots/block/embed');
