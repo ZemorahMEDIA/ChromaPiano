@@ -68,7 +68,7 @@ let navigationActiveNotes = {};
 let midiAccessObject = null;
 let selectedMidiInput = null;
 
-let keyboardEnabled = true; 
+let keyboardEnabled = false; // Default keyboard note entry is off
 let keyboardOctave = 4; // Default octave for keyboard input
 const keyNoteMap = {
   'a': { note: 'C', octaveOffset: 0 },
@@ -598,20 +598,12 @@ function initMemoryControls() {
   const addToMemoryBtn = document.getElementById('add-memory-btn');
   const removeFromMemoryBtn = document.getElementById('remove-memory-btn');
   const editMemoryBtn = document.getElementById('edit-memory-btn');
-  const memorySelect = document.getElementById('memory-list');
   const addEditorContentBtn = document.getElementById('add-editor-content-btn');
   const memoryToggleBtn = document.getElementById('memory-toggle-btn');
 
   addToMemoryBtn.addEventListener('click', addToMemory);
   removeFromMemoryBtn.addEventListener('click', removeFromMemory);
   editMemoryBtn.addEventListener('click', editMemoryName);
-  memorySelect.addEventListener('click', function(event) {
-    if (event.target && event.target.nodeName === 'SPAN') {
-      const index = event.target.parentElement.querySelector('input[type="checkbox"]').dataset.index;
-      selectMemorySequence(index);
-      toggleMemoryList();
-    }
-  });
   addEditorContentBtn.addEventListener('click', addEditorContentToMemory);
   memoryToggleBtn.addEventListener('click', toggleMemoryList);
 }
@@ -636,6 +628,7 @@ function updateMemoryList() {
     checkbox.dataset.index = index;
     checkbox.checked = sequence.selected || false;
     checkbox.addEventListener('change', function(e) {
+      e.stopPropagation();
       memoryList[index].selected = e.target.checked;
     });
 
@@ -644,6 +637,14 @@ function updateMemoryList() {
 
     li.appendChild(checkbox);
     li.appendChild(label);
+
+    li.addEventListener('click', function(e) {
+      if (e.target.nodeName !== 'INPUT') {
+        selectMemorySequence(index);
+        toggleMemoryList();
+      }
+    });
+
     memoryListContainer.appendChild(li);
   });
   document.getElementById('play-btn').disabled = memoryList.length === 0;
@@ -678,10 +679,11 @@ function addToMemory() {
     selected: false
   };
   memoryList.push(sequenceData);
-  updateMemoryList();
   sequenceCounter++;
-  document.getElementById('play-btn').disabled = false;
+
   selectMemorySequence(memoryList.length - 1);
+  updateMemoryList();
+  document.getElementById('play-btn').disabled = false;
 }
 
 function removeFromMemory() {
