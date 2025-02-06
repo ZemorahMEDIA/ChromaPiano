@@ -31,7 +31,7 @@
             <button id="loop-btn">
               <!-- Loop icon -->
               <svg viewBox="0 0 24 24">
-                <path d="M7 7h5v2H7v2l-3-3 3-3v2zm10 8h-5v2h5v2l3-3-3-3v2zM4 12c0-4.41 3.59-8 8-8v2a6 6 0 0 0 0 12v2c-4.41 0-8-3.59-8-8zm16 0c0 4.41-3.59 8-8 8v-2a6 6 0 0 0 0-12V4c4.41 0 8 3.59 8 8z"></path>
+                <path d="M7 7h5v2H7v2l-3-3 3-3v2zm10 8h-5v2h5v2l3-3-3-3v2zM4 12c0-4.41 3.59-8 8-8v2a6 6 0 0 0 0 12v2c-4.41 0-8-3.59-8-8zm16 0c0 4.41-3.59 8-8 8v-2a6 6 0 0 0 0-12V4c4.41 0 8-3.59 8-8z"></path>
               </svg>
             </button>
             <button id="record-btn">
@@ -167,12 +167,17 @@
             <!-- Slider input for tempo -->
             <input type="range" id="tempo-slider" min="20" max="200" value="100">
           </div>
-          <button id="metronome-btn">
-            <!-- Mechanical metronome icon -->
-            <svg viewBox="0 0 24 24">
-              <path d="M12 1L3 21h18L12 1zm0 3.27L17.6 19h-11.2L12 4.27zM12 7l-5 12h10L12 7z" fill="white"></path>
-            </svg>
-          </button>
+        </div>
+        <div id="key-section">
+          <div id="key-display">
+            <div class="control-group">
+              <div class="group-label"><span>Key</span></div>
+              <div class="group-buttons">
+                <button id="transpose-down-btn" class="text-button metal-button">-</button>
+                <button id="transpose-up-btn" class="text-button metal-button">+</button>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
