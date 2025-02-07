@@ -95,6 +95,11 @@ let tempo = parseInt(tempoSlider.value) || 100;
 tempoSlider.addEventListener('input', () => {
   tempo = parseInt(tempoSlider.value);
   tempoValueDisplay.textContent = tempo + ' BPM';
+  updateQuantizeButtonBlink();
+  if (metronomeInterval) {
+    stopMetronome();
+    startMetronome();
+  }
 });
 
 let noteChordEvents = [];
@@ -431,8 +436,8 @@ function startRecording() {
         });
       });
       if (sequence.notes.length > 0) {
-        const lastEventTime = sequence.notes[sequence.notes.length - 1].time;
-        totalOffsetTime += lastEventTime + 1; 
+        const sequenceDuration = sequence.duration;
+        totalOffsetTime += sequenceDuration + 1;
       }
     });
 
@@ -517,6 +522,12 @@ function startPlayback() {
     return;
   }
 
+  // Set tempo to recorded tempo of first selected memory
+  const firstMemory = selectedMemories[0];
+  tempo = firstMemory.tempo;
+  tempoSlider.value = tempo;
+  tempoValueDisplay.textContent = tempo + ' BPM';
+
   isPlaying = true;
   playbackStartTime = audioContext.currentTime;
   document.getElementById('stop-btn').disabled = false;
@@ -530,10 +541,11 @@ function playSelectedMemories(sequencesToPlay) {
 
   let totalOffsetTime = 0;
   const scheduledEvents = [];
-  const tempoScale = 100 / tempo; 
 
   sequencesToPlay.forEach(sequence => {
-    const sequenceStartTime = totalOffsetTime * tempoScale;
+    const sequenceStartTime = totalOffsetTime;
+
+    const tempoRatio = sequence.tempo / tempo;
 
     const timeUntilSequenceStart = sequenceStartTime - (audioContext.currentTime - playbackStartTime);
     const displayTimer = setTimeout(() => {
@@ -547,20 +559,19 @@ function playSelectedMemories(sequencesToPlay) {
       scheduledEvents.push({
         type: noteEvent.type,
         note: noteEvent.note,
-        time: (noteEvent.time + totalOffsetTime) * tempoScale
+        time: (noteEvent.time * tempoRatio + sequenceStartTime)
       });
     });
 
     if (sequence.notes.length > 0) {
-      const lastEventTime = sequence.notes[sequence.notes.length - 1].time;
-      totalOffsetTime += lastEventTime + 1; 
+      const sequenceDuration = sequence.duration * tempoRatio;
+      totalOffsetTime += sequenceDuration + 1;
     }
   });
 
   scheduledEvents.sort((a, b) => a.time - b.time);
 
   let eventIndex = 0;
-
   const scheduleNextEvent = () => {
     if (!isPlaying) return;
 
@@ -568,7 +579,7 @@ function playSelectedMemories(sequencesToPlay) {
       if (isLooping) {
         eventIndex = 0;
         playbackStartTime = audioContext.currentTime;
-        playSelectedMemories(sequencesToPlay); 
+        playSelectedMemories(sequencesToPlay);
         return;
       } else {
         isPlaying = false;
@@ -595,7 +606,6 @@ function playSelectedMemories(sequencesToPlay) {
 
     playbackTimers.push(noteTimer);
   };
-
   scheduleNextEvent();
 }
 
@@ -672,17 +682,18 @@ function selectMemorySequence(index) {
 
 function addToMemory() {
   let sequenceName = `Sequence ${sequenceCounter}`;
-
   // Apply quantization and remove silence before first note and after last note
   let quantizedNotes = JSON.parse(JSON.stringify(recordedNotes));
 
-  // Remove silence before first note and after last note
+  // Remove silence before first note
   if (quantizedNotes.length > 0) {
     const firstNoteTime = quantizedNotes[0].time;
     quantizedNotes.forEach(noteEvent => {
       noteEvent.time -= firstNoteTime;
     });
   }
+
+  let totalDuration = 0;
 
   if (currentQuantization !== 'none') {
     const quantizeValue = currentQuantization;
@@ -713,14 +724,39 @@ function addToMemory() {
       quantizedNotes.forEach(noteEvent => {
         noteEvent.time = Math.round(noteEvent.time / quantizeInterval) * quantizeInterval;
       });
+
+      // Find the last event time after quantization
+      let lastEventTime = 0;
+      quantizedNotes.forEach(noteEvent => {
+        if (noteEvent.time > lastEventTime) {
+          lastEventTime = noteEvent.time;
+        }
+      });
+
+      // Extend recording to the next quantization point after the last note
+      totalDuration = Math.ceil(lastEventTime / quantizeInterval) * quantizeInterval;
+    }
+  } else {
+    // No quantization
+    if (quantizedNotes.length > 0) {
+      quantizedNotes.forEach(noteEvent => {
+        if (noteEvent.time > totalDuration) {
+          totalDuration = noteEvent.time;
+        }
+      });
     }
   }
+
+  // Remove silence after last note
+  quantizedNotes = quantizedNotes.filter(noteEvent => noteEvent.time <= totalDuration);
 
   const sequenceData = {
     name: sequenceName,
     notes: quantizedNotes,
     editorContent: quill.getContents(),
-    selected: false
+    selected: false,
+    duration: totalDuration,
+    tempo: tempo  // Store the current tempo when adding to memory
   };
   memoryList.push(sequenceData);
   sequenceCounter++;
@@ -728,6 +764,10 @@ function addToMemory() {
   selectMemorySequence(memoryList.length - 1);
   updateMemoryList();
   document.getElementById('play-btn').disabled = false;
+  
+  // Reset quantization to 'none' after adding to memory
+  currentQuantization = 'none';
+  updateQuantizeButtonBlink();
 }
 
 function removeFromMemory() {
