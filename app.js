@@ -445,6 +445,10 @@ function startRecording() {
 
     playNotesDuringRecording(scaledNotes);
   }
+
+  if (currentQuantization !== 'none') {
+    startMetronome();
+  }
 }
 
 function playNotesDuringRecording(events) {
@@ -492,6 +496,7 @@ function stopAction() {
     document.getElementById('save-btn').disabled = false;
     recordingTimers.forEach(timerId => clearTimeout(timerId));
     recordingTimers = [];
+    stopMetronome();
   }
   if (isPlaying) {
     isPlaying = false;
@@ -668,9 +673,52 @@ function selectMemorySequence(index) {
 function addToMemory() {
   let sequenceName = `Sequence ${sequenceCounter}`;
 
+  // Apply quantization and remove silence before first note and after last note
+  let quantizedNotes = JSON.parse(JSON.stringify(recordedNotes));
+
+  // Remove silence before first note and after last note
+  if (quantizedNotes.length > 0) {
+    const firstNoteTime = quantizedNotes[0].time;
+    quantizedNotes.forEach(noteEvent => {
+      noteEvent.time -= firstNoteTime;
+    });
+  }
+
+  if (currentQuantization !== 'none') {
+    const quantizeValue = currentQuantization;
+    let quantizeInterval;
+
+    switch (quantizeValue) {
+      case '1':
+        quantizeInterval = (60 / tempo) * 1;
+        break;
+      case '1/2':
+        quantizeInterval = (60 / tempo) * 0.5;
+        break;
+      case '1/4':
+        quantizeInterval = (60 / tempo) * 0.25;
+        break;
+      case '1/8':
+        quantizeInterval = (60 / tempo) * 0.125;
+        break;
+      case '1/16':
+        quantizeInterval = (60 / tempo) * 0.0625;
+        break;
+      default:
+        quantizeInterval = 0;
+        break;
+    }
+
+    if (quantizeInterval > 0) {
+      quantizedNotes.forEach(noteEvent => {
+        noteEvent.time = Math.round(noteEvent.time / quantizeInterval) * quantizeInterval;
+      });
+    }
+  }
+
   const sequenceData = {
     name: sequenceName,
-    notes: JSON.parse(JSON.stringify(recordedNotes)),
+    notes: quantizedNotes,
     editorContent: quill.getContents(),
     selected: false
   };
@@ -731,7 +779,11 @@ function saveMemoryList() {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = 'memoryList.json';
+  let filename = 'memoryList.json';
+  if (memoryList.length > 0 && memoryList[0].name) {
+    filename = memoryList[0].name + '.json';
+  }
+  a.download = filename;
   a.click();
   URL.revokeObjectURL(url);
 }
@@ -842,6 +894,18 @@ function handleKeyDown(event) {
     event.preventDefault();
     selectNextMemory();
     startPlayback();
+    return;
+  }
+
+  if (key === '-' && !event.repeat) {
+    event.preventDefault();
+    transposeSelectedMemoryDown();
+    return;
+  }
+
+  if (key === '+' && !event.repeat) {
+    event.preventDefault();
+    transposeSelectedMemoryUp();
     return;
   }
 
@@ -1171,6 +1235,48 @@ function transposeNoteBySemitones(note, semitones) {
   return newNoteName + newOctave;
 }
 
+let currentQuantization = 'none'; // 'none', '1', '1/2', '1/4', '1/8', '1/16'
+
+let metronomeInterval = null;
+
+function startMetronome() {
+  if (metronomeInterval) {
+    clearInterval(metronomeInterval);
+  }
+  const interval = (60 / tempo) * 1000; // milliseconds per beat
+  metronomeInterval = setInterval(playMetronomeClick, interval);
+  playMetronomeClick(); // Play immediately
+}
+
+function stopMetronome() {
+  if (metronomeInterval) {
+    clearInterval(metronomeInterval);
+    metronomeInterval = null;
+  }
+}
+
+function playMetronomeClick() {
+  const context = audioContext;
+  const now = context.currentTime;
+
+  // Create a conga-like sound using WebAudio API
+  const congaOscillator = context.createOscillator();
+  const congaGain = context.createGain();
+
+  congaOscillator.type = 'sine';
+  congaOscillator.frequency.setValueAtTime(200, now);
+  congaOscillator.frequency.exponentialRampToValueAtTime(100, now + 0.15);
+
+  congaGain.gain.setValueAtTime(1, now);
+  congaGain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+
+  congaOscillator.connect(congaGain);
+  congaGain.connect(context.destination);
+
+  congaOscillator.start(now);
+  congaOscillator.stop(now + 0.15);
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   createPiano();
   initMIDI();
@@ -1202,7 +1308,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
   quill = new Quill('#editor', {
     modules: {
-      toolbar: '#toolbar'
+      toolbar: '#toolbar',
+      keyboard: {
+        bindings: {
+          linkClick: {
+            key: 'click',
+            collapsed: true,
+            format: ['link'],
+            handler: function() {
+              // Do nothing to prevent the default tooltip
+            }
+          }
+        }
+      }
     },
     theme: 'snow',
   });
@@ -1342,6 +1460,9 @@ document.addEventListener('DOMContentLoaded', () => {
   initSequencerControls();
   initKeyboardControls();
 
+  // Adjust editor height when content changes
+  quill.on('text-change', adjustEditorHeight);
+
   const toggleEditorBtn = document.getElementById('toggle-editor-btn');
 
   toggleEditorBtn.addEventListener('click', () => {
@@ -1357,6 +1478,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let link = event.target.closest('a');
     if (link) {
       event.preventDefault();
+      event.stopImmediatePropagation();
       const href = link.getAttribute('href');
       if (href.startsWith('http://') || href.startsWith('https://') || href.startsWith('mailto:')) {
         window.open(href, '_blank');
@@ -1365,13 +1487,54 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }
   });
+
+  initQuantizeControls();
 });
+
+function initQuantizeControls() {
+  const quantizeBtn = document.getElementById('quantize-btn');
+  const quantizeListContainer = document.getElementById('quantize-list-container');
+  const quantizeList = document.getElementById('quantize-list');
+
+  quantizeBtn.addEventListener('click', () => {
+    if (quantizeListContainer.style.display === 'none' || quantizeListContainer.style.display === '') {
+      quantizeListContainer.style.display = 'block';
+    } else {
+      quantizeListContainer.style.display = 'none';
+    }
+  });
+
+  quantizeList.addEventListener('click', function(event) {
+    if (event.target && event.target.nodeName === 'LI') {
+      const quantizeValue = event.target.getAttribute('data-value');
+      currentQuantization = quantizeValue;
+
+      quantizeListContainer.style.display = 'none';
+
+      updateQuantizeButtonBlink();
+
+    }
+  });
+}
+
+function updateQuantizeButtonBlink() {
+  const blinkingLetter = document.querySelector('#quantize-btn .blinking-letter');
+  if (blinkingLetter) {
+    blinkingLetter.classList.remove('blink');
+    blinkingLetter.style.animation = '';
+
+    if (currentQuantization !== 'none') {
+      blinkingLetter.classList.add('blink');
+      const bpm = tempo;
+      const interval = (60 / bpm) * 1000; // in milliseconds
+      blinkingLetter.style.animation = `blinkAnimation ${interval}ms step-start infinite`;
+    }
+  }
+}
 
 function selectMemoryByName(name) {
   const index = memoryList.findIndex(sequence => sequence.name === name);
   if (index >= 0) {
     selectMemorySequence(index);
-  } else {
-    alert('Memory "' + name + '" not found.');
   }
 }
