@@ -818,6 +818,9 @@ function clearApp() {
   recordBtn.classList.remove('pressed');
   clearActiveNotes();
   document.getElementById('selected-memory').textContent = 'No Memory Selected';
+
+  transposeAmount = 0;
+  document.getElementById('transpose-amount').textContent = transposeAmount;
 }
 
 function clearActiveNotes() {
@@ -1317,7 +1320,7 @@ document.addEventListener('DOMContentLoaded', () => {
       node.setAttribute('src', value.src);
       node.setAttribute('frameborder', '0');
       node.setAttribute('allowfullscreen', true);
-      node.setAttribute('width', value.width || '560');
+      node.setAttribute('width', '100%');
       node.setAttribute('height', value.height || '315');
       return node;
     }
@@ -1335,13 +1338,21 @@ document.addEventListener('DOMContentLoaded', () => {
   Quill.register(IframeBlot);
 
   document.getElementById('insert-iframe-btn').addEventListener('click', () => {
-    const embedCode = prompt('Paste the embed code or image data URL:');
-    if (embedCode) {
+    const input = prompt('Paste the embed code, image data URL, or YouTube URL:');
+    if (input) {
       const range = quill.getSelection(true);
-      if (embedCode.startsWith('data:image/')) {
-        quill.insertEmbed(range.index, 'image', embedCode);
+
+      // Check if input is YouTube URL
+      const youtubeUrlMatch = input.match(/(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)([\w\-]{11})(?:\S+)?/);
+      if (youtubeUrlMatch && youtubeUrlMatch[1]) {
+        const videoId = youtubeUrlMatch[1];
+        const iframeSrc = `https://www.youtube.com/embed/${videoId}`;
+        quill.insertEmbed(range.index, 'iframe', { src: iframeSrc });
+      } else if (input.startsWith('data:image/')) {
+        quill.insertEmbed(range.index, 'image', input);
       } else {
-        quill.clipboard.dangerouslyPasteHTML(range.index, embedCode);
+        // Assume it's raw embed code
+        quill.clipboard.dangerouslyPasteHTML(range.index, input);
       }
     }
   });
@@ -1406,7 +1417,32 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }
   });
-  
+
+  quill.root.addEventListener('paste', function(e) {
+    if (e.clipboardData && e.clipboardData.items) {
+      var items = e.clipboardData.items;
+      var hasImage = false;
+      for (var i = 0; i < items.length; i++) {
+        var item = items[i];
+        if (item.type.indexOf('image') !== -1) {
+          hasImage = true;
+          var blob = item.getAsFile();
+          var reader = new FileReader();
+          reader.onload = function(event) {
+            var base64ImageSrc = event.target.result;
+            var range = quill.getSelection();
+            quill.insertEmbed(range.index, 'image', base64ImageSrc);
+            quill.setSelection(range.index + 1);
+          };
+          reader.readAsDataURL(blob);
+        }
+      }
+      if (hasImage) {
+        e.preventDefault();
+      }
+    }
+  });
+
   document.getElementById('transpose-amount').textContent = transposeAmount;
 });
 
