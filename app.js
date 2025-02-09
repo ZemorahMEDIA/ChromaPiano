@@ -407,6 +407,8 @@ function initSequencerControls() {
   transposeUpBtn.addEventListener('click', transposeSelectedMemoryUp);
 }
 
+let transposeAmount = 0;
+
 function startRecording() {
   if (isRecording) return; 
   isRecording = true;
@@ -654,12 +656,15 @@ function selectMemorySequence(index) {
     selectedMemoryIndex = index;
     const selectedSequence = memoryList[index];
     recordedNotes = JSON.parse(JSON.stringify(selectedSequence.notes));
-    quill.setContents(selectedSequence.editorContent);
+    quill.setContents(selectedSequence.editorContent || []);
     document.getElementById('play-btn').disabled = false;
     document.getElementById('selected-memory').textContent = selectedSequence.name;
-
     processSequenceNotes(selectedSequence);
     currentNoteIndex = -1; 
+    updateEditorAssociationButton();
+
+    transposeAmount = 0;
+    document.getElementById('transpose-amount').textContent = transposeAmount;
   }
 }
 
@@ -728,6 +733,7 @@ function addEditorContentToMemory() {
   if (index >= 0) {
     const selectedSequence = memoryList[index];
     selectedSequence.editorContent = quill.getContents();
+    updateEditorAssociationButton();
   } else {
     // No memory sequence selected to add editor content
   }
@@ -764,6 +770,7 @@ function loadMemoryList() {
   const input = document.createElement('input');
   input.type = 'file';
   input.accept = 'application/json';
+
   input.onchange = e => {
     const file = e.target.files[0];
     if (!file) return;
@@ -772,9 +779,14 @@ function loadMemoryList() {
       try {
         const data = JSON.parse(event.target.result);
         if (data && data.memoryList) {
+          let previousMemoryListLength = memoryList.length;
           memoryList = memoryList.concat(data.memoryList);
           updateMemoryList();
           document.getElementById('play-btn').disabled = memoryList.length === 0;
+
+          if (data.memoryList.length > 0) {
+            selectMemorySequence(previousMemoryListLength);
+          }
         }
       } catch (err) {
         console.error('Invalid memory list file.', err);
@@ -1157,20 +1169,32 @@ function transposeSelectedMemory(semitones) {
   }
 
   const sequence = memoryList[selectedMemoryIndex];
-  sequence.notes = sequence.notes.map(noteEvent => {
+  const transposedNotes = sequence.notes.map(noteEvent => {
+    const transposedNote = transposeNoteBySemitones(noteEvent.note, semitones);
+    if (!transposedNote) {
+      return null;
+    }
     return {
       ...noteEvent,
-      note: transposeNoteBySemitones(noteEvent.note, semitones)
+      note: transposedNote
     };
   });
 
-  // Update the recordedNotes if it's the same sequence
+  if (transposedNotes.includes(null)) {
+    alert('Transposition goes out of piano range.');
+    return;
+  }
+
+  sequence.notes = transposedNotes;
+  transposeAmount += semitones;
+  document.getElementById('transpose-amount').textContent = transposeAmount;
+
   const selectedMemoryName = document.getElementById('selected-memory').textContent;
   if (selectedMemoryName === sequence.name) {
     recordedNotes = JSON.parse(JSON.stringify(sequence.notes));
   }
 
-  // Reprocess sequence notes for navigation
+  // Update the recordedNotes if it's the same sequence
   processSequenceNotes(sequence);
   currentNoteIndex = -1;
 }
@@ -1178,13 +1202,13 @@ function transposeSelectedMemory(semitones) {
 function transposeNoteBySemitones(note, semitones) {
   const noteRegex = /^([A-G]#?)(\d)$/;
   const match = note.match(noteRegex);
-  if (!match) return note;
+  if (!match) return null;
 
   let [_, noteName, octave] = match;
   octave = parseInt(octave);
 
   const noteIndex = noteNames.indexOf(noteName);
-  if (noteIndex === -1) return note;
+  if (noteIndex === -1) return null;
 
   let newNoteIndex = noteIndex + semitones;
   let newOctave = octave;
@@ -1199,12 +1223,30 @@ function transposeNoteBySemitones(note, semitones) {
   }
 
   if (newOctave < startOctave || newOctave >= startOctave + totalOctaves) {
-    alert('Transposition goes out of piano range.');
-    return note;
+    return null;
   }
 
   const newNoteName = noteNames[newNoteIndex];
   return newNoteName + newOctave;
+}
+
+function updateEditorAssociationButton() {
+  const addEditorContentBtn = document.getElementById('add-editor-content-btn');
+  if (
+    selectedMemoryIndex !== null &&
+    !isContentEmpty(memoryList[selectedMemoryIndex].editorContent)
+  ) {
+    addEditorContentBtn.classList.add('editor-associated');
+  } else {
+    addEditorContentBtn.classList.remove('editor-associated');
+  }
+}
+
+function isContentEmpty(content) {
+  return (
+    !content ||
+    (content.ops.length === 1 && content.ops[0].insert === '\n')
+  );
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -1350,6 +1392,22 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }
   });
+
+  quill.on('text-change', function(delta, oldDelta, source) {
+    if (
+      selectedMemoryIndex !== null &&
+      !isContentEmpty(memoryList[selectedMemoryIndex].editorContent)
+    ) {
+      const currentContent = quill.getContents();
+      if (isContentEmpty(currentContent)) {
+        // Editor content has been deleted
+        memoryList[selectedMemoryIndex].editorContent = null;
+        updateEditorAssociationButton();
+      }
+    }
+  });
+  
+  document.getElementById('transpose-amount').textContent = transposeAmount;
 });
 
 function selectMemoryByName(name) {
