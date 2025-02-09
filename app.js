@@ -12,7 +12,7 @@ const noteColors = {
   F: '#008000',    // green
   G: '#0000FF',    // blue
   A: '#6109AB',    // violet
-  B: '#FF00FF',    // magenta
+  B: '#FF00FF',    // magenta,
 };
 
 const blackKeyAdjacency = {
@@ -204,6 +204,12 @@ function noteOn(note) {
       time: audioContext.currentTime - recordStartTime
     });
   }
+
+  // Send MIDI Note On message
+  const midiNoteNumber = nameToMidiNoteNumber(note);
+  if (midiNoteNumber !== null) {
+    sendMIDINoteOn(midiNoteNumber);
+  }
 }
 
 function noteOff(note) {
@@ -218,6 +224,39 @@ function noteOff(note) {
       type: 'noteOff',
       note: note,
       time: audioContext.currentTime - recordStartTime
+    });
+  }
+
+  // Send MIDI Note Off message
+  const midiNoteNumber = nameToMidiNoteNumber(note);
+  if (midiNoteNumber !== null) {
+    sendMIDINoteOff(midiNoteNumber);
+  }
+}
+
+// Function to convert note name to MIDI note number
+function nameToMidiNoteNumber(noteName) {
+  const match = noteName.match(/^([A-G]#?)(\d)$/);
+  if (!match) return null;
+  let [_, noteBase, octave] = match;
+  octave = parseInt(octave, 10);
+  const noteIndex = noteNames.indexOf(noteBase);
+  if (noteIndex === -1) return null;
+  return (octave + 1) * 12 + noteIndex;
+}
+
+function sendMIDINoteOn(noteNumber, velocity = 64) {
+  if (midiAccessObject && midiAccessObject.outputs) {
+    midiAccessObject.outputs.forEach(output => {
+      output.send([0x90, noteNumber, velocity]);
+    });
+  }
+}
+
+function sendMIDINoteOff(noteNumber) {
+  if (midiAccessObject && midiAccessObject.outputs) {
+    midiAccessObject.outputs.forEach(output => {
+      output.send([0x80, noteNumber, 0]);
     });
   }
 }
@@ -250,7 +289,8 @@ function highlightKey(note, isPressed) {
 
 function initMIDI() {
   if (navigator.requestMIDIAccess) {
-    navigator.requestMIDIAccess().then(onMIDISuccess, onMIDIFailure);
+    navigator.requestMIDIAccess()
+      .then(onMIDISuccess, onMIDIFailure);
   } else {
     console.warn('Web MIDI API not supported in this browser.');
     updateMIDIStatus('Web MIDI API not supported in this browser.', 'red');
@@ -375,6 +415,190 @@ function midiNoteToName(noteNumber) {
   const noteIndex = noteNumber % 12;
   const noteName = noteNames[noteIndex];
   return noteName + octave;
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  createPiano();
+  initMIDI();
+
+  const colors = [
+    '#000000', '#e60000', '#ff9900', '#ffff00', '#008a00', '#0066cc', '#9933ff',
+    '#ffffff', '#facccc', '#ffebcc', '#ffffcc', '#cce8cc', '#cce0f5', '#ebd6ff',
+    '#dddddd', '#ff0000', '#ff9c00', '#ffff00', '#00ff00', '#0000ff', '#cc66ff',
+    '#eeeeee', '#ffcccc', '#ffe5cc', '#ffffcc', '#d9f2d9', '#ccd4ff', '#e6ccff',
+    'magenta', 
+    '#FF0000', '#FFA500', '#FFFF00', '#008000', '#0000FF', '#6109AB', '#FF00FF'
+  ];
+
+  const colorSelect = document.querySelector('select.ql-color');
+  const backgroundSelect = document.querySelector('select.ql-background');
+
+  colors.forEach(color => {
+    const option = document.createElement('option');
+    option.value = color;
+    option.style.backgroundColor = color;
+    colorSelect.appendChild(option.cloneNode());
+    backgroundSelect.appendChild(option.cloneNode());
+  });
+
+  const noteColorToggleBtn = document.getElementById('note-color-toggle-btn');
+  noteColorToggleBtn.style.background = 'lightblue';
+  noteColorToggleBtn.classList.remove('pressed');
+
+  noteColorToggleBtn.addEventListener('click', () => {
+    colorfulNotesEnabled = !colorfulNotesEnabled;
+    if (colorfulNotesEnabled) {
+      noteColorToggleBtn.style.background = 'linear-gradient(90deg, red, orange, yellow, green, blue, indigo, violet)';
+      noteColorToggleBtn.classList.add('pressed');
+    } else {
+      noteColorToggleBtn.style.background = 'lightblue';
+      noteColorToggleBtn.classList.remove('pressed');
+    }
+    for (const note in activeNotes) {
+      if (activeNotes.hasOwnProperty(note)) {
+        highlightKey(note, true);
+      }
+    }
+  });
+
+  const loopBtn = document.getElementById('loop-btn');
+  loopBtn.addEventListener('click', () => {
+    isLooping = !isLooping;
+    loopBtn.classList.toggle('pressed', isLooping);
+  });
+
+  const keyboardToggleBtn = document.getElementById('keyboard-toggle-btn');
+  keyboardToggleBtn.classList.toggle('pressed', keyboardEnabled);
+  keyboardToggleBtn.addEventListener('click', () => {
+    keyboardEnabled = !keyboardEnabled;
+    keyboardToggleBtn.classList.toggle('pressed', keyboardEnabled);
+    updateKeyLabels();
+  });
+
+  const BlockEmbed = Quill.import('blots/block/embed');
+  class IframeBlot extends BlockEmbed {
+    static create(value) {
+      const node = super.create();
+      node.setAttribute('src', value.src);
+      node.setAttribute('frameborder', '0');
+      node.setAttribute('allowfullscreen', true);
+      node.setAttribute('width', '100%');
+      node.setAttribute('height', value.height || '315');
+      return node;
+    }
+
+    static value(node) {
+      return {
+        src: node.getAttribute('src'),
+        width: node.getAttribute('width'),
+        height: node.getAttribute('height')
+      };
+    }
+  }
+  IframeBlot.blotName = 'iframe';
+  IframeBlot.tagName = 'iframe';
+  Quill.register(IframeBlot);
+
+  document.getElementById('insert-iframe-btn').addEventListener('click', () => {
+    const input = prompt('Paste the embed code, image data URL, or YouTube URL:');
+    if (input) {
+      const range = quill.getSelection(true);
+
+      // Check if input is YouTube URL
+      const youtubeUrlMatch = input.match(/(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)([\w\-]{11})(?:\S+)?/);
+      if (youtubeUrlMatch && youtubeUrlMatch[1]) {
+        const videoId = youtubeUrlMatch[1];
+        const iframeSrc = `https://www.youtube.com/embed/${videoId}`;
+        quill.insertEmbed(range.index, 'iframe', { src: iframeSrc });
+      } else if (input.startsWith('data:image/')) {
+        quill.insertEmbed(range.index, 'image', input);
+      } else {
+        // Assume it's raw embed code
+        quill.clipboard.dangerouslyPasteHTML(range.index, input);
+      }
+    }
+  });
+
+  quill = new Quill('#editor', {
+    modules: {
+      toolbar: '#toolbar',
+      keyboard: {
+        bindings: {
+          linkClick: {
+            key: 'click',
+            collapsed: true,
+            format: ['link'],
+            handler: function() {
+              // Do nothing to prevent the default tooltip
+            }
+          }
+        }
+      }
+    },
+    theme: 'snow',
+  });
+
+  quill.root.addEventListener('click', function(event) {
+    let link = event.target.closest('a');
+    if (link) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      const href = link.getAttribute('href');
+      if (href.startsWith('http://') || href.startsWith('https://') || href.startsWith('mailto:')) {
+        window.open(href, '_blank');
+      } else {
+        selectMemoryByName(href);
+      }
+    }
+  });
+
+  quill.on('text-change', function(delta, oldDelta, source) {
+    if (
+      selectedMemoryIndex !== null &&
+      !isContentEmpty(memoryList[selectedMemoryIndex].editorContent)
+    ) {
+      const currentContent = quill.getContents();
+      if (isContentEmpty(currentContent)) {
+        // Editor content has been deleted
+        memoryList[selectedMemoryIndex].editorContent = null;
+        updateEditorAssociationButton();
+      }
+    }
+  });
+
+  quill.root.addEventListener('paste', function(e) {
+    if (e.clipboardData && e.clipboardData.items) {
+      var items = e.clipboardData.items;
+      var hasImage = false;
+      for (var i = 0; i < items.length; i++) {
+        var item = items[i];
+        if (item.type.indexOf('image') !== -1) {
+          hasImage = true;
+          var blob = item.getAsFile();
+          var reader = new FileReader();
+          reader.onload = function(event) {
+            var base64ImageSrc = event.target.result;
+            var range = quill.getSelection();
+            quill.insertEmbed(range.index, 'image', base64ImageSrc);
+            quill.setSelection(range.index + 1);
+          };
+          reader.readAsDataURL(blob);
+        }
+      }
+      if (hasImage) {
+        e.preventDefault();
+      }
+    }
+  });
+
+  document.getElementById('transpose-amount').textContent = 0;
+});
+
+function selectMemoryByName(name) {
+  const index = memoryList.findIndex(sequence => sequence.name === name);
+  if (index >= 0) {
+    selectMemorySequence(index);
+  }
 }
 
 function initSequencerControls() {
@@ -1250,205 +1474,4 @@ function isContentEmpty(content) {
     !content ||
     (content.ops.length === 1 && content.ops[0].insert === '\n')
   );
-}
-
-document.addEventListener('DOMContentLoaded', () => {
-  createPiano();
-  initMIDI();
-
-  const colors = [
-    '#000000', '#e60000', '#ff9900', '#ffff00', '#008a00', '#0066cc', '#9933ff',
-    '#ffffff', '#facccc', '#ffebcc', '#ffffcc', '#cce8cc', '#cce0f5', '#ebd6ff',
-    '#dddddd', '#ff0000', '#ff9c00', '#ffff00', '#00ff00', '#0000ff', '#cc66ff',
-    '#eeeeee', '#ffcccc', '#ffe5cc', '#ffffcc', '#d9f2d9', '#ccd4ff', '#e6ccff',
-    'magenta', 
-    '#FF0000', '#FFA500', '#FFFF00', '#008000', '#0000FF', '#6109AB', '#FF00FF'
-  ];
-
-  const colorSelect = document.querySelector('select.ql-color');
-  const backgroundSelect = document.querySelector('select.ql-background');
-
-  colors.forEach(color => {
-    const option = document.createElement('option');
-    option.value = color;
-    option.style.backgroundColor = color;
-    colorSelect.appendChild(option.cloneNode());
-    backgroundSelect.appendChild(option.cloneNode());
-  });
-
-  initSequencerControls();
-  initKeyboardControls();
-
-  const noteColorToggleBtn = document.getElementById('note-color-toggle-btn');
-  noteColorToggleBtn.style.background = 'lightblue';
-  noteColorToggleBtn.classList.remove('pressed');
-
-  noteColorToggleBtn.addEventListener('click', () => {
-    colorfulNotesEnabled = !colorfulNotesEnabled;
-    if (colorfulNotesEnabled) {
-      noteColorToggleBtn.style.background = 'linear-gradient(90deg, red, orange, yellow, green, blue, indigo, violet)';
-      noteColorToggleBtn.classList.add('pressed');
-    } else {
-      noteColorToggleBtn.style.background = 'lightblue';
-      noteColorToggleBtn.classList.remove('pressed');
-    }
-    for (const note in activeNotes) {
-      if (activeNotes.hasOwnProperty(note)) {
-        highlightKey(note, true);
-      }
-    }
-  });
-
-  const loopBtn = document.getElementById('loop-btn');
-  loopBtn.addEventListener('click', () => {
-    isLooping = !isLooping;
-    loopBtn.classList.toggle('pressed', isLooping);
-  });
-
-  const keyboardToggleBtn = document.getElementById('keyboard-toggle-btn');
-  keyboardToggleBtn.classList.toggle('pressed', keyboardEnabled);
-  keyboardToggleBtn.addEventListener('click', () => {
-    keyboardEnabled = !keyboardEnabled;
-    keyboardToggleBtn.classList.toggle('pressed', keyboardEnabled);
-    updateKeyLabels();
-  });
-
-  const BlockEmbed = Quill.import('blots/block/embed');
-  class IframeBlot extends BlockEmbed {
-    static create(value) {
-      const node = super.create();
-      node.setAttribute('src', value.src);
-      node.setAttribute('frameborder', '0');
-      node.setAttribute('allowfullscreen', true);
-      node.setAttribute('width', '100%');
-      node.setAttribute('height', value.height || '315');
-      return node;
-    }
-
-    static value(node) {
-      return {
-        src: node.getAttribute('src'),
-        width: node.getAttribute('width'),
-        height: node.getAttribute('height')
-      };
-    }
-  }
-  IframeBlot.blotName = 'iframe';
-  IframeBlot.tagName = 'iframe';
-  Quill.register(IframeBlot);
-
-  document.getElementById('insert-iframe-btn').addEventListener('click', () => {
-    const input = prompt('Paste the embed code, image data URL, or YouTube URL:');
-    if (input) {
-      const range = quill.getSelection(true);
-
-      // Check if input is YouTube URL
-      const youtubeUrlMatch = input.match(/(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)([\w\-]{11})(?:\S+)?/);
-      if (youtubeUrlMatch && youtubeUrlMatch[1]) {
-        const videoId = youtubeUrlMatch[1];
-        const iframeSrc = `https://www.youtube.com/embed/${videoId}`;
-        quill.insertEmbed(range.index, 'iframe', { src: iframeSrc });
-      } else if (input.startsWith('data:image/')) {
-        quill.insertEmbed(range.index, 'image', input);
-      } else {
-        // Assume it's raw embed code
-        quill.clipboard.dangerouslyPasteHTML(range.index, input);
-      }
-    }
-  });
-
-  initSequencerControls();
-  initKeyboardControls();
-
-  const toggleEditorBtn = document.getElementById('toggle-editor-btn');
-
-  toggleEditorBtn.addEventListener('click', () => {
-    const editorContainer = document.getElementById('editor-container');
-    if (editorContainer.style.display === 'none' || editorContainer.style.display === '') {
-      editorContainer.style.display = 'block';
-    } else {
-      editorContainer.style.display = 'none';
-    }
-  });
-
-  quill = new Quill('#editor', {
-    modules: {
-      toolbar: '#toolbar',
-      keyboard: {
-        bindings: {
-          linkClick: {
-            key: 'click',
-            collapsed: true,
-            format: ['link'],
-            handler: function() {
-              // Do nothing to prevent the default tooltip
-            }
-          }
-        }
-      }
-    },
-    theme: 'snow',
-  });
-
-  quill.root.addEventListener('click', function(event) {
-    let link = event.target.closest('a');
-    if (link) {
-      event.preventDefault();
-      event.stopImmediatePropagation();
-      const href = link.getAttribute('href');
-      if (href.startsWith('http://') || href.startsWith('https://') || href.startsWith('mailto:')) {
-        window.open(href, '_blank');
-      } else {
-        selectMemoryByName(href);
-      }
-    }
-  });
-
-  quill.on('text-change', function(delta, oldDelta, source) {
-    if (
-      selectedMemoryIndex !== null &&
-      !isContentEmpty(memoryList[selectedMemoryIndex].editorContent)
-    ) {
-      const currentContent = quill.getContents();
-      if (isContentEmpty(currentContent)) {
-        // Editor content has been deleted
-        memoryList[selectedMemoryIndex].editorContent = null;
-        updateEditorAssociationButton();
-      }
-    }
-  });
-
-  quill.root.addEventListener('paste', function(e) {
-    if (e.clipboardData && e.clipboardData.items) {
-      var items = e.clipboardData.items;
-      var hasImage = false;
-      for (var i = 0; i < items.length; i++) {
-        var item = items[i];
-        if (item.type.indexOf('image') !== -1) {
-          hasImage = true;
-          var blob = item.getAsFile();
-          var reader = new FileReader();
-          reader.onload = function(event) {
-            var base64ImageSrc = event.target.result;
-            var range = quill.getSelection();
-            quill.insertEmbed(range.index, 'image', base64ImageSrc);
-            quill.setSelection(range.index + 1);
-          };
-          reader.readAsDataURL(blob);
-        }
-      }
-      if (hasImage) {
-        e.preventDefault();
-      }
-    }
-  });
-
-  document.getElementById('transpose-amount').textContent = transposeAmount;
-});
-
-function selectMemoryByName(name) {
-  const index = memoryList.findIndex(sequence => sequence.name === name);
-  if (index >= 0) {
-    selectMemorySequence(index);
-  }
 }
