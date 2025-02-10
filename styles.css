@@ -249,82 +249,65 @@ body {
   margin-bottom: 5px;
   font-family: 'Courier New', monospace;
   color: lightblue;
-  font-size: 0.8em;
 }
 
 #tempo-slider {
   -webkit-appearance: none;
   width: 100%;
-  height: 4px;
-  background: #222;
+  height: 2px;
+  background: linear-gradient(to bottom, #e6e6e6, #ccc);
   outline: none;
-  border-radius: 2px;
-  border: 1px solid #111;
+  border-radius: 5px;
+  border: 1px solid #aaa;
+  box-shadow: 0 0 10px 2px red;
+  animation: rainbowGlow 5s linear infinite;
 }
 
-#tempo-slider::-webkit-slider-runnable-track {
-  width: 100%;
-  height: 4px;
-  background: #222;
-  border-radius: 2px;
+@keyframes rainbowGlow {
+  0% {
+    box-shadow: 0 0 10px 2px red;
+  }
+  16% {
+    box-shadow: 0 0 10px 2px orange;
+  }
+  33% {
+    box-shadow: 0 0 10px 2px yellow;
+  }
+  50% {
+    box-shadow: 0 0 10px 2px green;
+  }
+  66% {
+    box-shadow: 0 0 10px 2px blue;
+  }
+  83% {
+    box-shadow: 0 0 10px 2px indigo;
+  }
+  100% {
+    box-shadow: 0 0 10px 2px violet;
+  }
 }
 
 #tempo-slider::-webkit-slider-thumb {
   -webkit-appearance: none;
-  width: 14px;
-  height: 14px;
-  background: linear-gradient(to bottom, #444, #222);
-  border: 1px solid #000;
+  appearance: none;
+  width: 16px;
+  height: 16px;
   border-radius: 50%;
+  background: radial-gradient(circle at 30% 30%, #555, #222);
+  border: 1px solid #000;
+  box-shadow: inset -2px -2px 4px rgba(255, 255, 255, 0.2), inset 2px 2px 4px rgba(0, 0, 0, 0.6);
   cursor: pointer;
-  margin-top: -5px;
-}
-
-#tempo-slider::-moz-range-track {
-  width: 100%;
-  height: 4px;
-  background: #222;
-  border-radius: 2px;
+  margin-top: -7px;
 }
 
 #tempo-slider::-moz-range-thumb {
-  width: 14px;
-  height: 14px;
-  background: linear-gradient(to bottom, #444, #222);
-  border: 1px solid #000;
+  width: 16px;
+  height: 16px;
   border-radius: 50%;
-  cursor: pointer;
-}
-
-#tempo-slider::-ms-track {
-  width: 100%;
-  height: 4px;
-  background: transparent;
-  border-color: transparent;
-  color: transparent;
-}
-
-#tempo-slider::-ms-fill-lower {
-  background: #222;
-  border-radius: 2px;
-}
-
-#tempo-slider::-ms-fill-upper {
-  background: #222;
-  border-radius: 2px;
-}
-
-#tempo-slider::-ms-thumb {
-  width: 14px;
-  height: 14px;
-  background: linear-gradient(to bottom, #444, #222);
+  background: radial-gradient(circle at 30% 30%, #555, #222);
   border: 1px solid #000;
-  border-radius: 50%;
+  box-shadow: inset -2px -2px 4px rgba(255, 255, 255, 0.2), inset 2px 2px 4px rgba(0, 0, 0, 0.6);
   cursor: pointer;
-}
-
-#tempo-slider::-ms-tooltip {
-  display: none;
 }
 
 #piano {
@@ -715,4 +698,39 @@ body {
 
 .delete-entry-btn:hover {
   background-color: #555;
+}
+
+/* Styles for events in memory editor */
+.event-row.note-on {
+  background: linear-gradient(to right, #43a047, #388e3c);
+  color: #fff;
+}
+
+.event-row.note-off {
+  background: linear-gradient(to right, #e53935, #c62828);
+  color: #fff;
+}
+
+.event-row.control-change {
+  background: linear-gradient(to right, #1e88e5, #1565c0);
+  color: #fff;
+}
+
+.event-row.program-change {
+  background: linear-gradient(to right, #8e24aa, #6a1b9a);
+  color: #fff;
+}
+
+/* Adjust input fields in the event-params cell to display side by side */
+#memory-editor-table .event-params input,
+#memory-editor-table .event-params select {
+  display: inline-block;
+  width: auto;
+  margin-right: 5px;
+  vertical-align: middle;
+}
+
+/* Adjust the Parameters cell to prevent wrapping */
+#memory-editor-table .event-params {
+  white-space: nowrap;
 }
