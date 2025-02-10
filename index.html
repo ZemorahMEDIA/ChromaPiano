@@ -86,7 +86,12 @@
             </button>
             <button id="add-memory-btn" class="text-button">M+</button>
             <button id="remove-memory-btn" class="text-button">M-</button>
-            <button id="edit-memory-btn" class="text-button">E</button>
+            <button id="memory-editor-btn">
+              <!-- Pen icon -->
+              <svg viewBox="0 0 24 24">
+                <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM22.41 6.34a1.21 1.21 0 0 0 0-1.71l-2.34-2.34a1.21 1.21 0 0 0-1.71 0l-1.83 1.83 3.75 3.75 1.83-1.83z"></path>
+              </svg>
+            </button>
           </div>
         </div>
         <div class="control-group">
@@ -181,6 +186,9 @@
       </div>
     </div>
     <div id="piano"></div>
+    <div id="memory-editor-container" style="display: none;">
+      <!-- Memory editor content will go here -->
+    </div>
   </div>
 
   <div id="editor-container">
