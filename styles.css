@@ -588,3 +588,85 @@ body {
 #add-editor-content-btn.editor-associated {
   border-color: lightblue;
 }
+
+#memory-editor-container {
+  max-width: 800px;
+  margin: 20px auto;
+  background-color: #1e1e1e;
+  padding: 15px;
+  color: #d4d4d4;
+}
+
+#memory-editor-name {
+  margin-bottom: 10px;
+}
+
+#memory-editor-name label {
+  display: block;
+  color: #d4d4d4;
+  margin-bottom: 5px;
+}
+
+#memory-editor-name input {
+  width: 100%;
+  box-sizing: border-box;
+  background-color: #252526;
+  color: #d4d4d4;
+  border: 1px solid #3c3c3c;
+  padding: 4px;
+}
+
+#memory-editor-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+#memory-editor-table th, #memory-editor-table td {
+  border: 1px solid #3c3c3c;
+  padding: 8px;
+  text-align: left;
+}
+
+#memory-editor-table th {
+  background-color: #2d2d2d;
+  color: #d4d4d4;
+}
+
+#memory-editor-table input, #memory-editor-table select {
+  width: 100%;
+  box-sizing: border-box;
+  background-color: #252526;
+  color: #d4d4d4;
+  border: 1px solid #3c3c3c;
+  padding: 4px;
+}
+
+#memory-editor-controls {
+  margin-bottom: 10px;
+}
+
+#memory-editor-controls button {
+  background-color: #444;
+  border: 1px solid #000;
+  color: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+#memory-editor-controls button:hover {
+  background-color: #555;
+}
+
+.delete-entry-btn {
+  background-color: #444;
+  border: 1px solid #000;
+  color: white;
+  padding: 2px 6px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.delete-entry-btn:hover {
+  background-color: #555;
+}
