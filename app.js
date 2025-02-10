@@ -492,6 +492,17 @@ function stopAction() {
     document.getElementById('save-btn').disabled = false;
     recordingTimers.forEach(timerId => clearTimeout(timerId));
     recordingTimers = [];
+    
+    // Change all active Note On events to Note Off
+    for (const note in activeNotes) {
+      if (activeNotes.hasOwnProperty(note)) {
+        recordedNotes.push({
+          type: 'noteOff',
+          note: note,
+          time: audioContext.currentTime - recordStartTime
+        });
+      }
+    }
   }
   if (isPlaying) {
     isPlaying = false;
