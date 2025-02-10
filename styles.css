@@ -249,36 +249,82 @@ body {
   margin-bottom: 5px;
   font-family: 'Courier New', monospace;
   color: lightblue;
+  font-size: 0.8em;
 }
 
 #tempo-slider {
   -webkit-appearance: none;
   width: 100%;
-  height: 6px;
-  background: linear-gradient(to bottom, #e6e6e6, #ccc);
+  height: 4px;
+  background: #222;
   outline: none;
-  border-radius: 5px;
-  border: 1px solid #aaa;
+  border-radius: 2px;
+  border: 1px solid #111;
+}
+
+#tempo-slider::-webkit-slider-runnable-track {
+  width: 100%;
+  height: 4px;
+  background: #222;
+  border-radius: 2px;
 }
 
 #tempo-slider::-webkit-slider-thumb {
   -webkit-appearance: none;
-  appearance: none;
-  width: 12px;
-  height: 20px;
-  background: linear-gradient(to bottom, #aaa, #666);
-  border: 1px solid #333;
-  border-radius: 3px;
+  width: 14px;
+  height: 14px;
+  background: linear-gradient(to bottom, #444, #222);
+  border: 1px solid #000;
+  border-radius: 50%;
   cursor: pointer;
+  margin-top: -5px;
+}
+
+#tempo-slider::-moz-range-track {
+  width: 100%;
+  height: 4px;
+  background: #222;
+  border-radius: 2px;
 }
 
 #tempo-slider::-moz-range-thumb {
-  width: 12px;
-  height: 20px;
-  background: linear-gradient(to bottom, #aaa, #666);
-  border: 1px solid #333;
-  border-radius: 3px;
+  width: 14px;
+  height: 14px;
+  background: linear-gradient(to bottom, #444, #222);
+  border: 1px solid #000;
+  border-radius: 50%;
   cursor: pointer;
+}
+
+#tempo-slider::-ms-track {
+  width: 100%;
+  height: 4px;
+  background: transparent;
+  border-color: transparent;
+  color: transparent;
+}
+
+#tempo-slider::-ms-fill-lower {
+  background: #222;
+  border-radius: 2px;
+}
+
+#tempo-slider::-ms-fill-upper {
+  background: #222;
+  border-radius: 2px;
+}
+
+#tempo-slider::-ms-thumb {
+  width: 14px;
+  height: 14px;
+  background: linear-gradient(to bottom, #444, #222);
+  border: 1px solid #000;
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+#tempo-slider::-ms-tooltip {
+  display: none;
 }
 
 #piano {
