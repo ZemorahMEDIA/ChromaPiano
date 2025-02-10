@@ -597,13 +597,11 @@ function playSelectedMemories(sequencesToPlay, playbackPercentage) {
 function initMemoryControls() {
   const addToMemoryBtn = document.getElementById('add-memory-btn');
   const removeFromMemoryBtn = document.getElementById('remove-memory-btn');
-  const editMemoryBtn = document.getElementById('edit-memory-btn');
   const addEditorContentBtn = document.getElementById('add-editor-content-btn');
   const memoryToggleBtn = document.getElementById('memory-toggle-btn');
 
   addToMemoryBtn.addEventListener('click', addToMemory);
   removeFromMemoryBtn.addEventListener('click', removeFromMemory);
-  editMemoryBtn.addEventListener('click', editMemoryName);
   addEditorContentBtn.addEventListener('click', addEditorContentToMemory);
   memoryToggleBtn.addEventListener('click', toggleMemoryList);
 }
@@ -1105,13 +1103,10 @@ function exportSelectedMemoryAsMidi() {
 
   const selectedSequence = memoryList[selectedMemoryIndex];
 
-  // Create a new track
   const track = new MidiWriter.Track();
 
-  // Set tempo
   track.setTempo(100);
 
-  // Process the recorded notes to get events with durations
   let noteOnEvents = {};
   const events = selectedSequence.notes;
 
@@ -1123,7 +1118,6 @@ function exportSelectedMemoryAsMidi() {
         const startTime = noteOnEvents[event.note];
         const duration = event.time - startTime;
 
-        // Calculate start tick and duration in ticks (assuming 128 ticks per beat)
         const startTick = Math.round(startTime * (100 / 60) * 128);
         const durationTicks = Math.round(duration * (100 / 60) * 128) || 1;
 
@@ -1136,17 +1130,27 @@ function exportSelectedMemoryAsMidi() {
 
         delete noteOnEvents[event.note];
       }
+    } else if (event.type === 'controlChange') {
+      const controllerEvent = new MidiWriter.ControllerChangeEvent({
+        controllerNumber: event.controllerNumber,
+        controllerValue: event.controllerValue,
+        startTick: Math.round(event.time * (100 / 60) * 128)
+      });
+      track.addEvent(controllerEvent);
+    } else if (event.type === 'programChange') {
+      const programChangeEvent = new MidiWriter.ProgramChangeEvent({
+        instrument: event.programNumber,
+        startTick: Math.round(event.time * (100 / 60) * 128)
+      });
+      track.addEvent(programChangeEvent);
     }
   });
 
-  // Create a writer and build the MIDI file
   const write = new MidiWriter.Writer([track]);
   const midiFileData = write.buildFile();
 
-  // Create a Blob from the MIDI data
   const blob = new Blob([midiFileData], { type: 'audio/midi' });
 
-  // Trigger download of the MIDI file
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
@@ -1197,7 +1201,6 @@ function transposeSelectedMemory(semitones) {
     recordedNotes = JSON.parse(JSON.stringify(sequence.notes));
   }
 
-  // Update the recordedNotes if it's the same sequence
   processSequenceNotes(sequence);
   currentNoteIndex = -1;
 }
@@ -1252,12 +1255,14 @@ function isContentEmpty(content) {
   );
 }
 
+let memoryEditorVisible = false;
+
 document.addEventListener('DOMContentLoaded', () => {
   createPiano();
   initMIDI();
 
   const colors = [
-    '#000000', '#e60000', '#ff9900', '#ffff00', '#008a00', '#0066cc', '#9933ff',
+    '#000000', '#e60000', '#ff9900', '#ffff00', '#008000', '#0066cc', '#9933ff',
     '#ffffff', '#facccc', '#ffebcc', '#ffffcc', '#cce8cc', '#cce0f5', '#ebd6ff',
     '#dddddd', '#ff0000', '#ff9c00', '#ffff00', '#00ff00', '#0000ff', '#cc66ff',
     '#eeeeee', '#ffcccc', '#ffe5cc', '#ffffcc', '#d9f2d9', '#ccd4ff', '#e6ccff',
@@ -1278,6 +1283,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
   initSequencerControls();
   initKeyboardControls();
+
+  const memoryEditorBtn = document.getElementById('memory-editor-btn');
+  memoryEditorBtn.addEventListener('click', toggleMemoryEditor);
 
   const noteColorToggleBtn = document.getElementById('note-color-toggle-btn');
   noteColorToggleBtn.style.background = 'lightblue';
@@ -1342,7 +1350,6 @@ document.addEventListener('DOMContentLoaded', () => {
     if (input) {
       const range = quill.getSelection(true);
 
-      // Check if input is YouTube URL
       const youtubeUrlMatch = input.match(/(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)([\w\-]{11})(?:\S+)?/);
       if (youtubeUrlMatch && youtubeUrlMatch[1]) {
         const videoId = youtubeUrlMatch[1];
@@ -1351,7 +1358,6 @@ document.addEventListener('DOMContentLoaded', () => {
       } else if (input.startsWith('data:image/')) {
         quill.insertEmbed(range.index, 'image', input);
       } else {
-        // Assume it's raw embed code
         quill.clipboard.dangerouslyPasteHTML(range.index, input);
       }
     }
@@ -1381,7 +1387,7 @@ document.addEventListener('DOMContentLoaded', () => {
             collapsed: true,
             format: ['link'],
             handler: function() {
-              // Do nothing to prevent the default tooltip
+              return;
             }
           }
         }
@@ -1411,7 +1417,6 @@ document.addEventListener('DOMContentLoaded', () => {
     ) {
       const currentContent = quill.getContents();
       if (isContentEmpty(currentContent)) {
-        // Editor content has been deleted
         memoryList[selectedMemoryIndex].editorContent = null;
         updateEditorAssociationButton();
       }
@@ -1445,6 +1450,208 @@ document.addEventListener('DOMContentLoaded', () => {
 
   document.getElementById('transpose-amount').textContent = transposeAmount;
 });
+
+function populateMemoryEditor() {
+  const memoryEditorContainer = document.getElementById('memory-editor-container');
+
+  if (selectedMemoryIndex === null) {
+    memoryEditorContainer.innerHTML = '<p>No memory selected.</p>';
+    return;
+  }
+
+  const selectedSequence = memoryList[selectedMemoryIndex];
+  const events = selectedSequence.notes;
+
+  let html = `
+  <div id="memory-editor-name">
+    <label for="memory-name-input">Memory Name:</label>
+    <input type="text" id="memory-name-input" value="${selectedSequence.name}">
+  </div>
+  <div id="memory-editor-controls">
+    <button id="add-entry-btn">Add Event</button>
+  </div>
+  <table id="memory-editor-table">
+    <tr><th>Time (s)</th><th>Type</th><th>Parameters</th><th>Action</th></tr>`;
+
+  events.forEach((event, index) => {
+    html += `<tr>
+      <td><input type="number" step="0.001" class="event-time" value="${event.time.toFixed(3)}"></td>
+      <td>
+        <select class="event-type">
+          <option value="noteOn"${event.type === 'noteOn' ? ' selected' : ''}>noteOn</option>
+          <option value="noteOff"${event.type === 'noteOff' ? ' selected' : ''}>noteOff</option>
+          <option value="controlChange"${event.type === 'controlChange' ? ' selected' : ''}>controlChange</option>
+          <option value="programChange"${event.type === 'programChange' ? ' selected' : ''}>programChange</option>
+        </select>
+      </td>
+      <td class="event-params">`;
+
+    if (event.type === 'noteOn' || event.type === 'noteOff') {
+      html += `<input type="text" class="event-note" value="${event.note}">`;
+    } else if (event.type === 'controlChange') {
+      html += `Controller Number: <input type="number" class="event-controller-number" value="${event.controllerNumber || 0}" min="0" max="127">
+               Value: <input type="number" class="event-controller-value" value="${event.controllerValue || 0}" min="0" max="127">`;
+    } else if (event.type === 'programChange') {
+      html += `Program Number: <input type="number" class="event-program-number" value="${event.programNumber || 0}" min="0" max="127">`;
+    }
+
+    html += `</td>
+      <td><button class="delete-entry-btn">X</button></td>
+    </tr>`;
+  });
+
+  html += '</table>';
+  memoryEditorContainer.innerHTML = html;
+
+  const addEntryBtn = document.getElementById('add-entry-btn');
+  addEntryBtn.addEventListener('click', addNewEntry);
+
+  const deleteButtons = memoryEditorContainer.querySelectorAll('.delete-entry-btn');
+  deleteButtons.forEach(button => {
+    button.addEventListener('click', function () {
+      const row = this.closest('tr');
+      row.parentNode.removeChild(row);
+    });
+  });
+
+  const eventTypeSelects = memoryEditorContainer.querySelectorAll('.event-type');
+  eventTypeSelects.forEach(select => {
+    select.addEventListener('change', function () {
+      const row = this.closest('tr');
+      updateEventParamsCell(row);
+    });
+  });
+}
+
+function addNewEntry() {
+  const memoryEditorTable = document.getElementById('memory-editor-table');
+  const newRow = memoryEditorTable.insertRow(-1);
+  newRow.innerHTML = `
+    <td><input type="number" step="0.001" class="event-time" value="0.000"></td>
+    <td>
+      <select class="event-type">
+        <option value="noteOn">noteOn</option>
+        <option value="noteOff">noteOff</option>
+        <option value="controlChange">controlChange</option>
+        <option value="programChange">programChange</option>
+      </select>
+    </td>
+    <td class="event-params"><input type="text" class="event-note" value=""></td>
+    <td><button class="delete-entry-btn">X</button></td>
+  `;
+
+  const deleteButton = newRow.querySelector('.delete-entry-btn');
+  deleteButton.addEventListener('click', function () {
+    const row = this.closest('tr');
+    row.parentNode.removeChild(row);
+  });
+
+  const eventTypeSelect = newRow.querySelector('.event-type');
+  eventTypeSelect.addEventListener('change', function () {
+    const row = this.closest('tr');
+    updateEventParamsCell(row);
+  });
+}
+
+function updateEventParamsCell(row) {
+  const eventType = row.querySelector('.event-type').value;
+  const eventParamsCell = row.querySelector('.event-params');
+  eventParamsCell.innerHTML = '';
+
+  if (eventType === 'noteOn' || eventType === 'noteOff') {
+    eventParamsCell.innerHTML = `<input type="text" class="event-note" value="">`;
+  } else if (eventType === 'controlChange') {
+    eventParamsCell.innerHTML = `Controller Number: <input type="number" class="event-controller-number" value="0" min="0" max="127">
+                                 Value: <input type="number" class="event-controller-value" value="0" min="0" max="127">`;
+  } else if (eventType === 'programChange') {
+    eventParamsCell.innerHTML = `Program Number: <input type="number" class="event-program-number" value="0" min="0" max="127">`;
+  }
+}
+
+function updateMemoryFromEditor() {
+  if (selectedMemoryIndex === null) return;
+  const selectedSequence = memoryList[selectedMemoryIndex];
+
+  const memoryNameInput = document.getElementById('memory-name-input');
+  if (memoryNameInput && memoryNameInput.value.trim()) {
+    selectedSequence.name = memoryNameInput.value.trim();
+    document.getElementById('selected-memory').textContent = selectedSequence.name;
+  }
+
+  const rows = document.querySelectorAll('#memory-editor-table tr');
+  const newEvents = [];
+
+  rows.forEach((row, index) => {
+    if (index === 0) return; // Skip header
+
+    const timeInput = row.querySelector('.event-time');
+    const typeSelect = row.querySelector('.event-type');
+    const eventParamsCell = row.querySelector('.event-params');
+
+    const time = parseFloat(timeInput.value);
+    const type = typeSelect.value;
+
+    if (isNaN(time) || !type) {
+      return; // Invalid input, skip this event
+    }
+
+    const event = { time, type };
+
+    if (type === 'noteOn' || type === 'noteOff') {
+      const noteInput = eventParamsCell.querySelector('.event-note');
+      const note = noteInput.value.trim();
+      if (!note) return;
+      event.note = note;
+    } else if (type === 'controlChange') {
+      const controllerNumberInput = eventParamsCell.querySelector('.event-controller-number');
+      const controllerValueInput = eventParamsCell.querySelector('.event-controller-value');
+      const controllerNumber = parseInt(controllerNumberInput.value);
+      const controllerValue = parseInt(controllerValueInput.value);
+      if (isNaN(controllerNumber) || isNaN(controllerValue)) return;
+      event.controllerNumber = controllerNumber;
+      event.controllerValue = controllerValue;
+    } else if (type === 'programChange') {
+      const programNumberInput = eventParamsCell.querySelector('.event-program-number');
+      const programNumber = parseInt(programNumberInput.value);
+      if (isNaN(programNumber)) return;
+      event.programNumber = programNumber;
+    }
+
+    newEvents.push(event);
+  });
+
+  newEvents.sort((a, b) => a.time - b.time);
+
+  selectedSequence.notes = newEvents;
+
+  let totalDuration = 0;
+  newEvents.forEach(event => {
+    if (event.time > totalDuration) {
+      totalDuration = event.time;
+    }
+  });
+  selectedSequence.duration = totalDuration;
+
+  if (memoryList[selectedMemoryIndex] === selectedSequence) {
+    recordedNotes = JSON.parse(JSON.stringify(selectedSequence.notes));
+    processSequenceNotes(selectedSequence);
+    currentNoteIndex = -1;
+  }
+
+  updateMemoryList();
+}
+
+function toggleMemoryEditor() {
+  memoryEditorVisible = !memoryEditorVisible;
+  const memoryEditorContainer = document.getElementById('memory-editor-container');
+  if (memoryEditorVisible) {
+    memoryEditorContainer.style.display = 'block';
+    populateMemoryEditor();
+  } else {
+    updateMemoryFromEditor();
+    memoryEditorContainer.style.display = 'none';
+  }
+}
 
 function selectMemoryByName(name) {
   const index = memoryList.findIndex(sequence => sequence.name === name);
