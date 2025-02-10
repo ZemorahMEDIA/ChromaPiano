@@ -135,40 +135,51 @@
       </div>
       <!-- LCD displays container -->
       <div id="lcd-displays">
-        <div id="device-section">
-          <div id="device-display">
-            <span id="selected-device">No Device Selected</span>
-            <button id="device-toggle-btn">
-              <!-- Down arrow icon -->
-              <svg viewBox="0 0 24 24">
-                <polyline points="6,9 12,15 18,9" fill="none" stroke="#000" stroke-width="2"/>
-              </svg>
-            </button>
-          </div>
-          <div id="device-list-container">
-            <ul id="device-list"></ul>
-          </div>
-        </div>
-        <div id="memory-section">
-          <div id="memory-display">
-            <span id="selected-memory">No Memory Selected</span>
-            <button id="memory-toggle-btn">
-              <!-- Down arrow icon -->
-              <svg viewBox="0 0 24 24">
-                <polyline points="6,9 12,15 18,9" fill="none" stroke="#000" stroke-width="2"/>
-              </svg>
-            </button>
-          </div>
-          <div id="memory-list-container">
-            <ul id="memory-list"></ul>
+        <!-- Midi Device Group -->
+        <div class="control-group">
+          <div class="group-label"><span>Midi Device</span></div>
+          <!-- Device section -->
+          <div id="device-section">
+            <div id="device-display">
+              <span id="selected-device">No Device Selected</span>
+              <button id="device-toggle-btn">
+                <!-- Down arrow icon -->
+                <svg viewBox="0 0 24 24">
+                  <polyline points="6,9 12,15 18,9" fill="none" stroke="#000" stroke-width="2"/>
+                </svg>
+              </button>
+            </div>
+            <div id="device-list-container">
+              <ul id="device-list"></ul>
+            </div>
           </div>
         </div>
-        <div id="tempo-section">
-          <div id="tempo-display">
-            <!-- Display the current tempo -->
-            <div id="tempo-value">100%</div>
-            <!-- Slider input for tempo -->
-            <input type="range" id="tempo-slider" min="25" max="200" step="25" value="100">
+        <!-- Playlist Group -->
+        <div class="control-group">
+          <div class="group-label"><span>Playlist</span></div>
+          <!-- Memory section -->
+          <div id="memory-section">
+            <div id="memory-display">
+              <span id="selected-memory">No Memory Selected</span>
+              <button id="memory-toggle-btn">
+                <!-- Down arrow icon -->
+                <svg viewBox="0 0 24 24">
+                  <polyline points="6,9 12,15 18,9" fill="none" stroke="#000" stroke-width="2"/>
+                </svg>
+              </button>
+            </div>
+            <div id="memory-list-container">
+              <ul id="memory-list"></ul>
+            </div>
+          </div>
+        </div>
+        <div class="control-group">
+          <div class="group-label"><span>Tempo</span></div>
+          <div class="group-buttons">
+            <div id="tempo-display">
+              <div id="tempo-value">100%</div>
+              <input type="range" id="tempo-slider" min="25" max="200" step="25" value="100">
+            </div>
           </div>
         </div>
         <div id="key-section">
