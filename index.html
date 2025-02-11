@@ -1,257 +1,774 @@
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>ChromaPiano</title>
-  <link rel="stylesheet" href="styles.css">
-  <script src="https://unpkg.com/soundfont-player@latest/dist/soundfont-player.js"></script>
-  <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
-  <script src="https://cdn.quilljs.com/1.3.6/quill.js"></script>
-  <!-- Include 'Great Vibes' font for the title -->
-  <link href="https://fonts.googleapis.com/css2?family=Great+Vibes&display=swap" rel="stylesheet">
-  <!-- Include Noto Music Font for musical symbols -->
-  <link href="https://fonts.googleapis.com/css2?family=Noto+Music&display=swap" rel="stylesheet">
-</head>
-<body>
-  <!-- Synthesizer container -->
-  <div id="synthesizer">
-    <div id="title-container">
-      <h1>
-        <span class="handscript">John Martin Skyrie's</span>
-        <span class="rainbow">ChromaPiano</span>
-      </h1>
-    </div>
-    <!-- Synthesizer panel -->
-    <div id="synthesizer-panel">
-      <div id="controls">
-        <div class="control-group">
-          <div class="group-label"><span>Transport</span></div>
-          <div class="group-buttons">
-            <button id="loop-btn">
-              <!-- Loop icon -->
-              <svg viewBox="0 0 24 24">
-                <path d="M7 7h5v2H7v2l-3-3 3-3v2zm10 8h-5v2h5v2l3-3-3-3v2zM4 12c0-4.41 3.59-8 8-8v2a6 6 0 0 0 0 12v2c-4.41 0-8-3.59-8-8zm16 0c0 4.41-3.59 8-8 8v-2a6 6 0 0 0 0-12V4c4.41 0 8-3.59 8-8z"></path>
-              </svg>
-            </button>
-            <button id="record-btn">
-              <!-- Red circle icon -->
-              <svg viewBox="0 0 24 24">
-                <circle cx="12" cy="12" r="10" fill="red"></circle>
-              </svg>
-            </button>
-            <button id="play-btn" disabled>
-              <!-- Green triangle pointing right -->
-              <svg viewBox="0 0 24 24">
-                <polygon points="8,5 19,12 8,19" fill="green"></polygon>
-              </svg>
-            </button>
-            <button id="stop-btn" disabled>
-              <!-- Grey square -->
-              <svg viewBox="0 0 24 24">
-                <rect x="5" y="5" width="14" height="14" fill="grey"></rect>
-              </svg>
-            </button>
-            <button id="prev-note-btn">
-              <!-- Left arrow icon -->
-              <svg viewBox="0 0 24 24">
-                <polygon points="14,18 8,12 14,6" fill="white"></polygon>
-              </svg>
-            </button>
-            <button id="next-note-btn">
-              <!-- Right arrow icon -->
-              <svg viewBox="0 0 24 24">
-                <polygon points="10,6 16,12 10,18" fill="white"></polygon>
-              </svg>
-            </button>
-          </div>
-        </div>
-        <div class="control-group">
-          <div class="group-label"><span>File</span></div>
-          <div class="group-buttons">
-            <button id="save-btn" class="text-button">Save</button>
-            <button id="load-btn" class="text-button">Load</button>
-          </div>
-        </div>
-        <div class="control-group">
-          <div class="group-label"><span>Memory</span></div>
-          <div class="group-buttons">
-            <button id="clear-btn">
-              <!-- Recycle bin icon -->
-              <svg viewBox="0 0 24 24">
-                <path d="M3 6h18" stroke="#fff" stroke-width="2"/>
-                <path d="M19 6l-1 14a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1L5 6" stroke="#fff" stroke-width="2"/>
-                <path d="M10 11v6" stroke="#fff" stroke-width="2"/>
-                <path d="M14 11v6" stroke="#fff" stroke-width="2"/>
-                <path d="M9 6V4h6v2" stroke="#fff" stroke-width="2"/>
-              </svg>
-            </button>
-            <button id="add-memory-btn" class="text-button">M+</button>
-            <button id="remove-memory-btn" class="text-button">M-</button>
-            <button id="memory-editor-btn">
-              <!-- Pen icon -->
-              <svg viewBox="0 0 24 24">
-                <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM22.41 6.34a1.21 1.21 0 0 0 0-1.71l-2.34-2.34a1.21 1.21 0 0 0-1.71 0l-1.83 1.83 3.75 3.75 1.83-1.83z"></path>
-              </svg>
-            </button>
-          </div>
-        </div>
-        <div class="control-group">
-          <div class="group-label"><span>Display</span></div>
-          <div class="group-buttons">
-            <button id="keyboard-toggle-btn" class="pressed">
-              <!-- Keyboard icon -->
-              <svg viewBox="0 0 24 24">
-                <rect x="2" y="6" width="20" height="12" fill="#fff" stroke="#000" stroke-width="1"/>
-                <line x1="2" y1="10" x2="22" y2="10" stroke="#000" stroke-width="1"/>
-                <line x1="2" y1="14" x2="22" y2="14" stroke="#000" stroke-width="1"/>
-                <line x1="6" y1="6" x2="6" y2="18" stroke="#000" stroke-width="1"/>
-                <line x1="10" y1="6" x2="10" y2="18" stroke="#000" stroke-width="1"/>
-                <line x1="14" y1="6" x2="14" y2="18" stroke="#000" stroke-width="1"/>
-                <line x1="18" y1="6" x2="18" y2="18" stroke="#000" stroke-width="1"/>
-              </svg>
-            </button>
-            <button id="note-color-toggle-btn" class="pressed">
-              <!-- Note icon -->
-              <svg viewBox="0 0 24 24">
-                <path d="M12 3v10.15A4 4 0 1 0 14 17V7h4V3z" fill="#fff"/>
-              </svg>
-            </button>
-          </div>
-        </div>
-        <div class="control-group">
-          <div class="group-label"><span>Notepad</span></div>
-          <div class="group-buttons">
-            <button id="toggle-editor-btn">
-              <!-- Notepad with pencil icon -->
-              <svg viewBox="0 0 24 24">
-                <path d="M3 3h14v14H3V3zm2 2v10h10V5H5zm12 2l2 2v8a1 1 0 0 1-1 1h-8l-2-2h8V7z" fill="#fff"/>
-                <path d="M5.5 9L11 14.5l1.5-1.5L7 7.5 5.5 9z" fill="#fff"/>
-                <path d="M14.172 8.828l-1.414-1.414L8 12.172V14h1.828l4.344-4.344z" fill="#fff"/>
-                <path d="M15.05 9.95l1.414-1.414-2.121-2.122-1.415 1.415z" fill="#fff"/>
-              </svg>
-            </button>
-            <button id="add-editor-content-btn">M+</button>
-          </div>
-        </div>
-      </div>
-      <!-- LCD displays container -->
-      <div id="lcd-displays">
-        <!-- Midi Device Group -->
-        <div class="control-group">
-          <div class="group-label"><span>Midi Device</span></div>
-          <!-- Device section -->
-          <div id="device-section">
-            <div id="device-display">
-              <span id="selected-device">No Device Selected</span>
-              <button id="device-toggle-btn">
-                <!-- Down arrow icon -->
-                <svg viewBox="0 0 24 24">
-                  <polyline points="6,9 12,15 18,9" fill="none" stroke="#000" stroke-width="2"/>
-                </svg>
-              </button>
-            </div>
-            <div id="device-list-container">
-              <ul id="device-list"></ul>
-            </div>
-          </div>
-        </div>
-        <!-- Playlist Group -->
-        <div class="control-group">
-          <div class="group-label"><span>Playlist</span></div>
-          <!-- Memory section -->
-          <div id="memory-section">
-            <div id="memory-display">
-              <span id="selected-memory">No Memory Selected</span>
-              <button id="memory-toggle-btn">
-                <!-- Down arrow icon -->
-                <svg viewBox="0 0 24 24">
-                  <polyline points="6,9 12,15 18,9" fill="none" stroke="#000" stroke-width="2"/>
-                </svg>
-              </button>
-            </div>
-            <div id="memory-list-container">
-              <ul id="memory-list"></ul>
-            </div>
-          </div>
-        </div>
-        <!-- Tempo Group -->
-        <div class="control-group">
-          <div class="group-label"><span>Tempo</span></div>
-          <div class="group-buttons">
-            <div id="tempo-display">
-              <!-- Display the current tempo -->
-              <div id="tempo-value">100%</div>
-              <!-- Slider input for tempo -->
-              <input type="range" id="tempo-slider" min="25" max="200" step="25" value="100">
-            </div>
-          </div>
-        </div>
-        <!-- Key Group -->
-        <div class="control-group">
-          <div class="group-label"><span>Key</span></div>
-          <div class="group-buttons">
-            <div id="transpose-amount" class="transpose-amount">0</div>
-            <button id="transpose-down-btn" class="text-button metal-button">-</button>
-            <button id="transpose-up-btn" class="text-button metal-button">+</button>
-          </div>
-        </div>
-      </div>
-    </div>
-    <div id="piano"></div>
-    <div id="memory-editor-container" style="display: none;">
-      <div id="memory-editor-name">
-        <!-- Memory Name label and input will be populated dynamically -->
-      </div>
-      <div id="memory-editor-controls">
-        <div id="memory-add-controls">
-          <div class="group-label"><span>Events</span></div>
-          <div id="memory-add-fields">
-            <input type="text" id="add-notes-input" placeholder="Notes">
-            <input type="number" id="add-velocity-input" placeholder="Velocity" min="1" max="127">
-            <input type="number" id="add-start-input" placeholder="Start" step="0.001">
-            <input type="number" id="add-duration-input" placeholder="Duration" step="0.001">
-            <input type="number" id="add-cc-number-input" placeholder="CC#" min="0" max="127">
-            <input type="number" id="add-cc-value-input" placeholder="CCV" min="0" max="127">
-            <input type="number" id="add-pc-input" placeholder="PC">
-          </div>
-          <button id="add-entry-btn">Add</button>
-        </div>
-      </div>
-    </div>
-  </div>
+body {
+  font-family: Arial, sans-serif;
+  text-align: center;
+  margin: 20px;
+  background: linear-gradient(150deg, #2a2a2a, #1a1a1a, #2a2a2a);
+  background-size: 400% 400%;
+  animation: metalAnimation 10s ease infinite;
+}
 
-  <div id="editor-container">
-    <!-- Toolbar container -->
-    <div id="toolbar">
-      <button class="ql-bold"></button>
-      <button class="ql-italic"></button>
-      <button class="ql-underline"></button>
-      <button class="ql-strike"></button>
-      <select class="ql-color">
-        <!-- Colors will be populated by app.js -->
-      </select>
-      <select class="ql-background">
-        <!-- Background colors will be populated by app.js -->
-      </select>
-      <button class="ql-script" value="sub"></button>
-      <button class="ql-script" value="super"></button>
-      <select class="ql-align"></select>
-      <button class="ql-list" value="ordered"></button>
-      <button class="ql-list" value="bullet"></button>
-      <button class="ql-indent" value="-1"></button>
-      <button class="ql-indent" value="+1"></button>
-      <button class="ql-blockquote"></button>
-      <button class="ql-code-block"></button>
-      <button class="ql-link"></button>
-      <button class="ql-clean"></button>
-      <!-- Modified Embed button -->
-      <button id="insert-iframe-btn">Embed</button>
-      <div class="spacer"></div>
-    </div>
-    <div id="editor"></div>
-  </div>
+@keyframes metalAnimation {
+  0% {
+    background-position: 0% 50%;
+  }
+  100% {
+    background-position: 100% 50%;
+  }
+}
 
-  <!-- Include app.js after all libraries -->
-  <script src="https://unpkg.com/midiwriter-js@2.1.1/dist/MidiWriter.min.js"></script>
-  <script src="app.js"></script>
-</body>
-</html>
+#synthesizer {
+  display: inline-block;
+  max-width: 800px;
+  width: 100%;
+  margin: 0 auto;
+  border: 1px solid #333;
+  border-radius: 10px;
+  overflow: hidden;
+  background: linear-gradient(135deg, #2c2c2c 0%, #1c1c1c 100%);
+}
+
+#synthesizer h1 {
+  width: 100%;
+  margin: 0;
+  padding: 20px;
+  background: linear-gradient(135deg, #555 0%, #222 100%);
+  color: white;
+  text-align: center;
+  box-sizing: border-box;
+  border-bottom: 1px solid #333;
+}
+
+#synthesizer-panel {
+  background: linear-gradient(135deg, #3a3a3a 0%, #1c1c1c 100%);
+  padding: 15px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+#controls {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+#controls button {
+  background-color: #444;
+  border: 1px solid #000;
+  box-shadow: inset -1.2px -1.2px 3px rgba(0, 0, 0, 0.7), inset 1.2px 1.2px 3px rgba(255, 255, 255, 0.1);
+  color: white;
+  margin: 2px;
+  padding: 4px;
+  border-radius: 4px;
+  cursor: pointer;
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  touch-action: manipulation;
+}
+
+#controls button.text-button {
+  width: auto;
+  height: 28px;
+  padding: 0 6px;
+  font-size: 18px;
+}
+
+#controls button svg {
+  width: 18px;
+  height: 18px;
+  fill: white;
+}
+
+#controls button:active {
+  box-shadow: inset 1.2px 1.2px 3px rgba(0, 0, 0, 0.7), inset -1.2px -1.2px 3px rgba(255, 255, 255, 0.1);
+}
+
+#controls button:hover {
+  background-color: #555;
+}
+
+#controls button.pressed {
+  box-shadow: inset 1.2px 1.2px 3px rgba(0, 0, 0, 0.7), inset -1.2px -1.2px 3px rgba(255, 255, 255, 0.1);
+  background-color: #333;
+}
+
+#controls button#prev-note-btn,
+#controls button#next-note-btn {
+  width: 28px;
+  height: 28px;
+  transform: scale(0.9);
+}
+
+#controls button#prev-note-btn svg,
+#controls button#next-note-btn svg {
+  width: 18px;
+  height: 18px;
+}
+
+#lcd-displays {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-top: 10px;
+}
+
+#device-section,
+#memory-section,
+#tempo-section {
+  position: relative;
+  margin: 0 5px;
+  display: inline-block;
+}
+
+#device-display,
+#memory-display {
+  background-color: #ADD8E6;
+  color: #000;
+  padding: 5px 10px;
+  border: 2px solid #004400;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+}
+
+#selected-memory,
+#selected-device,
+#memory-display input {
+  flex-grow: 1;
+  flex-shrink: 0;
+  width: 24ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: 'Courier New', monospace;
+  border: none;
+  outline: none;
+  background-color: transparent;
+  color: #000;
+}
+
+#memory-display input {
+  padding: 0;
+  margin: 0;
+}
+
+#device-toggle-btn,
+#memory-toggle-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  margin-left: 5px;
+  cursor: pointer;
+}
+
+#device-toggle-btn svg,
+#memory-toggle-btn svg {
+  width: 16px;
+  height: 16px;
+  fill: #000;
+}
+
+#memory-display {
+  display: flex;
+  align-items: center;
+}
+
+#memory-display button {
+  background: none;
+  border: none;
+  padding: 0;
+  margin-left: 5px;
+  cursor: pointer;
+}
+
+#memory-display button svg {
+  width: 16px;
+  height: 16px;
+  fill: #000;
+}
+
+#device-list-container,
+#memory-list-container {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  background-color: #ADD8E6;
+  border: 2px solid #004400;
+  border-top: none;
+  width: 100%;
+  max-height: 150px;
+  overflow-y: auto;
+  z-index: 1000;
+  display: none;
+}
+
+#device-list,
+#memory-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+#device-list li,
+#memory-list li {
+  display: flex;
+  align-items: center;
+  padding: 5px 10px;
+  cursor: pointer;
+  font-family: 'Courier New', monospace;
+}
+
+#memory-list li input[type='checkbox'] {
+  margin-right: 5px;
+}
+
+#device-list li:hover,
+#memory-list li:hover {
+  background-color: #7EC0EE;
+}
+
+#tempo-section {
+  position: relative;
+  margin: 0 5px;
+  display: inline-block;
+}
+
+#tempo-display {
+  position: relative;
+  width: 100px;
+  margin: 0 5px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+#tempo-value {
+  margin-bottom: 5px;
+  font-family: 'Courier New', monospace;
+  color: lightblue;
+}
+
+#tempo-slider {
+  -webkit-appearance: none;
+  width: 100%;
+  height: 2px;
+  background: linear-gradient(to bottom, #e6e6e6, #ccc);
+  outline: none;
+  border-radius: 5px;
+  border: 1px solid #aaa;
+  box-shadow: 0 0 10px 2px red;
+  animation: rainbowGlow 5s linear infinite;
+}
+
+@keyframes rainbowGlow {
+  0% {
+    box-shadow: 0 0 10px 2px red;
+  }
+  16% {
+    box-shadow: 0 0 10px 2px orange;
+  }
+  33% {
+    box-shadow: 0 0 10px 2px yellow;
+  }
+  50% {
+    box-shadow: 0 0 10px 2px green;
+  }
+  66% {
+    box-shadow: 0 0 10px 2px blue;
+  }
+  83% {
+    box-shadow: 0 0 10px 2px indigo;
+  }
+  100% {
+    box-shadow: 0 0 10px 2px violet;
+  }
+}
+
+#tempo-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 30% 30%, #555, #222);
+  border: 1px solid #000;
+  box-shadow: inset -2px -2px 4px rgba(255, 255, 255, 0.2), inset 2px 2px 4px rgba(0, 0, 0, 0.6);
+  cursor: pointer;
+  margin-top: -5px;
+}
+
+#tempo-slider::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 30% 30%, #555, #222);
+  border: 1px solid #000;
+  box-shadow: inset -2px -2px 4px rgba(255, 255, 255, 0.2), inset 2px 2px 4px rgba(0, 0, 0, 0.6);
+  cursor: pointer;
+  margin-top: -5px;
+}
+
+#piano {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  user-select: none;
+  border-top: 1px solid #333;
+  border-bottom: 1px solid #333;
+  background: #222;
+  padding-bottom: 5px;
+  flex-wrap: nowrap;
+  max-width: 100%;
+}
+
+.key-container {
+  position: relative;
+  flex: 0 0 calc(100% / 42);
+  box-sizing: border-box;
+}
+
+.key {
+  width: 100%;
+  height: 150px;
+  margin: 0;
+  border: 1px solid #000;
+  background: linear-gradient(to bottom, #fff, #ccc);
+  box-sizing: border-box;
+  touch-action: manipulation;
+  position: relative;
+}
+
+.key.black {
+  position: absolute;
+  width: 60%;
+  height: 60%;
+  top: 0;
+  left: 70%;
+  z-index: 1;
+  background: linear-gradient(to bottom, #333, #000);
+  color: #fff;
+}
+
+.key-label {
+  position: absolute;
+  bottom: 2px;
+  width: 100%;
+  text-align: center;
+  font-size: 0.8em;
+  pointer-events: none;
+}
+
+#editor-container {
+  display: none;
+  max-width: 800px;
+  width: 100%;
+  margin: 0 auto;
+  background-color: #1e1e1e;
+}
+
+#editor {
+  height: 600px;
+  background-color: #1e1e1e;
+  color: #d4d4d4;
+}
+
+#add-editor-content-btn {
+  background-color: #444;
+  border: 1px solid #000;
+  box-shadow: inset -1.2px -1.2px 3px rgba(0, 0, 0, 0.7), inset 1.2px 1.2px 3px rgba(255, 255, 255, 0.1);
+  color: white;
+  margin: 10px 0;
+  padding: 0;
+  border-radius: 4px;
+  cursor: pointer;
+  width: 24px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#add-editor-content-btn svg {
+  width: 16px;
+  height: 16px;
+  fill: white;
+}
+
+#add-editor-content-btn:active {
+  box-shadow: inset 1.2px 1.2px 3px rgba(0, 0, 0, 0.7), inset -1.2px -1.2px 3px rgba(255, 255, 255, 0.1);
+}
+
+#add-editor-content-btn:hover {
+  background-color: #555;
+}
+
+#title-container {
+  width: 100%;
+  background: linear-gradient(135deg, #2c2c2c 0%, #1c1c1c 100%);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 5px 0;
+}
+
+#title-container h1 {
+  margin: 0;
+  font-size: 2em;
+  display: flex;
+  align-items: center;
+}
+
+#title-container .handscript {
+  color: white;
+  font-family: 'Great Vibes', cursive;
+  margin-right: 10px;
+}
+
+#title-container .rainbow {
+  background: linear-gradient(90deg, red, orange, yellow, green, blue, indigo, violet);
+  background-size: 400%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: rainbow 5s linear infinite;
+}
+
+@keyframes rainbow {
+  0% {
+    background-position: 0% 50%;
+  }
+  100% {
+    background-position: 100% 50%;
+  }
+}
+
+#toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+/* Control groups */
+.control-group {
+  display: inline-block;
+  margin: 0 5px;
+  vertical-align: top;
+  text-align: center;
+  position: relative;
+}
+
+.transpose-amount {
+  position: absolute;
+  top: -20px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 12px;
+  color: white;
+}
+
+.group-label {
+  position: relative;
+  text-align: center;
+  color: white;
+  margin-bottom: 5px;
+}
+
+.group-label::before {
+  content: '';
+  border-top: 1px solid white;
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 100%;
+  z-index: 0;
+}
+
+.group-label span {
+  background-color: #1c1c1c;
+  padding: 0 5px;
+  position: relative;
+  z-index: 1;
+}
+
+.group-buttons {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+}
+
+/* Reduce button size in control groups */
+.control-group .group-buttons button {
+  margin: 2px;
+  padding: 0;
+  width: 28px;
+  height: 28px;
+}
+
+/* Adjust font size for text buttons in control groups */
+.control-group .group-buttons button.text-button {
+  font-size: 12px;
+  padding: 0 4px;
+  height: 24px;
+}
+
+.metal-button {
+  background: linear-gradient(135deg, #444, #222);
+  color: white;
+  border: 1px solid #000;
+  box-shadow: inset -1px -1px 2px rgba(255, 255, 255, 0.1), inset 1px 1px 2px rgba(0, 0, 0, 0.7);
+}
+
+#key-section {
+  position: relative;
+  margin: 0 5px;
+  display: inline-block;
+}
+
+#key-section .group-buttons button {
+  width: 24px;
+  height: 24px;
+  margin: 2px;
+  padding: 0;
+  font-size: 14px;
+}
+
+.ql-toolbar {
+  background-color: #2d2d2d;
+  border: 1px solid #3c3c3c;
+}
+
+.ql-toolbar button,
+.ql-toolbar .ql-picker-label,
+.ql-toolbar .ql-picker-item {
+  color: #d4d4d4 !important;
+}
+
+.ql-toolbar button:hover,
+.ql-toolbar .ql-picker-label:hover,
+.ql-toolbar .ql-picker-item:hover,
+.ql-toolbar button.ql-active {
+  color: #ffffff !important;
+}
+
+.ql-toolbar .ql-picker-options {
+  background-color: #2d2d2d;
+  border: 1px solid #3c3c3c;
+}
+
+.ql-toolbar .ql-picker-item:hover {
+  background-color: #3c3c3c;
+}
+
+.ql-editor {
+  background-color: #1e1e1e;
+  color: #d4d4d4;
+}
+
+.ql-editor a {
+  color: #569cd6;
+  cursor: pointer;
+}
+
+.ql-editor a:hover {
+  color: #9cdcfe;
+}
+
+.ql-editor .ql-code-block {
+  background-color: #252526;
+  color: #d4d4d4;
+}
+
+.ql-editor .ql-code-block::before {
+  color: #6a9955;
+}
+
+.ql-editor blockquote {
+  border-left: 4px solid #6a9955;
+}
+
+.ql-editor .ql-header {
+  color: #569cd6;
+}
+
+.ql-editor .ql-font-monospace {
+  font-family: 'Courier New', monospace;
+  color: #d4d4d4;
+}
+
+.ql-editor .ql-cursor {
+  border-left: 1px solid #d4d4d4;
+}
+
+/* Pressed down animation for transpose buttons */
+#transpose-down-btn,
+#transpose-up-btn {
+  transition: transform 0.1s;
+}
+
+#transpose-down-btn:active,
+#transpose-up-btn:active {
+  transform: translateY(2px);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.6);
+}
+
+/* Style for notepad M+ button when associated with editor content */
+#add-editor-content-btn.editor-associated {
+  border-color: lightblue;
+}
+
+#memory-editor-container {
+  max-width: 800px;
+  margin: 20px auto;
+  background-color: #1e1e1e;
+  padding: 15px;
+  color: #d4d4d4;
+}
+
+#memory-editor-name {
+  margin-bottom: 10px;
+}
+
+#memory-editor-name label {
+  display: block;
+  color: #d4d4d4;
+  margin-bottom: 5px;
+}
+
+#memory-editor-name input {
+  width: 100%;
+  box-sizing: border-box;
+  background-color: #252526;
+  color: #d4d4d4;
+  border: 1px solid #3c3c3c;
+  padding: 4px;
+}
+
+#memory-editor-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+#memory-editor-table th, #memory-editor-table td {
+  border: 1px solid #3c3c3c;
+  padding: 8px;
+  text-align: left;
+}
+
+#memory-editor-table th {
+  background-color: #2d2d2d;
+  color: #d4d4d4;
+}
+
+#memory-editor-table input, #memory-editor-table select {
+  width: 100%;
+  box-sizing: border-box;
+  background-color: #252526;
+  color: #d4d4d4;
+  border: 1px solid #3c3c3c;
+  padding: 4px;
+}
+
+#memory-editor-controls {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  margin-bottom: 10px;
+}
+
+#memory-add-controls {
+  display: flex;
+  align-items: center;
+}
+
+#memory-add-controls .group-label {
+  flex: 1;
+  text-align: center;
+  font-size: 16px;
+}
+
+#memory-add-fields {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  flex: 3;
+}
+
+#memory-add-fields input {
+  margin-right: 5px;
+  padding: 4px;
+  background-color: #252526;
+  color: #d4d4d4;
+  border: 1px solid #3c3c3c;
+}
+
+#memory-add-fields input#add-notes-input {
+  flex: 1 1 auto;
+}
+
+#memory-add-fields input#add-velocity-input,
+#memory-add-fields input#add-start-input,
+#memory-add-fields input#add-cc-number-input,
+#memory-add-fields input#add-cc-value-input,
+#memory-add-fields input#add-pc-input {
+  width: 60px;
+}
+
+#memory-add-fields input#add-duration-input {
+  width: 90px;
+}
+
+#add-entry-btn {
+  background-color: #444;
+  border: 1px solid #000;
+  color: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  margin-left: 10px;
+  white-space: nowrap;
+}
+
+#add-entry-btn:hover {
+  background-color: #555;
+}
+
+/* Styles for events in memory editor */
+.event-row.note-on {
+  background: linear-gradient(to right, #43a047, #388e3c);
+  color: #fff;
+}
+
+.event-row.note-off {
+  background: linear-gradient(to right, #e53935, #c62828);
+  color: #fff;
+}
+
+.event-row.control-change {
+  background: linear-gradient(to right, #1e88e5, #1565c0);
+  color: #fff;
+}
+
+.event-row.program-change {
+  background: linear-gradient(to right, #8e24aa, #6a1b9a);
+  color: #fff;
+}
+
+/* Adjust input fields in the event-params cell to display side by side */
+#memory-editor-table .event-params input,
+#memory-editor-table .event-params select {
+  display: inline-block;
+  width: auto;
+  margin-right: 5px;
+  vertical-align: middle;
+}
+
+/* Adjust the Parameters cell to prevent wrapping */
+#memory-editor-table .event-params {
+  white-space: nowrap;
+}
+
+.event-note {
+  font-family: 'Noto Music', monospace;
+}
