@@ -1625,6 +1625,26 @@ function populateMemoryEditor() {
   html += '</table>';
   memoryEditorContainer.innerHTML = html;
 
+  // Set default values for Start and Duration fields
+  const startInput = document.getElementById('add-start-input');
+  const durationInput = document.getElementById('add-duration-input');
+
+  if (events.length === 0) {
+    startInput.value = "0";
+  } else {
+    startInput.value = "last";
+  }
+  durationInput.value = "1";
+
+  // Add event listener for Enter key on 'memory-add-fields'
+  const memoryAddFields = document.getElementById('memory-add-fields');
+  memoryAddFields.addEventListener('keydown', function(event) {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      document.getElementById('add-entry-btn').click();
+    }
+  });
+
   // Event listeners for dynamic content
   const memoryNameInput = document.getElementById('memory-name-input');
   memoryNameInput.addEventListener('blur', updateMemoryFromEditor);
