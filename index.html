@@ -198,7 +198,24 @@
     </div>
     <div id="piano"></div>
     <div id="memory-editor-container" style="display: none;">
-      <!-- Memory editor content will go here -->
+      <div id="memory-editor-name">
+        <!-- Memory Name label and input will be populated dynamically -->
+      </div>
+      <div id="memory-editor-controls">
+        <div id="memory-add-controls">
+          <div class="group-label"><span>Events</span></div>
+          <div id="memory-add-fields">
+            <input type="text" id="add-notes-input" placeholder="Notes">
+            <input type="number" id="add-velocity-input" placeholder="Velocity" min="1" max="127">
+            <input type="number" id="add-start-input" placeholder="Start" step="0.001">
+            <input type="number" id="add-duration-input" placeholder="Duration" step="0.001">
+            <input type="number" id="add-cc-number-input" placeholder="CC#" min="0" max="127">
+            <input type="number" id="add-cc-value-input" placeholder="CCV" min="0" max="127">
+            <input type="number" id="add-pc-input" placeholder="PC">
+          </div>
+          <button id="add-entry-btn">Add</button>
+        </div>
+      </div>
     </div>
   </div>
 
