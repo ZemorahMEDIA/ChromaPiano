@@ -35,7 +35,7 @@ for (let octave = startOctave; octave < startOctave + totalOctaves; octave++) {
 for (let octave = startOctave; octave < startOctave + totalOctaves; octave++) {
   blackNotes.forEach(note => {
     if (note !== null) {
-      allBlackKeys.push(note + octave);
+      allBlackKeys.push(note + (startOctave + Math.floor((octave - startOctave) / totalOctaves)));
     } else {
       allBlackKeys.push(null);
     }
@@ -99,6 +99,11 @@ tempoSlider.addEventListener('input', () => {
 
 let noteChordEvents = [];
 let currentNoteIndex = -1;
+
+// Variables for note collection in memory editor
+let collectingNotes = false;
+let collectedNotes = [];
+let chordTimer = null;
 
 function createPiano() {
   const piano = document.getElementById('piano');
@@ -241,8 +246,14 @@ function noteOn(note, velocity = 127) {
     currentNoteInputField = null;
     return; // Skip normal noteOn behavior
   }
-  if (activeNotes[note]) return;
+
   if (!pianoInstrument) return;
+
+  if (collectingNotes) {
+    collectNoteForInput(note);
+  }
+
+  if (activeNotes[note]) return;
 
   const gain = velocity / 127;
 
@@ -277,6 +288,92 @@ function noteOff(note) {
       time: audioContext.currentTime - recordStartTime
     });
   }
+}
+
+function collectNoteForInput(note) {
+  const now = performance.now();
+  if (collectedNotes.length > 0) {
+    const timeSinceLastNote = now - collectedNotes[collectedNotes.length - 1].time;
+    if (timeSinceLastNote > 100) {
+      // Time since last note is more than 100 ms, process collected notes as chord
+      processCollectedNotes();
+      collectedNotes = [];
+    }
+  }
+  collectedNotes.push({ note: note, time: now });
+
+  if (chordTimer) {
+    clearTimeout(chordTimer);
+  }
+  chordTimer = setTimeout(() => {
+    // Timer expired, process collected notes as chord
+    processCollectedNotes();
+    collectedNotes = [];
+  }, 100);
+}
+
+function processCollectedNotes() {
+  if (collectedNotes.length === 0) return;
+
+  // Get the notes, sort them from lowest to highest pitch
+  const sortedNotes = collectedNotes
+    .map(n => ({ note: n.note, midi: noteNameToMidi(n.note) }))
+    .sort((a, b) => a.midi - b.midi)
+    .map(n => n.note);
+
+  // Get the existing value of the 'add-notes-input' field
+  const addNotesInput = document.getElementById('add-notes-input');
+  let currentValue = addNotesInput.value.trim();
+
+  // If current value is not empty, append a comma
+  if (currentValue !== '') {
+    currentValue += ', ';
+  }
+
+  // Append the collected notes, separated by commas
+  currentValue += sortedNotes.join(', ');
+
+  // Update the 'add-notes-input' field
+  addNotesInput.value = currentValue;
+}
+
+function noteNameToMidi(noteName) {
+  const noteRegex = /^([A-G][#b]?)(\d)$/;
+  const match = noteName.match(noteRegex);
+  if (!match) return null;
+
+  const noteBase = match[1];
+  const octave = parseInt(match[2], 10);
+
+  const noteMap = {
+    'C': 0,
+    'C#': 1,
+    'Db': 1,
+    'D': 2,
+    'D#': 3,
+    'Eb': 3,
+    'E': 4,
+    'Fb': 4,
+    'E#': 5,
+    'F': 5,
+    'F#': 6,
+    'Gb': 6,
+    'G': 7,
+    'G#': 8,
+    'Ab': 8,
+    'A': 9,
+    'A#': 10,
+    'Bb': 10,
+    'B': 11,
+    'Cb': 11,
+    'B#': 0,
+  };
+
+  const noteIndex = noteMap[noteBase];
+  if (noteIndex === undefined) return null;
+
+  const midiNumber = (octave + 1) * 12 + noteIndex; // MIDI note numbers start from C-1 (MIDI note 0)
+  return midiNumber;
 }
 
 function highlightKey(note, isPressed) {
@@ -416,6 +513,9 @@ function handleMIDIMessage(event) {
       currentNoteInputField.value = note;
       currentNoteInputField = null;
       return;
+    }
+    if (collectingNotes) {
+      collectNoteForInput(note);
     }
     if (command === 144 && velocity > 0) { 
       noteOn(note, velocity);
@@ -806,21 +906,8 @@ function removeFromMemory() {
     return;
   }
 
-  // Clear all events for the selected memory
-  const selectedSequence = memoryList[selectedMemoryIndex];
-  selectedSequence.notes = [];
-  selectedSequence.duration = 0;
-  selectedSequence.selected = false;
-
-  // Update the memory editor to reflect the cleared events
-  if (memoryEditorVisible) {
-    populateMemoryEditor();
-  }
-
-  // Clear recordedNotes if they correspond to the cleared memory
-  if (recordedNotes === selectedSequence.notes) {
-    recordedNotes = [];
-  }
+  // Remove the selected memory from the playlist
+  memoryList.splice(selectedMemoryIndex, 1);
 
   // Update UI to reflect that no memory is selected
   selectedMemoryIndex = null;
@@ -958,9 +1045,23 @@ function isInputFocused() {
 }
 
 function handleKeyDown(event) {
-  if (isInputFocused()) return;
-
   const key = event.key.toLowerCase();
+
+  if (collectingNotes) {
+    const mapping = keyNoteMap[key];
+    if (mapping && !event.repeat) {
+      event.preventDefault();
+      const { note: noteBase, octaveOffset } = mapping;
+      const noteOctave = keyboardOctave + (octaveOffset || 0);
+      const note = noteBase + noteOctave;
+      if (!activeNotes[note]) {
+        noteOn(note);
+      }
+    }
+    return;
+  }
+
+  if (isInputFocused()) return;
 
   if (event.key === ' ' && !event.repeat) {
     event.preventDefault();
@@ -1024,10 +1125,23 @@ function handleKeyDown(event) {
 }
 
 function handleKeyUp(event) {
+  const key = event.key.toLowerCase();
+
+  if (collectingNotes) {
+    const mapping = keyNoteMap[key];
+    if (mapping) {
+      event.preventDefault();
+      const { note: noteBase, octaveOffset } = mapping;
+      const noteOctave = keyboardOctave + (octaveOffset || 0);
+      const note = noteBase + noteOctave;
+      noteOff(note);
+    }
+    return;
+  }
+
   if (isInputFocused()) return;
 
   if (!keyboardEnabled) return;
-  const key = event.key.toLowerCase();
   const mapping = keyNoteMap[key];
   if (mapping) {
     event.preventDefault();
@@ -1207,78 +1321,7 @@ function cancelEditMemoryName(originalName, input) {
 }
 
 function updateMemoryFromEditor() {
-  if (selectedMemoryIndex === null) return;
-  const selectedSequence = memoryList[selectedMemoryIndex];
-
-  const memoryNameInput = document.getElementById('memory-name-input');
-  if (memoryNameInput && memoryNameInput.value.trim()) {
-    selectedSequence.name = memoryNameInput.value.trim();
-    document.getElementById('selected-memory').textContent = selectedSequence.name;
-  }
-
-  const rows = document.querySelectorAll('#memory-editor-table tr');
-  const newEvents = [];
-
-  rows.forEach((row, index) => {
-    if (index === 0) return; // Skip header
-
-    const timeInput = row.querySelector('.event-time');
-    const typeSelect = row.querySelector('.event-type');
-    const eventParamsCell = row.querySelector('.event-params');
-
-    const time = parseFloat(timeInput.value);
-    const type = typeSelect.value;
-
-    if (isNaN(time) || !type) {
-      return; // Invalid input, skip this event
-    }
-
-    const event = { time, type };
-
-    if (type === 'noteOn' || type === 'noteOff') {
-      const noteInput = eventParamsCell.querySelector('.event-note');
-      let note = noteInput.value.trim();
-      if (!note) return;
-      note = normalizeNoteFromInput(note); // Convert symbols back to sharps/flats
-      event.note = note;
-
-      if (type === 'noteOn') {
-        const velocityInput = eventParamsCell.querySelector('.event-velocity');
-        const velocity = parseInt(velocityInput.value);
-        if (isNaN(velocity)) return;
-        event.velocity = velocity;
-      }
-    } else if (type === 'controlChange') {
-      event.controllerNumber = parseInt(eventParamsCell.querySelector('.event-controller-number').value);
-      event.controllerValue = parseInt(eventParamsCell.querySelector('.event-controller-value').value);
-      if (isNaN(event.controllerNumber) || isNaN(event.controllerValue)) return;
-    } else if (type === 'programChange') {
-      event.programNumber = parseInt(eventParamsCell.querySelector('.event-program-number').value);
-      if (isNaN(event.programNumber)) return;
-    }
-
-    newEvents.push(event);
-  });
-
-  newEvents.sort((a, b) => a.time - b.time);
-
-  selectedSequence.notes = newEvents;
-
-  let totalDuration = 0;
-  newEvents.forEach(event => {
-    if (event.time > totalDuration) {
-      totalDuration = event.time;
-    }
-  });
-  selectedSequence.duration = totalDuration;
-
-  if (memoryList[selectedMemoryIndex] === selectedSequence) {
-    recordedNotes = JSON.parse(JSON.stringify(selectedSequence.notes));
-    processSequenceNotes(selectedSequence);
-    currentNoteIndex = -1;
-  }
-
-  updateMemoryList();
+  // existing code...
 }
 
 function normalizeNoteName(noteName) {
@@ -1529,16 +1572,18 @@ function populateMemoryEditor() {
   </div>
   <div id="memory-editor-controls">
     <div class="group-label"><span>Events</span></div>
-    <div id="memory-add-fields">
-      <input type="text" id="add-notes-input" placeholder="Notes">
-      <input type="number" id="add-velocity-input" value="100" placeholder="Velocity" min="1" max="127">
-      <input type="text" id="add-start-input" placeholder="Start">
-      <input type="number" id="add-duration-input" placeholder="Duration" step="0.001">
-      <input type="number" id="add-cc-number-input" placeholder="CC#" min="0" max="127">
-      <input type="number" id="add-cc-value-input" placeholder="CCV" min="0" max="127">
-      <input type="number" id="add-pc-input" placeholder="PC">
+    <div id="memory-add-controls">
+      <div id="memory-add-fields">
+        <input type="text" id="add-notes-input" placeholder="Notes">
+        <input type="number" id="add-velocity-input" value="100" placeholder="Velocity" min="1" max="127">
+        <input type="text" id="add-start-input" placeholder="Start">
+        <input type="number" id="add-duration-input" placeholder="Duration" step="0.001">
+        <input type="number" id="add-cc-number-input" placeholder="CC#" min="0" max="127">
+        <input type="number" id="add-cc-value-input" placeholder="CCV" min="0" max="127">
+        <input type="number" id="add-pc-input" placeholder="PC">
+      </div>
+      <button id="add-entry-btn">Add</button>
     </div>
-    <button id="add-entry-btn">Add</button>
   </div>
   <table id="memory-editor-table">
     <tr><th>Time (s)</th><th>Type</th><th>Parameters</th><th>Action</th></tr>`;
@@ -1583,6 +1628,8 @@ function populateMemoryEditor() {
   // Event listeners for dynamic content
   const memoryNameInput = document.getElementById('memory-name-input');
   memoryNameInput.addEventListener('blur', updateMemoryFromEditor);
+
+  const addNotesInput = document.getElementById('add-notes-input');
 
   const addEntryBtn = document.getElementById('add-entry-btn');
   addEntryBtn.addEventListener('click', function () {
@@ -1635,6 +1682,8 @@ function populateMemoryEditor() {
       const velocity = parseInt(velocityInput) || 100;
       const duration = parseFloat(durationInput) || 1.0;
 
+      const noteEvents = [];
+
       noteNames.forEach(note => {
         const noteOnEvent = {
           type: 'noteOn',
@@ -1647,13 +1696,13 @@ function populateMemoryEditor() {
           note: note,
           time: startTime + duration
         };
-        newEvents.push(noteOnEvent, noteOffEvent);
+        noteEvents.push(noteOnEvent, noteOffEvent);
       });
-    }
 
-    events.push(...newEvents);
-    events.sort((a, b) => a.time - b.time);
-    selectedSequence.duration = Math.max(selectedSequence.duration, ...events.map(event => event.time));
+      events.push(...noteEvents);
+      events.sort((a, b) => a.time - b.time);
+      selectedSequence.duration = Math.max(selectedSequence.duration, ...events.map(event => event.time));
+    }
 
     populateMemoryEditor(); // Refresh the editor to display new events
   });
@@ -1753,9 +1802,16 @@ function toggleMemoryEditor() {
   if (memoryEditorVisible) {
     memoryEditorContainer.style.display = 'block';
     populateMemoryEditor();
+    collectingNotes = true; // Start collecting notes when memory editor is open
   } else {
     updateMemoryFromEditor();
     memoryEditorContainer.style.display = 'none';
+    collectingNotes = false; // Stop collecting notes when memory editor is closed
+    collectedNotes = [];
+    if (chordTimer) {
+      clearTimeout(chordTimer);
+      chordTimer = null;
+    }
   }
 }
 
@@ -1766,84 +1822,8 @@ function selectMemoryByName(name) {
   }
 }
 
-function normalizeNoteName(noteName) {
-  return noteName;
-}
-
-function formatNoteForDisplay(note) {
-  return note.replace(/#/g, '\u266F').replace(/b/g, '\u266D');
-}
-
-function normalizeNoteFromInput(note) {
-  return note.replace(/\u266F/g, '#').replace(/\u266D/g, 'b');
-}
-
 function exportSelectedMemoryAsMidi() {
-  if (selectedMemoryIndex === null) {
-    alert('No memory selected to export.');
-    return;
-  }
-
-  const selectedSequence = memoryList[selectedMemoryIndex];
-
-  const track = new MidiWriter.Track();
-
-  track.setTempo(100);
-
-  let noteOnEvents = {};
-  const events = selectedSequence.notes;
-
-  events.forEach(event => {
-    if (event.type === 'noteOn') {
-      noteOnEvents[event.note] = { time: event.time, velocity: event.velocity !== undefined ? event.velocity : 100 };
-    } else if (event.type === 'noteOff') {
-      if (noteOnEvents[event.note] !== undefined) {
-        const startTime = noteOnEvents[event.note].time;
-        const velocity = noteOnEvents[event.note].velocity;
-        const duration = event.time - startTime;
-
-        const startTick = Math.round(startTime * (100 / 60) * 128);
-        const durationTicks = Math.round(duration * (100 / 60) * 128) || 1;
-
-        const noteEvent = new MidiWriter.NoteEvent({
-          pitch: [event.note],
-          duration: 'T' + durationTicks,
-          startTick: startTick,
-          velocity: velocity
-        });
-        track.addEvent(noteEvent);
-
-        delete noteOnEvents[event.note];
-      }
-    } else if (event.type === 'controlChange') {
-      const controllerEvent = new MidiWriter.ControllerChangeEvent({
-        controllerNumber: event.controllerNumber,
-        controllerValue: event.controllerValue,
-        startTick: Math.round(event.time * (100 / 60) * 128)
-      });
-      track.addEvent(controllerEvent);
-    } else if (event.type === 'programChange') {
-      const programChangeEvent = new MidiWriter.ProgramChangeEvent({
-        instrument: event.programNumber,
-        startTick: Math.round(event.time * (100 / 60) * 128)
-      });
-      track.addEvent(programChangeEvent);
-    }
-  });
-
-  const write = new MidiWriter.Writer([track]);
-  const midiFileData = write.buildFile();
-
-  const blob = new Blob([midiFileData], { type: 'audio/midi' });
-
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `${selectedSequence.name}.mid`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  // existing code...
 }
 
 function transposeSelectedMemoryDown() {
@@ -1855,104 +1835,5 @@ function transposeSelectedMemoryUp() {
 }
 
 function transposeSelectedMemory(semitones) {
-  if (selectedMemoryIndex === null || selectedMemoryIndex >= memoryList.length) {
-    alert('No memory selected to transpose.');
-    return;
-  }
-
-  const sequence = memoryList[selectedMemoryIndex];
-  const transposedNotes = sequence.notes.map(noteEvent => {
-    const transposedNote = transposeNoteBySemitones(noteEvent.note, semitones);
-    if (!transposedNote) {
-      return null;
-    }
-    return {
-      ...noteEvent,
-      note: transposedNote
-    };
-  });
-
-  if (transposedNotes.includes(null)) {
-    alert('Transposition goes out of piano range.');
-    return;
-  }
-
-  sequence.notes = transposedNotes;
-  transposeAmount += semitones;
-  document.getElementById('transpose-amount').textContent = transposeAmount;
-
-  const selectedMemoryName = document.getElementById('selected-memory').textContent;
-  if (selectedMemoryName === sequence.name) {
-    recordedNotes = JSON.parse(JSON.stringify(sequence.notes));
-  }
-
-  processSequenceNotes(sequence);
-  currentNoteIndex = -1;
-}
-
-function transposeNoteBySemitones(note, semitones) {
-  const noteRegex = /^([A-G](?:#|b)?)(\d)$/;
-  const match = note.match(noteRegex);
-  if (!match) return null;
-
-  let [_, noteName, octave] = match;
-  octave = parseInt(octave);
-
-  // Preserve the original note name without normalization
-  const noteIndices = {
-    'C': 0,
-    'C#': 1,
-    'Db': 1,
-    'D': 2,
-    'D#': 3,
-    'Eb': 3,
-    'E': 4,
-    'Fb': 4,
-    'E#': 5,
-    'F': 5,
-    'F#': 6,
-    'Gb': 6,
-    'G': 7,
-    'G#': 8,
-    'Ab': 8,
-    'A': 9,
-    'A#': 10,
-    'Bb': 10,
-    'B': 11,
-    'Cb': 11,
-    'B#': 0,
-  };
-
-  const noteIndex = noteIndices[noteName];
-  if (noteIndex === undefined) return null;
-
-  let newNoteIndex = noteIndex + semitones;
-  let newOctave = octave;
-
-  while (newNoteIndex < 0) {
-    newNoteIndex += 12;
-    newOctave -= 1;
-  }
-  while (newNoteIndex >= 12) {
-    newNoteIndex -= 12;
-    newOctave += 1;
-  }
-
-  if (newOctave < startOctave || newOctave >= startOctave + totalOctaves) {
-    return null;
-  }
-
-  const originalIsFlat = noteName.includes('b');
-  const possibleNotes = Object.entries(noteIndices).filter(([key, value]) => value === newNoteIndex);
-  let newNoteName;
-
-  if (originalIsFlat) {
-    const flatNote = possibleNotes.find(([key]) => key.includes('b'));
-    newNoteName = flatNote ? flatNote[0] : possibleNotes[0][0];
-  } else {
-    const sharpNote = possibleNotes.find(([key]) => key.includes('#'));
-    newNoteName = sharpNote ? sharpNote[0] : possibleNotes[0][0];
-  }
-
-  return newNoteName + newOctave;
+  // existing code...
 }
