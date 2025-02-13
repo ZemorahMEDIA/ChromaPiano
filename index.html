@@ -181,7 +181,7 @@
               <!-- Display the current tempo -->
               <div id="tempo-value">100%</div>
               <!-- Slider input for tempo -->
-              <input type="range" id="tempo-slider" min="25" max="200" step="25" value="100">
+              <input type="range" id="tempo-slider" min="10" max="400" step="10" value="100">
             </div>
           </div>
         </div>
@@ -196,7 +196,32 @@
         </div>
       </div>
     </div>
+    <!-- Midi Channel Section -->
+    <div id="midi-channel-section" class="control-group">
+      <div class="group-label"><span>Midi Channel</span></div>
+      <div class="group-buttons">
+        <button data-channel="Omni" class="channel-button pressed">All</button>
+        <button data-channel="1" class="channel-button">1</button>
+        <button data-channel="2" class="channel-button">2</button>
+        <button data-channel="3" class="channel-button">3</button>
+        <button data-channel="4" class="channel-button">4</button>
+        <button data-channel="5" class="channel-button">5</button>
+        <button data-channel="6" class="channel-button">6</button>
+        <button data-channel="7" class="channel-button">7</button>
+        <button data-channel="8" class="channel-button">8</button>
+        <button data-channel="9" class="channel-button">9</button>
+        <button data-channel="10" class="channel-button">10</button>
+        <button data-channel="11" class="channel-button">11</button>
+        <button data-channel="12" class="channel-button">12</button>
+        <button data-channel="13" class="channel-button">13</button>
+        <button data-channel="14" class="channel-button">14</button>
+        <button data-channel="15" class="channel-button">15</button>
+        <button data-channel="16" class="channel-button">16</button>
+      </div>
+    </div>
+
     <div id="piano"></div>
+    <!-- Memory Editor Container -->
     <div id="memory-editor-container" style="display: none;">
       <div id="memory-editor-name">
         <!-- Memory Name label and input will be populated dynamically -->
@@ -206,9 +231,28 @@
           <div class="group-label"><span>Events</span></div>
           <div id="memory-add-fields">
             <input type="text" id="add-notes-input" placeholder="Notes">
-            <input type="number" id="add-velocity-input" placeholder="Velocity" min="1" max="127">
-            <input type="number" id="add-start-input" placeholder="Start" step="0.001">
+            <input type="number" id="add-velocity-input" value="100" placeholder="Velocity" min="1" max="127">
+            <input type="text" id="add-start-input" placeholder="Start">
             <input type="number" id="add-duration-input" placeholder="Duration" step="0.001">
+            <select id="add-channel-select">
+              <option value="Omni">Omni</option>
+              <option value="1">1</option>
+              <option value="2">2</option>
+              <option value="3">3</option>
+              <option value="4">4</option>
+              <option value="5">5</option>
+              <option value="6">6</option>
+              <option value="7">7</option>
+              <option value="8">8</option>
+              <option value="9">9</option>
+              <option value="10">10</option>
+              <option value="11">11</option>
+              <option value="12">12</option>
+              <option value="13">13</option>
+              <option value="14">14</option>
+              <option value="15">15</option>
+              <option value="16">16</option>
+            </select>
             <input type="number" id="add-cc-number-input" placeholder="CC#" min="0" max="127">
             <input type="number" id="add-cc-value-input" placeholder="CCV" min="0" max="127">
             <input type="number" id="add-pc-input" placeholder="PC">
@@ -217,6 +261,7 @@
         </div>
       </div>
     </div>
+
   </div>
 
   <div id="editor-container">
