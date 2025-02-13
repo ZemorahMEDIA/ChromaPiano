@@ -100,6 +100,8 @@ tempoSlider.addEventListener('input', () => {
 let noteChordEvents = [];
 let currentNoteIndex = -1;
 
+let selectedMidiChannel = 'Omni'; // Default MIDI channel is 'Omni'
+
 function createPiano() {
   const piano = document.getElementById('piano');
   piano.innerHTML = '';
@@ -127,8 +129,8 @@ function createPiano() {
   pianoKeys = document.querySelectorAll('.key');
   pianoKeys.forEach(key => {
     key.addEventListener('mousedown', () => noteOn(key.dataset.note, 127, true));
-    key.addEventListener('mouseup', () => noteOff(key.dataset.note));
-    key.addEventListener('mouseleave', () => noteOff(key.dataset.note));
+    key.addEventListener('mouseup', () => noteOff(key.dataset.note, true));
+    key.addEventListener('mouseleave', () => noteOff(key.dataset.note, true));
 
     key.addEventListener('touchstart', (e) => {
       e.preventDefault();
@@ -136,11 +138,11 @@ function createPiano() {
     });
     key.addEventListener('touchend', (e) => {
       e.preventDefault();
-      noteOff(key.dataset.note);
+      noteOff(key.dataset.note, true);
     });
     key.addEventListener('touchcancel', (e) => {
       e.preventDefault();
-      noteOff(key.dataset.note);
+      noteOff(key.dataset.note, true);
     });
   });
 
@@ -272,28 +274,30 @@ function noteOn(note, velocity = 127, isUserInteraction = false) {
   activeNotes[note] = playedNote;
   highlightKey(note, true);
 
-  if (isRecording) {
+  if (isRecording && isUserInteraction) {
     recordedNotes.push({
       type: 'noteOn',
       note: note,
       velocity: velocity,
-      time: audioContext.currentTime - recordStartTime
+      time: audioContext.currentTime - recordStartTime,
+      channel: selectedMidiChannel
     });
   }
 }
 
-function noteOff(note) {
+function noteOff(note, isUserInteraction = false) {
   if (!activeNotes[note]) return;
 
   activeNotes[note].stop();
   delete activeNotes[note];
   highlightKey(note, false);
 
-  if (isRecording) {
+  if (isRecording && isUserInteraction) {
     recordedNotes.push({
       type: 'noteOff',
       note: note,
-      time: audioContext.currentTime - recordStartTime
+      time: audioContext.currentTime - recordStartTime,
+      channel: selectedMidiChannel
     });
   }
 }
@@ -356,6 +360,20 @@ function onMIDIFailure(error) {
 function updateMIDIPortStatus(event) {
   updateDeviceList();
 
+  if (event.port.state === 'connected' && event.port.type === 'input') {
+    // Automatically select the new MIDI device when connected
+    selectMidiDevice(event.port.id);
+    updateMIDIStatus('MIDI controller connected: ' + event.port.name, 'green');
+  } else if (event.port.state === 'disconnected' && event.port.type === 'input') {
+    // If the selected device has been disconnected, reset selectedMidiInput
+    if (selectedMidiInput && selectedMidiInput.id === event.port.id) {
+      selectedMidiInput = null;
+      document.getElementById('selected-device').textContent = 'No Device Selected';
+      updateMIDIStatus('No MIDI controller connected.', 'orange');
+    }
+    updateDeviceList();
+  }
+
   if (midiAccessObject.inputs.size > 0) {
     updateMIDIStatus('MIDI controllers available.', 'green');
   } else {
@@ -364,14 +382,14 @@ function updateMIDIPortStatus(event) {
 }
 
 function updateDeviceList() {
-  const deviceListContainer = document.getElementById('device-list');
-  deviceListContainer.innerHTML = '';
+  const deviceList = document.getElementById('device-list');
+  deviceList.innerHTML = '';
 
   midiAccessObject.inputs.forEach((input) => {
     const li = document.createElement('li');
     li.dataset.id = input.id;
     li.textContent = input.name;
-    deviceListContainer.appendChild(li);
+    deviceList.appendChild(li);
   });
 
   if (!selectedMidiInput || !midiAccessObject.inputs.has(selectedMidiInput.id)) {
@@ -428,7 +446,10 @@ function toggleDeviceList() {
 function handleMIDIMessage(event) {
   if (event.currentTarget !== selectedMidiInput) return;
 
-  const [command, noteNumber, velocity] = event.data;
+  const [statusByte, noteNumber, velocity] = event.data;
+  const command = statusByte & 0xF0;
+  const channel = (statusByte & 0x0F) + 1; // MIDI channels are 1-16
+
   const note = midiNoteToName(noteNumber);
   if (note) {
     if (currentNoteInputField) {
@@ -438,7 +459,7 @@ function handleMIDIMessage(event) {
     }
 
     if (command === 144 && velocity > 0) { 
-      noteOn(note, velocity);
+      noteOn(note, velocity, true);
 
       // Add note to Notes field in the memory editor if it's open
       const memoryEditorContainer = document.getElementById('memory-editor-container');
@@ -455,7 +476,7 @@ function handleMIDIMessage(event) {
       }
 
     } else if (command === 128 || (command === 144 && velocity === 0)) { 
-      noteOff(note);
+      noteOff(note, true);
     }
   }
 }
@@ -535,30 +556,14 @@ function startRecording() {
   document.getElementById('save-btn').disabled = true;
   document.getElementById('stop-btn').disabled = false; 
 
-  const selectedMemories = memoryList.filter(sequence => sequence.selected);
-  if (selectedMemories.length > 0) {
-    let totalOffsetTime = 0;
-    const combinedNotes = [];
-    selectedMemories.forEach(sequence => {
-      sequence.notes.forEach(noteEvent => {
-        combinedNotes.push({
-          type: noteEvent.type,
-          note: noteEvent.note,
-          time: noteEvent.time + totalOffsetTime
-        });
-      });
-      if (sequence.notes.length > 0) {
-        const sequenceDuration = sequence.duration;
-        totalOffsetTime += sequenceDuration + 1;
-      }
-    });
+  // Check if a memory is selected
+  if (selectedMemoryIndex !== null) {
+    const sequence = memoryList[selectedMemoryIndex];
 
-    const scaledNotes = combinedNotes.map(noteEvent => ({
-      ...noteEvent,
-      time: noteEvent.time
-    }));
+    // Play back existing recordings on other channels during recording
+    const otherChannelNotes = sequence.notes.filter(noteEvent => noteEvent.channel !== selectedMidiChannel);
 
-    playNotesDuringRecording(scaledNotes);
+    playNotesDuringRecording(otherChannelNotes);
   }
 }
 
@@ -586,7 +591,8 @@ function playNotesDuringRecording(events) {
           type: noteEvent.type,
           note: noteEvent.note,
           velocity: noteEvent.velocity !== undefined ? noteEvent.velocity : 100,
-          time: audioContext.currentTime - recordStartTime
+          time: audioContext.currentTime - recordStartTime,
+          channel: noteEvent.channel
         });
       }
       eventIndex++;
@@ -615,9 +621,37 @@ function stopAction() {
         recordedNotes.push({
           type: 'noteOff',
           note: note,
-          time: audioContext.currentTime - recordStartTime
+          time: audioContext.currentTime - recordStartTime,
+          channel: selectedMidiChannel
         });
       }
+    }
+
+    // If a memory is selected, merge the recordedNotes into it
+    if (selectedMemoryIndex !== null) {
+      const sequence = memoryList[selectedMemoryIndex];
+
+      // Remove existing notes on the selected channel
+      sequence.notes = sequence.notes.filter(noteEvent => noteEvent.channel !== selectedMidiChannel);
+
+      // Add the recorded notes to the sequence
+      sequence.notes = sequence.notes.concat(recordedNotes);
+
+      // Recalculate duration
+      let totalDuration = 0;
+      sequence.notes.forEach(noteEvent => {
+        if (noteEvent.time > totalDuration) {
+          totalDuration = noteEvent.time;
+        }
+      });
+      sequence.duration = totalDuration;
+
+      // Update recordedNotes with sequence's notes
+      recordedNotes = JSON.parse(JSON.stringify(sequence.notes));
+
+      processSequenceNotes(sequence);
+      updateMemoryList();
+      currentNoteIndex = -1;
     }
   }
   if (isPlaying) {
@@ -668,10 +702,12 @@ function playSelectedMemories(sequencesToPlay, playbackPercentage) {
     playbackTimers.push(displayTimer);
 
     sequence.notes.forEach(noteEvent => {
-      scheduledEvents.push({
-        ...noteEvent,
-        time: (noteEvent.time * timeScale + sequenceStartTime)
-      });
+      if (selectedMidiChannel === 'Omni' || noteEvent.channel === selectedMidiChannel) {
+        scheduledEvents.push({
+          ...noteEvent,
+          time: (noteEvent.time * timeScale + sequenceStartTime)
+        });
+      }
     });
 
     if (sequence.notes.length > 0) {
@@ -1053,7 +1089,7 @@ function handleKeyDown(event) {
     const noteOctave = keyboardOctave + (octaveOffset || 0);
     const note = noteBase + noteOctave;
     if (!activeNotes[note]) {
-      noteOn(note);
+      noteOn(note, 127, true);
     }
   }
 }
@@ -1069,7 +1105,7 @@ function handleKeyUp(event) {
     const { note: noteBase, octaveOffset } = mapping;
     const noteOctave = keyboardOctave + (octaveOffset || 0);
     const note = noteBase + noteOctave;
-    noteOff(note);
+    noteOff(note, true);
   }
 }
 
@@ -1239,93 +1275,6 @@ function cancelEditMemoryName(originalName, input) {
   if (input.parentNode) {
     input.parentNode.replaceChild(selectedMemoryDisplay, input);
   }
-}
-
-function updateMemoryFromEditor() {
-  if (selectedMemoryIndex === null) return;
-  const selectedSequence = memoryList[selectedMemoryIndex];
-
-  const memoryNameInput = document.getElementById('memory-name-input');
-  if (memoryNameInput && memoryNameInput.value.trim()) {
-    selectedSequence.name = memoryNameInput.value.trim();
-    document.getElementById('selected-memory').textContent = selectedSequence.name;
-  }
-
-  const rows = document.querySelectorAll('#memory-editor-table tr');
-  const newEvents = [];
-
-  rows.forEach((row, index) => {
-    if (index === 0) return; // Skip header
-
-    const timeInput = row.querySelector('.event-time');
-    const typeSelect = row.querySelector('.event-type');
-    const eventParamsCell = row.querySelector('.event-params');
-
-    const time = parseFloat(timeInput.value);
-    const type = typeSelect.value;
-
-    if (isNaN(time) || !type) {
-      return; // Invalid input, skip this event
-    }
-
-    const event = { time, type };
-
-    if (type === 'noteOn' || type === 'noteOff') {
-      const noteInput = eventParamsCell.querySelector('.event-note');
-      let note = noteInput.value.trim();
-      if (!note) return;
-      note = normalizeNoteFromInput(note); // Convert symbols back to sharps/flats
-      event.note = note;
-
-      if (type === 'noteOn') {
-        const velocityInput = eventParamsCell.querySelector('.event-velocity');
-        const velocity = parseInt(velocityInput.value);
-        if (isNaN(velocity)) return;
-        event.velocity = velocity;
-      }
-    } else if (type === 'controlChange') {
-      event.controllerNumber = parseInt(eventParamsCell.querySelector('.event-controller-number').value);
-      event.controllerValue = parseInt(eventParamsCell.querySelector('.event-controller-value').value);
-      if (isNaN(event.controllerNumber) || isNaN(event.controllerValue)) return;
-    } else if (type === 'programChange') {
-      event.programNumber = parseInt(eventParamsCell.querySelector('.event-program-number').value);
-      if (isNaN(event.programNumber)) return;
-    }
-
-    newEvents.push(event);
-  });
-
-  newEvents.sort((a, b) => a.time - b.time);
-
-  selectedSequence.notes = newEvents;
-
-  let totalDuration = 0;
-  newEvents.forEach(event => {
-    if (event.time > totalDuration) {
-      totalDuration = event.time;
-    }
-  });
-  selectedSequence.duration = totalDuration;
-
-  if (memoryList[selectedMemoryIndex] === selectedSequence) {
-    recordedNotes = JSON.parse(JSON.stringify(selectedSequence.notes));
-    processSequenceNotes(selectedSequence);
-    currentNoteIndex = -1;
-  }
-
-  updateMemoryList();
-}
-
-function normalizeNoteName(noteName) {
-  return noteName;
-}
-
-function formatNoteForDisplay(note) {
-  return note.replace(/#/g, '\u266F').replace(/b/g, '\u266D');
-}
-
-function normalizeNoteFromInput(note) {
-  return note.replace(/\u266F/g, '#').replace(/\u266D/g, 'b');
 }
 
 function updateEditorAssociationButton() {
@@ -1544,7 +1493,79 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   document.getElementById('transpose-amount').textContent = transposeAmount;
+
+  // Initialize Midi Channel Buttons
+  const channelButtons = document.querySelectorAll('.channel-button');
+  channelButtons.forEach(button => {
+    button.addEventListener('click', () => {
+      selectedMidiChannel = button.getAttribute('data-channel');
+
+      // Update button styles
+      channelButtons.forEach(btn => btn.classList.remove('pressed'));
+      button.classList.add('pressed');
+    });
+  });
 });
+
+function updateMemoryFromEditor() {
+  if (selectedMemoryIndex === null) return;
+
+  const selectedSequence = memoryList[selectedMemoryIndex];
+  const memoryEditorContainer = document.getElementById('memory-editor-container');
+
+  const memoryNameInput = document.getElementById('memory-name-input');
+  selectedSequence.name = memoryNameInput.value;
+
+  const events = [];
+  const tableRows = memoryEditorContainer.querySelectorAll('#memory-editor-table tr');
+  // Skip the header row
+  for (let i = 1; i < tableRows.length; i++) {
+    const row = tableRows[i];
+    const timeInput = row.querySelector('.event-time');
+    const eventTypeSelect = row.querySelector('.event-type');
+    const eventParamsCell = row.querySelector('.event-params');
+    const channelSelect = row.querySelector('.event-channel');
+
+    const event = {
+      time: parseFloat(timeInput.value),
+      type: eventTypeSelect.value,
+      channel: channelSelect.value,
+    };
+
+    if (event.type === 'noteOn' || event.type === 'noteOff') {
+      const noteInput = eventParamsCell.querySelector('.event-note');
+      event.note = normalizeNoteFromInput(noteInput.value);
+      if (event.type === 'noteOn') {
+        const velocityInput = eventParamsCell.querySelector('.event-velocity');
+        event.velocity = parseInt(velocityInput.value) || 100;
+      }
+    } else if (event.type === 'controlChange') {
+      const ccNumberInput = eventParamsCell.querySelector('.event-controller-number');
+      const ccValueInput = eventParamsCell.querySelector('.event-controller-value');
+      event.controllerNumber = parseInt(ccNumberInput.value);
+      event.controllerValue = parseInt(ccValueInput.value);
+    } else if (event.type === 'programChange') {
+      const programNumberInput = eventParamsCell.querySelector('.event-program-number');
+      event.programNumber = parseInt(programNumberInput.value);
+    }
+
+    events.push(event);
+  }
+
+  events.sort((a, b) => a.time - b.time);
+  selectedSequence.notes = events;
+
+  // Recalculate duration
+  let totalDuration = 0;
+  selectedSequence.notes.forEach(noteEvent => {
+    if (noteEvent.time > totalDuration) {
+      totalDuration = noteEvent.time;
+    }
+  });
+  selectedSequence.duration = totalDuration;
+
+  updateMemoryList();
+}
 
 function populateMemoryEditor() {
   const memoryEditorContainer = document.getElementById('memory-editor-container');
@@ -1569,6 +1590,25 @@ function populateMemoryEditor() {
       <input type="number" id="add-velocity-input" value="100" placeholder="Velocity" min="1" max="127">
       <input type="text" id="add-start-input" placeholder="Start">
       <input type="number" id="add-duration-input" placeholder="Duration" step="0.001">
+      <select id="add-channel-select">
+        <option value="Omni">Omni</option>
+        <option value="1">1</option>
+        <option value="2">2</option>
+        <option value="3">3</option>
+        <option value="4">4</option>
+        <option value="5">5</option>
+        <option value="6">6</option>
+        <option value="7">7</option>
+        <option value="8">8</option>
+        <option value="9">9</option>
+        <option value="10">10</option>
+        <option value="11">11</option>
+        <option value="12">12</option>
+        <option value="13">13</option>
+        <option value="14">14</option>
+        <option value="15">15</option>
+        <option value="16">16</option>
+      </select>
       <input type="number" id="add-cc-number-input" placeholder="CC#" min="0" max="127">
       <input type="number" id="add-cc-value-input" placeholder="CCV" min="0" max="127">
       <input type="number" id="add-pc-input" placeholder="PC">
@@ -1607,7 +1647,26 @@ function populateMemoryEditor() {
       html += `Program Number: <input type="number" class="event-program-number" value="${event.programNumber}" min="0" max="127">`;
     }
 
-    html += `</td>
+    html += `Channel: <select class="event-channel">
+      <option value="Omni"${event.channel === 'Omni' ? ' selected' : ''}>Omni</option>
+      <option value="1"${event.channel === '1' ? ' selected' : ''}>1</option>
+      <option value="2"${event.channel === '2' ? ' selected' : ''}>2</option>
+      <option value="3"${event.channel === '3' ? ' selected' : ''}>3</option>
+      <option value="4"${event.channel === '4' ? ' selected' : ''}>4</option>
+      <option value="5"${event.channel === '5' ? ' selected' : ''}>5</option>
+      <option value="6"${event.channel === '6' ? ' selected' : ''}>6</option>
+      <option value="7"${event.channel === '7' ? ' selected' : ''}>7</option>
+      <option value="8"${event.channel === '8' ? ' selected' : ''}>8</option>
+      <option value="9"${event.channel === '9' ? ' selected' : ''}>9</option>
+      <option value="10"${event.channel === '10' ? ' selected' : ''}>10</option>
+      <option value="11"${event.channel === '11' ? ' selected' : ''}>11</option>
+      <option value="12"${event.channel === '12' ? ' selected' : ''}>12</option>
+      <option value="13"${event.channel === '13' ? ' selected' : ''}>13</option>
+      <option value="14"${event.channel === '14' ? ' selected' : ''}>14</option>
+      <option value="15"${event.channel === '15' ? ' selected' : ''}>15</option>
+      <option value="16"${event.channel === '16' ? ' selected' : ''}>16</option>
+    </select>
+    </td>
       <td><button class="delete-entry-btn">X</button></td>
     </tr>`;
   });
@@ -1628,6 +1687,8 @@ function populateMemoryEditor() {
     const ccNumberInput = document.getElementById('add-cc-number-input').value;
     const ccValueInput = document.getElementById('add-cc-value-input').value;
     const pcInput = document.getElementById('add-pc-input').value;
+    const channelSelect = document.getElementById('add-channel-select');
+    const channelValue = channelSelect.value;
 
     let startTime;
     if (startInput.trim().toLowerCase() === 'last') {
@@ -1651,7 +1712,8 @@ function populateMemoryEditor() {
         type: 'controlChange',
         time: startTime,
         controllerNumber: parseInt(ccNumberInput),
-        controllerValue: parseInt(ccValueInput)
+        controllerValue: parseInt(ccValueInput),
+        channel: channelValue
       };
       newEvents.push(ccEvent);
     }
@@ -1660,7 +1722,8 @@ function populateMemoryEditor() {
       const pcEvent = {
         type: 'programChange',
         time: startTime,
-        programNumber: parseInt(pcInput)
+        programNumber: parseInt(pcInput),
+        channel: channelValue
       };
       newEvents.push(pcEvent);
     }
@@ -1675,12 +1738,14 @@ function populateMemoryEditor() {
           type: 'noteOn',
           note: note,
           velocity: velocity,
-          time: startTime
+          time: startTime,
+          channel: channelValue
         };
         const noteOffEvent = {
           type: 'noteOff',
           note: note,
-          time: startTime + duration
+          time: startTime + duration,
+          channel: channelValue
         };
         newEvents.push(noteOnEvent, noteOffEvent);
       });
@@ -1727,6 +1792,13 @@ function populateMemoryEditor() {
       if (currentNoteInputField === noteInput) {
         currentNoteInputField = null;
       }
+    });
+  });
+
+  const eventChannelSelects = memoryEditorContainer.querySelectorAll('.event-channel');
+  eventChannelSelects.forEach(select => {
+    select.addEventListener('change', function () {
+      // No immediate action needed; channel value will be read during update
     });
   });
 }
