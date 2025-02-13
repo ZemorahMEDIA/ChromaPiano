@@ -108,6 +108,44 @@ body {
   height: 18px;
 }
 
+#midi-channel-section {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin: 10px 0;
+}
+
+#midi-channel-section .group-label {
+  margin-right: 10px;
+}
+
+#midi-channel-section .group-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+#midi-channel-section .group-buttons button {
+  margin: 2px;
+  padding: 4px 8px;
+  min-width: 30px;
+  background-color: #444;
+  border: 1px solid #000;
+  box-shadow: inset -1.2px -1.2px 3px rgba(0, 0, 0, 0.7), inset 1.2px 1.2px 3px rgba(255, 255, 255, 0.1);
+  color: white;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+#midi-channel-section .group-buttons button:hover {
+  background-color: #555;
+}
+
+#midi-channel-section .group-buttons button.pressed {
+  box-shadow: inset 1.2px 1.2px 3px rgba(0, 0, 0, 0.7), inset -1.2px -1.2px 3px rgba(255, 255, 255, 0.1);
+  background-color: #333;
+}
+
 #lcd-displays {
   display: flex;
   justify-content: center;
@@ -261,6 +299,7 @@ body {
   border: 1px solid #aaa;
   box-shadow: 0 0 10px 2px red;
   animation: rainbowGlow 5s linear infinite;
+  margin-top: -4px; /* Adjust to vertically center the slider thumb */
 }
 
 @keyframes rainbowGlow {
@@ -650,7 +689,8 @@ body {
   border-collapse: collapse;
 }
 
-#memory-editor-table th, #memory-editor-table td {
+#memory-editor-table th,
+#memory-editor-table td {
   border: 1px solid #3c3c3c;
   padding: 8px;
   text-align: left;
@@ -661,7 +701,8 @@ body {
   color: #d4d4d4;
 }
 
-#memory-editor-table input, #memory-editor-table select {
+#memory-editor-table input,
+#memory-editor-table select {
   width: 100%;
   box-sizing: border-box;
   background-color: #252526;
@@ -686,6 +727,7 @@ body {
   flex: 1;
   text-align: center;
   font-size: 16px;
+  color: white;
 }
 
 #memory-add-fields {
@@ -696,6 +738,14 @@ body {
 }
 
 #memory-add-fields input {
+  margin-right: 5px;
+  padding: 4px;
+  background-color: #252526;
+  color: #d4d4d4;
+  border: 1px solid #3c3c3c;
+}
+
+#memory-add-fields select {
   margin-right: 5px;
   padding: 4px;
   background-color: #252526;
