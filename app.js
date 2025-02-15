@@ -101,7 +101,7 @@ tempoSlider.addEventListener('input', () => {
 let noteChordEvents = [];
 let currentNoteIndex = -1;
 
-let selectedMidiChannel = 'Omni'; // Default MIDI channel is 'Omni'
+let selectedMidiChannels = ['Omni']; // Default selected channels
 
 function createPiano() {
   const piano = document.getElementById('piano');
@@ -210,7 +210,6 @@ function getPlayableNoteName(note) {
       const noteBase = noteMatch[1];
       let octave = parseInt(noteMatch[2], 10);
       if (noteBase === 'Cb') {
-        // Cb is B of previous octave
         octave -= 1;
       }
       const sharpNoteBase = flatToSharpMap[noteBase];
@@ -228,7 +227,6 @@ function getPlayableNoteName(note) {
       const noteBase = noteMatch[1];
       let octave = parseInt(noteMatch[2], 10);
       if (noteBase === 'B#') {
-        // B# is C of next octave
         octave += 1;
       }
       const naturalNoteBase = sharpToNaturalMap[noteBase];
@@ -244,11 +242,10 @@ function noteOn(note, velocity = 127, isUserInteraction = false, fingering = nul
   if (currentNoteInputField) {
     currentNoteInputField.value = note;
     currentNoteInputField = null;
-    return; // Skip normal noteOn behavior
+    return;
   }
 
   if (isUserInteraction) {
-    // Add note to Notes field in the memory editor if it's open
     const memoryEditorContainer = document.getElementById('memory-editor-container');
     if (memoryEditorContainer && memoryEditorContainer.style.display !== 'none') {
       const notesInput = document.getElementById('add-notes-input');
@@ -267,9 +264,7 @@ function noteOn(note, velocity = 127, isUserInteraction = false, fingering = nul
   if (!pianoInstrument) return;
 
   const gain = velocity / 127;
-
   const playableNote = getPlayableNoteName(note);
-
   const playedNote = pianoInstrument.play(playableNote, audioContext.currentTime, { gain });
 
   activeNotes[note] = playedNote;
@@ -293,7 +288,7 @@ function noteOn(note, velocity = 127, isUserInteraction = false, fingering = nul
       note: note,
       velocity: velocity,
       time: audioContext.currentTime - recordStartTime,
-      channel: selectedMidiChannel
+      channel: selectedMidiChannels.includes('Omni') ? 'Omni' : selectedMidiChannels[0]
     });
   }
 }
@@ -315,7 +310,7 @@ function noteOff(note, isUserInteraction = false) {
       type: 'noteOff',
       note: note,
       time: audioContext.currentTime - recordStartTime,
-      channel: selectedMidiChannel
+      channel: selectedMidiChannels.includes('Omni') ? 'Omni' : selectedMidiChannels[0]
     });
   }
 }
@@ -467,10 +462,9 @@ function handleMIDIMessage(event) {
 
   const [statusByte, noteNumber, velocity] = event.data;
   const command = statusByte & 0xF0;
-  const channel = (statusByte & 0x0F) + 1; // MIDI channels are 1-16
+  const channel = (statusByte & 0x0F) + 1;
 
-  // Check if the message channel matches selectedMidiChannel, or if Omni is selected
-  if (selectedMidiChannel !== 'Omni' && channel !== parseInt(selectedMidiChannel)) {
+  if (!selectedMidiChannels.includes('Omni') && !selectedMidiChannels.includes(channel.toString())) {
     return;
   }
 
@@ -482,10 +476,10 @@ function handleMIDIMessage(event) {
       return;
     }
 
-    if (command === 144 && velocity > 0) { 
+    if (command === 144 && velocity > 0) {
       noteOn(note, velocity, true);
 
-    } else if (command === 128 || (command === 144 && velocity === 0)) { 
+    } else if (command === 128 || (command === 144 && velocity === 0)) {
       noteOff(note, true);
     }
   }
@@ -552,7 +546,6 @@ function initSequencerControls() {
   transposeDownBtn.addEventListener('click', transposeSelectedMemoryDown);
   transposeUpBtn.addEventListener('click', transposeSelectedMemoryUp);
 
-  // Add the reset MIDI button event listener
   const resetMidiBtn = document.getElementById('reset-midi-btn');
   resetMidiBtn.addEventListener('click', resetMidiAndFingerings);
 }
@@ -560,7 +553,7 @@ function initSequencerControls() {
 let transposeAmount = 0;
 
 function startRecording() {
-  if (isRecording) return; 
+  if (isRecording) return;
   isRecording = true;
   recordedNotes = [];
   recordStartTime = audioContext.currentTime;
@@ -568,14 +561,11 @@ function startRecording() {
   recordBtn.classList.add('pressed');
   document.getElementById('play-btn').disabled = true;
   document.getElementById('save-btn').disabled = true;
-  document.getElementById('stop-btn').disabled = false; 
+  document.getElementById('stop-btn').disabled = false;
 
-  // Check if a memory is selected
   if (selectedMemoryIndex !== null) {
     const sequence = memoryList[selectedMemoryIndex];
-
-    // Play back existing recordings on other channels during recording
-    const otherChannelNotes = sequence.notes.filter(noteEvent => noteEvent.channel !== selectedMidiChannel);
+    const otherChannelNotes = sequence.notes.filter(noteEvent => !selectedMidiChannels.includes(noteEvent.channel));
 
     playNotesDuringRecording(otherChannelNotes);
   }
@@ -627,30 +617,25 @@ function stopAction() {
     document.getElementById('save-btn').disabled = false;
     recordingTimers.forEach(timerId => clearTimeout(timerId));
     recordingTimers = [];
-    
-    // Change all active Note On events to Note Off
+
     for (const note in activeNotes) {
       if (activeNotes.hasOwnProperty(note)) {
         recordedNotes.push({
           type: 'noteOff',
           note: note,
           time: audioContext.currentTime - recordStartTime,
-          channel: selectedMidiChannel
+          channel: selectedMidiChannels.includes('Omni') ? 'Omni' : selectedMidiChannels[0]
         });
       }
     }
 
-    // If a memory is selected, merge the recordedNotes into it
     if (selectedMemoryIndex !== null) {
       const sequence = memoryList[selectedMemoryIndex];
 
-      // Remove existing notes on the selected channel
-      sequence.notes = sequence.notes.filter(noteEvent => noteEvent.channel !== selectedMidiChannel);
+      sequence.notes = sequence.notes.filter(noteEvent => !selectedMidiChannels.includes(noteEvent.channel));
 
-      // Add the recorded notes to the sequence
       sequence.notes = sequence.notes.concat(recordedNotes);
 
-      // Recalculate duration
       let totalDuration = 0;
       sequence.notes.forEach(noteEvent => {
         if (noteEvent.time > totalDuration) {
@@ -659,7 +644,6 @@ function stopAction() {
       });
       sequence.duration = totalDuration;
 
-      // Update recordedNotes with sequence's notes
       recordedNotes = JSON.parse(JSON.stringify(sequence.notes));
 
       processSequenceNotes(sequence);
@@ -677,7 +661,6 @@ function stopAction() {
   stopNavigationActiveNotes();
   clearActiveNotes();
 
-  // Remove all active fingerings when the stop button is clicked
   for (const note in activeFingerings) {
     if (activeFingerings.hasOwnProperty(note)) {
       activeFingerings[note].remove();
@@ -750,7 +733,7 @@ function selectMemorySequence(index) {
     document.getElementById('play-btn').disabled = false;
     document.getElementById('selected-memory').textContent = selectedSequence.name;
     processSequenceNotes(selectedSequence);
-    currentNoteIndex = -1; 
+    currentNoteIndex = -1;
     updateEditorAssociationButton();
 
     transposeAmount = 0;
@@ -762,7 +745,6 @@ function addToMemory() {
   let sequenceName = `Sequence ${sequenceCounter}`;
   let quantizedNotes = JSON.parse(JSON.stringify(recordedNotes));
 
-  // Remove silence before first note
   if (quantizedNotes.length > 0) {
     const firstNoteTime = quantizedNotes[0].time;
     quantizedNotes.forEach(noteEvent => {
@@ -770,7 +752,6 @@ function addToMemory() {
     });
   }
 
-  // Calculate total duration
   let totalDuration = 0;
   quantizedNotes.forEach(noteEvent => {
     if (noteEvent.time > totalDuration) {
@@ -778,7 +759,6 @@ function addToMemory() {
     }
   });
 
-  // Remove silence after last note
   quantizedNotes = quantizedNotes.filter(noteEvent => noteEvent.time <= totalDuration);
 
   const sequenceData = {
@@ -787,7 +767,7 @@ function addToMemory() {
     editorContent: quill.getContents(),
     selected: false,
     duration: totalDuration,
-    tempo: 100  // Default tempo
+    tempo: 100
   };
   memoryList.push(sequenceData);
   sequenceCounter++;
@@ -799,23 +779,18 @@ function addToMemory() {
 
 function removeFromMemory() {
   if (selectedMemoryIndex === null) {
-    // No memory selected to remove
     return;
   }
 
-  // Remove the selected memory from the memoryList
   memoryList.splice(selectedMemoryIndex, 1);
 
-  // Reset variables and UI elements
   selectedMemoryIndex = null;
   recordedNotes = [];
   quill.setContents([]);
   document.getElementById('selected-memory').textContent = 'No Memory Selected';
 
-  // Update the memory list display
   updateMemoryList();
 
-  // Disable the play button if no memories are left
   document.getElementById('play-btn').disabled = memoryList.length === 0;
 }
 
@@ -826,8 +801,6 @@ function addEditorContentToMemory() {
     const selectedSequence = memoryList[index];
     selectedSequence.editorContent = quill.getContents();
     updateEditorAssociationButton();
-  } else {
-    // No memory sequence selected to add editor content
   }
 }
 
@@ -919,7 +892,6 @@ function clearApp() {
   transposeAmount = 0;
   document.getElementById('transpose-amount').textContent = transposeAmount;
 
-  // Remove all active fingerings
   for (const note in activeFingerings) {
     if (activeFingerings.hasOwnProperty(note)) {
       activeFingerings[note].remove();
@@ -940,7 +912,6 @@ function clearActiveNotes() {
     key.classList.remove('pressed');
   });
 
-  // Remove all active fingerings
   for (const note in activeFingerings) {
     if (activeFingerings.hasOwnProperty(note)) {
       activeFingerings[note].remove();
@@ -958,34 +929,11 @@ function stopNavigationActiveNotes() {
   }
   navigationActiveNotes = {};
 
-  // Remove all active fingerings associated with navigation notes
   for (const note in activeFingerings) {
     if (activeFingerings.hasOwnProperty(note)) {
       activeFingerings[note].remove();
       delete activeFingerings[note];
     }
-  }
-}
-
-function noteOff(note, isUserInteraction = false) {
-  if (!activeNotes[note]) return;
-
-  activeNotes[note].stop();
-  delete activeNotes[note];
-  highlightKey(note, false);
-
-  if (activeFingerings[note]) {
-    activeFingerings[note].remove();
-    delete activeFingerings[note];
-  }
-
-  if (isRecording && isUserInteraction) {
-    recordedNotes.push({
-      type: 'noteOff',
-      note: note,
-      time: audioContext.currentTime - recordStartTime,
-      channel: selectedMidiChannel
-    });
   }
 }
 
@@ -1110,31 +1058,12 @@ function selectNextMemory() {
   selectMemorySequence(selectedMemoryIndex);
 }
 
-function stopNavigationActiveNotes() {
-  for (const note in navigationActiveNotes) {
-    if (navigationActiveNotes.hasOwnProperty(note)) {
-      navigationActiveNotes[note].stop();
-      highlightKey(note, false);
-    }
-  }
-  navigationActiveNotes = {};
-
-  // Remove all active fingerings
-  for (const note in activeFingerings) {
-    if (activeFingerings.hasOwnProperty(note)) {
-      activeFingerings[note].remove();
-    }
-  }
-  activeFingerings = {};
-}
-
 function processSequenceNotes(sequence) {
   noteChordEvents = [];
   const events = sequence.notes;
   if (events.length === 0) return;
 
-  // Filter events based on selectedMidiChannel
-  const filteredEvents = events.filter(event => selectedMidiChannel === 'Omni' || event.channel === selectedMidiChannel);
+  const filteredEvents = events.filter(event => selectedMidiChannels.includes('Omni') || selectedMidiChannels.includes(event.channel));
 
   let i = 0;
   while (i < filteredEvents.length) {
@@ -1228,7 +1157,6 @@ function stopNavigationActiveNotes() {
   }
   navigationActiveNotes = {};
 
-  // Remove all active fingerings
   for (const note in activeFingerings) {
     if (activeFingerings.hasOwnProperty(note)) {
       activeFingerings[note].remove();
@@ -1237,330 +1165,18 @@ function stopNavigationActiveNotes() {
   activeFingerings = {};
 }
 
-function editMemoryName() {
-  if (selectedMemoryIndex === null) {
-    return;
-  }
-
-  const selectedMemoryDisplay = document.getElementById('selected-memory');
-  const currentName = selectedMemoryDisplay.textContent;
-
-  const input = document.createElement('input');
-  input.type = 'text';
-  input.value = currentName;
-  input.style.width = '100%';
-  input.style.boxSizing = 'border-box';
-
-  selectedMemoryDisplay.parentNode.replaceChild(input, selectedMemoryDisplay);
-
-  input.focus();
-  input.select();
-
-  function handleBlur() {
-    input.removeEventListener('blur', handleBlur);
-    input.removeEventListener('keydown', handleKeyDown);
-    saveNewMemoryName(input.value, input);
-  }
-
-  function handleKeyDown(e) {
-    if (e.key === 'Enter') {
-      input.removeEventListener('blur', handleBlur);
-      input.removeEventListener('keydown', handleKeyDown);
-      saveNewMemoryName(input.value, input);
-    } else if (e.key === 'Escape') {
-      input.removeEventListener('blur', handleBlur);
-      input.removeEventListener('keydown', handleKeyDown);
-      cancelEditMemoryName(currentName, input);
-    }
-  }
-
-  input.addEventListener('blur', handleBlur);
-  input.addEventListener('keydown', handleKeyDown);
-}
-
-function saveNewMemoryName(newName, input) {
-  if (selectedMemoryIndex !== null) {
-    memoryList[selectedMemoryIndex].name = newName;
-    updateMemoryList(); 
-
-    const selectedMemoryDisplay = document.createElement('span');
-    selectedMemoryDisplay.id = 'selected-memory';
-    selectedMemoryDisplay.textContent = newName;
-    if (input.parentNode) {
-      input.parentNode.replaceChild(selectedMemoryDisplay, input);
-    }
-  }
-}
-
-function cancelEditMemoryName(originalName, input) {
-  const selectedMemoryDisplay = document.createElement('span');
-  selectedMemoryDisplay.id = 'selected-memory';
-  selectedMemoryDisplay.textContent = originalName;
-  if (input.parentNode) {
-    input.parentNode.replaceChild(selectedMemoryDisplay, input);
-  }
-}
-
-function updateEditorAssociationButton() {
-  const addEditorContentBtn = document.getElementById('add-editor-content-btn');
-  if (
-    selectedMemoryIndex !== null &&
-    !isContentEmpty(memoryList[selectedMemoryIndex].editorContent)
-  ) {
-    addEditorContentBtn.classList.add('editor-associated');
-  } else {
-    addEditorContentBtn.classList.remove('editor-associated');
-  }
-}
-
-function isContentEmpty(content) {
-  if (!content) return true;
-
-  const text = content.ops
-    .map(op => (typeof op.insert === 'string' ? op.insert : ''))
-    .join('')
-    .trim();
-
-  return text === '';
-}
-
-let memoryEditorVisible = false;
-
-document.addEventListener('DOMContentLoaded', () => {
-  createPiano();
-  initMIDI();
-
-  const colors = [
-    '#000000', '#e60000', '#ff9900', '#ffff00', '#008000', '#0066cc', '#9933ff',
-    '#ffffff', '#facccc', '#ffebcc', '#ffffcc', '#cce8cc', '#cce0f5', '#ebd6ff',
-    '#dddddd', '#ff0000', '#ff9c00', '#ffff00', '#00ff00', '#0000ff', '#cc66ff',
-    'magenta', 
-    '#FF0000', '#FFA500', '#FFFF00', '#008000', '#0000FF', '#6109AB', '#FF00FF'
-  ];
-
-  const colorSelect = document.querySelector('select.ql-color');
-  const backgroundSelect = document.querySelector('select.ql-background');
-
-  colors.forEach(color => {
-    const option = document.createElement('option');
-    option.value = color;
-    option.style.backgroundColor = color;
-    colorSelect.appendChild(option.cloneNode());
-    backgroundSelect.appendChild(option.cloneNode());
-  });
-
-  initSequencerControls();
-  initKeyboardControls();
-
-  const memoryEditorBtn = document.getElementById('memory-editor-btn');
-  memoryEditorBtn.addEventListener('click', toggleMemoryEditor);
-
-  const noteColorToggleBtn = document.getElementById('note-color-toggle-btn');
-  noteColorToggleBtn.style.background = 'lightblue';
-  noteColorToggleBtn.classList.remove('pressed');
-
-  noteColorToggleBtn.addEventListener('click', () => {
-    colorfulNotesEnabled = !colorfulNotesEnabled;
-    if (colorfulNotesEnabled) {
-      noteColorToggleBtn.style.background = 'linear-gradient(90deg, red, orange, yellow, green, blue, indigo, violet)';
-      noteColorToggleBtn.classList.add('pressed');
-    } else {
-      noteColorToggleBtn.style.background = 'lightblue';
-      noteColorToggleBtn.classList.remove('pressed');
-    }
-    for (const note in activeNotes) {
-      if (activeNotes.hasOwnProperty(note)) {
-        highlightKey(note, true);
-      }
-    }
-  });
-
-  const loopBtn = document.getElementById('loop-btn');
-  loopBtn.addEventListener('click', () => {
-    isLooping = !isLooping;
-    loopBtn.classList.toggle('pressed', isLooping);
-  });
-
-  const keyboardToggleBtn = document.getElementById('keyboard-toggle-btn');
-  keyboardToggleBtn.classList.toggle('pressed', keyboardEnabled);
-  keyboardToggleBtn.addEventListener('click', () => {
-    keyboardEnabled = !keyboardEnabled;
-    keyboardToggleBtn.classList.toggle('pressed', keyboardEnabled);
-    updateKeyLabels();
-  });
-
-  const BlockEmbed = Quill.import('blots/block/embed');
-  class IframeBlot extends BlockEmbed {
-    static create(value) {
-      const node = super.create();
-      node.setAttribute('src', value.src);
-      node.setAttribute('frameborder', '0');
-      node.setAttribute('allowfullscreen', true);
-      node.setAttribute('width', '100%');
-      node.setAttribute('height', value.height || '315');
-      return node;
-    }
-
-    static value(node) {
-      return {
-        src: node.getAttribute('src'),
-        width: node.getAttribute('width'),
-        height: node.getAttribute('height')
-      };
-    }
-  }
-  IframeBlot.blotName = 'iframe';
-  IframeBlot.tagName = 'iframe';
-  Quill.register(IframeBlot);
-
-  document.getElementById('insert-iframe-btn').addEventListener('click', () => {
-    const input = prompt('Paste the embed code, image data URL, or YouTube URL:');
-    if (input) {
-      const range = quill.getSelection(true);
-
-      const youtubeUrlMatch = input.match(/(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)([\w\-]{11})(?:\S+)?/);
-      if (youtubeUrlMatch && youtubeUrlMatch[1]) {
-        const videoId = youtubeUrlMatch[1];
-        const iframeSrc = `https://www.youtube.com/embed/${videoId}`;
-        quill.insertEmbed(range.index, 'iframe', { src: iframeSrc });
-      } else if (input.startsWith('data:image/')) {
-        quill.insertEmbed(range.index, 'image', input);
-      } else {
-        quill.clipboard.dangerouslyPasteHTML(range.index, input);
-      }
-    }
-  });
-
-  initSequencerControls();
-  initKeyboardControls();
-
-  const toggleEditorBtn = document.getElementById('toggle-editor-btn');
-
-  toggleEditorBtn.addEventListener('click', () => {
-    const editorContainer = document.getElementById('editor-container');
-    if (editorContainer.style.display === 'none' || editorContainer.style.display === '') {
-      editorContainer.style.display = 'block';
-    } else {
-      editorContainer.style.display = 'none';
-    }
-  });
-
-  quill = new Quill('#editor', {
-    modules: {
-      toolbar: '#toolbar',
-      keyboard: {
-        bindings: {
-          linkClick: {
-            key: 'click',
-            collapsed: true,
-            format: ['link'],
-            handler: function() {
-              return;
-            }
-          }
-        }
-      }
-    },
-    theme: 'snow',
-  });
-
-  quill.root.addEventListener('click', function(event) {
-    let link = event.target.closest('a');
-    if (link) {
-      event.preventDefault();
-      event.stopImmediatePropagation();
-      const href = link.getAttribute('href');
-      if (href.startsWith('http://') || href.startsWith('https://') || href.startsWith('mailto:')) {
-        window.open(href, '_blank');
-      } else {
-        selectMemoryByName(href);
-      }
-    }
-  });
-
-  quill.on('text-change', function(delta, oldDelta, source) {
-    if (
-      selectedMemoryIndex !== null &&
-      !isContentEmpty(memoryList[selectedMemoryIndex].editorContent)
-    ) {
-      const currentContent = quill.getContents();
-      if (isContentEmpty(currentContent)) {
-        memoryList[selectedMemoryIndex].editorContent = null;
-        updateEditorAssociationButton();
-      }
-    }
-  });
-
-  quill.root.addEventListener('paste', function(e) {
-    if (e.clipboardData && e.clipboardData.items) {
-      var items = e.clipboardData.items;
-      var hasImage = false;
-      for (var i = 0; i < items.length; i++) {
-        var item = items[i];
-        if (item.type.indexOf('image') !== -1) {
-          hasImage = true;
-          var blob = item.getAsFile();
-          var reader = new FileReader();
-          reader.onload = function(event) {
-            var base64ImageSrc = event.target.result;
-            var range = quill.getSelection();
-            quill.insertEmbed(range.index, 'image', base64ImageSrc);
-            quill.setSelection(range.index + 1);
-          };
-          reader.readAsDataURL(blob);
-        }
-      }
-      if (hasImage) {
-        e.preventDefault();
-      }
-    }
-  });
-
-  document.getElementById('transpose-amount').textContent = transposeAmount;
-
-  // Initialize Midi Channel Buttons
-  const channelButtons = document.querySelectorAll('.channel-button');
-  channelButtons.forEach(button => {
-    button.addEventListener('click', () => {
-      selectedMidiChannel = button.getAttribute('data-channel');
-
-      // Update button styles
-      channelButtons.forEach(btn => btn.classList.remove('pressed'));
-      button.classList.add('pressed');
-
-      // Reprocess sequence notes to update navigation
-      if (selectedMemoryIndex !== null) {
-        const selectedSequence = memoryList[selectedMemoryIndex];
-        processSequenceNotes(selectedSequence);
-        currentNoteIndex = -1;
-      }
-    });
-  });
-
-  // Update MIDI Channel button event listeners
-});
-
-function toggleMemoryEditor() {
-  memoryEditorVisible = !memoryEditorVisible;
-  const memoryEditorContainer = document.getElementById('memory-editor-container');
-  if (memoryEditorVisible) {
-    memoryEditorContainer.style.display = 'block';
-    populateMemoryEditor();
-  } else {
-    updateMemoryFromEditor();
-    updateMemoryList();
-    selectMemorySequence(selectedMemoryIndex);
-    memoryEditorContainer.style.display = 'none';
-  }
-}
-
 function updateMemoryFromEditor() {
   if (selectedMemoryIndex === null) return;
 
   const selectedSequence = memoryList[selectedMemoryIndex];
+
+  const memoryNameInput = document.getElementById('memory-name-input');
+  if (memoryNameInput) {
+    selectedSequence.name = memoryNameInput.value;
+  }
+
   const events = [];
   const tableRows = document.getElementById('memory-editor-container').querySelectorAll('#memory-editor-table tr');
-  // Skip the header row
   for (let i = 1; i < tableRows.length; i++) {
     const row = tableRows[i];
     const timeInput = row.querySelector('.event-time');
@@ -1584,7 +1200,6 @@ function updateMemoryFromEditor() {
         const fingeringSelect = eventParamsCell.querySelector('.event-fingering');
         event.fingering = fingeringSelect ? fingeringSelect.value : 'N';
 
-        // Set channel based on fingering
         if (event.fingering.startsWith('L')) {
           event.channel = '1';
         } else if (event.fingering.startsWith('R')) {
@@ -1604,7 +1219,6 @@ function updateMemoryFromEditor() {
     events.push(event);
   }
 
-  // After processing all events, ensure that noteOff events have channels matching their corresponding noteOn events
   const noteOnEventStackByNote = {};
   events.forEach(event => {
     if (event.type === 'noteOn') {
@@ -1623,7 +1237,6 @@ function updateMemoryFromEditor() {
   events.sort((a, b) => a.time - b.time);
   selectedSequence.notes = events;
 
-  // Recalculate duration
   let totalDuration = 0;
   selectedSequence.notes.forEach(noteEvent => {
     if (noteEvent.time > totalDuration) {
@@ -1633,6 +1246,7 @@ function updateMemoryFromEditor() {
   selectedSequence.duration = totalDuration;
 
   updateMemoryList();
+  selectMemorySequence(selectedMemoryIndex);
 }
 
 function populateMemoryEditor() {
@@ -1756,7 +1370,6 @@ function populateMemoryEditor() {
   html += '</table>';
   memoryEditorContainer.innerHTML = html;
 
-  // Event listeners for dynamic content
   const memoryNameInput = document.getElementById('memory-name-input');
   memoryNameInput.addEventListener('blur', updateMemoryFromEditor);
 
@@ -1819,7 +1432,7 @@ function populateMemoryEditor() {
         let channel = channelValue;
 
         if (channelValue === 'Split') {
-          channel = String(((index) % 16) + 1); // Channels '1' to '16' as strings
+          channel = String(((index) % 16) + 1);
         }
 
         const noteOnEvent = {
@@ -1843,7 +1456,7 @@ function populateMemoryEditor() {
     events.sort((a, b) => a.time - b.time);
     selectedSequence.duration = Math.max(selectedSequence.duration, ...events.map(event => event.time));
 
-    populateMemoryEditor(); // Refresh the editor to display new events
+    populateMemoryEditor();
   });
 
   const deleteButtons = memoryEditorContainer.querySelectorAll('.delete-entry-btn');
@@ -1886,7 +1499,6 @@ function populateMemoryEditor() {
   const eventChannelSelects = memoryEditorContainer.querySelectorAll('.event-channel');
   eventChannelSelects.forEach(select => {
     select.addEventListener('change', function () {
-      // No immediate action needed; channel value will be read during update
     });
   });
 }
@@ -2093,7 +1705,6 @@ function transposeNoteBySemitones(note, semitones) {
   let [_, noteName, octave] = match;
   octave = parseInt(octave);
 
-  // Normalize the note name
   if (noteName === 'B#') {
     noteName = 'C';
     octave += 1;
@@ -2187,8 +1798,7 @@ function startPlayback() {
   const tempoFactor = tempoPercentage / 100;
 
   recordedNotes.forEach(noteEvent => {
-    // Check if the noteEvent is on the selected channel or Omni is selected
-    if (selectedMidiChannel !== 'Omni' && noteEvent.channel !== selectedMidiChannel) {
+    if (!selectedMidiChannels.includes('Omni') && !selectedMidiChannels.includes(noteEvent.channel)) {
       return;
     }
 
@@ -2213,9 +1823,8 @@ function startPlayback() {
     }
   });
 
-  // Schedule stop action
   const duration = recordedNotes.reduce((maxTime, noteEvent) => {
-    if (selectedMidiChannel === 'Omni' || noteEvent.channel === selectedMidiChannel) {
+    if (selectedMidiChannels.includes('Omni') || selectedMidiChannels.includes(noteEvent.channel)) {
       return Math.max(maxTime, noteEvent.time / tempoFactor);
     } else {
       return maxTime;
@@ -2235,3 +1844,273 @@ function resetMidiAndFingerings() {
   clearActiveNotes();
   stopNavigationActiveNotes();
 }
+
+document.addEventListener('DOMContentLoaded', () => {
+  createPiano();
+  initMIDI();
+
+  const colors = [
+    '#000000', '#e60000', '#ff9900', '#ffff00', '#008000', '#0066cc', '#9933ff',
+    '#ffffff', '#facccc', '#ffebcc', '#ffffcc', '#cce8cc', '#cce0f5', '#ebd6ff',
+    '#dddddd', '#ff0000', '#ff9c00', '#ffff00', '#00ff00', '#0000ff', '#cc66ff',
+    'magenta',
+    '#FF0000', '#FFA500', '#FFFF00', '#008000', '#0000FF', '#6109AB', '#FF00FF'
+  ];
+
+  const colorSelect = document.querySelector('select.ql-color');
+  const backgroundSelect = document.querySelector('select.ql-background');
+
+  colors.forEach(color => {
+    const option = document.createElement('option');
+    option.value = color;
+    option.style.backgroundColor = color;
+    colorSelect.appendChild(option.cloneNode());
+    backgroundSelect.appendChild(option.cloneNode());
+  });
+
+  initSequencerControls();
+  initKeyboardControls();
+
+  const memoryEditorBtn = document.getElementById('memory-editor-btn');
+  memoryEditorBtn.addEventListener('click', toggleMemoryEditor);
+
+  const noteColorToggleBtn = document.getElementById('note-color-toggle-btn');
+  noteColorToggleBtn.style.background = 'lightblue';
+  noteColorToggleBtn.classList.remove('pressed');
+
+  noteColorToggleBtn.addEventListener('click', () => {
+    colorfulNotesEnabled = !colorfulNotesEnabled;
+    if (colorfulNotesEnabled) {
+      noteColorToggleBtn.style.background = 'linear-gradient(90deg, red, orange, yellow, green, blue, indigo, violet)';
+      noteColorToggleBtn.classList.add('pressed');
+    } else {
+      noteColorToggleBtn.style.background = 'lightblue';
+      noteColorToggleBtn.classList.remove('pressed');
+    }
+    for (const note in activeNotes) {
+      if (activeNotes.hasOwnProperty(note)) {
+        highlightKey(note, true);
+      }
+    }
+  });
+
+  const loopBtn = document.getElementById('loop-btn');
+  loopBtn.addEventListener('click', () => {
+    isLooping = !isLooping;
+    loopBtn.classList.toggle('pressed', isLooping);
+  });
+
+  const keyboardToggleBtn = document.getElementById('keyboard-toggle-btn');
+  keyboardToggleBtn.classList.toggle('pressed', keyboardEnabled);
+  keyboardToggleBtn.addEventListener('click', () => {
+    keyboardEnabled = !keyboardEnabled;
+    keyboardToggleBtn.classList.toggle('pressed', keyboardEnabled);
+    updateKeyLabels();
+  });
+
+  const BlockEmbed = Quill.import('blots/block/embed');
+  class IframeBlot extends BlockEmbed {
+    static create(value) {
+      const node = super.create();
+      node.setAttribute('src', value.src);
+      node.setAttribute('frameborder', '0');
+      node.setAttribute('allowfullscreen', true);
+      node.setAttribute('width', '100%');
+      node.setAttribute('height', value.height || '315');
+      return node;
+    }
+
+    static value(node) {
+      return {
+        src: node.getAttribute('src'),
+        width: node.getAttribute('width'),
+        height: node.getAttribute('height')
+      };
+    }
+  }
+  IframeBlot.blotName = 'iframe';
+  IframeBlot.tagName = 'iframe';
+  Quill.register(IframeBlot);
+
+  document.getElementById('insert-iframe-btn').addEventListener('click', () => {
+    const input = prompt('Paste the embed code, image data URL, or YouTube URL:');
+    if (input) {
+      const range = quill.getSelection(true);
+
+      const youtubeUrlMatch = input.match(/(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)([\w\-]{11})(?:\S+)?/);
+      if (youtubeUrlMatch && youtubeUrlMatch[1]) {
+        const videoId = youtubeUrlMatch[1];
+        const iframeSrc = `https://www.youtube.com/embed/${videoId}`;
+        quill.insertEmbed(range.index, 'iframe', { src: iframeSrc });
+      } else if (input.startsWith('data:image/')) {
+        quill.insertEmbed(range.index, 'image', input);
+      } else {
+        quill.clipboard.dangerouslyPasteHTML(range.index, input);
+      }
+    }
+  });
+
+  initSequencerControls();
+  initKeyboardControls();
+
+  const toggleEditorBtn = document.getElementById('toggle-editor-btn');
+
+  toggleEditorBtn.addEventListener('click', () => {
+    const editorContainer = document.getElementById('editor-container');
+    if (editorContainer.style.display === 'none' || editorContainer.style.display === '') {
+      editorContainer.style.display = 'block';
+    } else {
+      editorContainer.style.display = 'none';
+    }
+  });
+
+  quill = new Quill('#editor', {
+    modules: {
+      toolbar: '#toolbar',
+      keyboard: {
+        bindings: {
+          linkClick: {
+            key: 'click',
+            collapsed: true,
+            format: ['link'],
+            handler: function() {
+              return;
+            }
+          }
+        }
+      }
+    },
+    theme: 'snow',
+  });
+
+  quill.root.addEventListener('click', function(event) {
+    let link = event.target.closest('a');
+    if (link) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      const href = link.getAttribute('href');
+      if (href.startsWith('http://') || href.startsWith('https://') || href.startsWith('mailto:')) {
+        window.open(href, '_blank');
+      } else {
+        selectMemoryByName(href);
+      }
+    }
+  });
+
+  quill.on('text-change', function(delta, oldDelta, source) {
+    if (
+      selectedMemoryIndex !== null &&
+      !isContentEmpty(memoryList[selectedMemoryIndex].editorContent)
+    ) {
+      const currentContent = quill.getContents();
+      if (isContentEmpty(currentContent)) {
+        memoryList[selectedMemoryIndex].editorContent = null;
+        updateEditorAssociationButton();
+      }
+    }
+  });
+
+  quill.root.addEventListener('paste', function(e) {
+    if (e.clipboardData && e.clipboardData.items) {
+      var items = e.clipboardData.items;
+      var hasImage = false;
+      for (var i = 0; i < items.length; i++) {
+        var item = items[i];
+        if (item.type.indexOf('image') !== -1) {
+          hasImage = true;
+          var blob = item.getAsFile();
+          var reader = new FileReader();
+          reader.onload = function(event) {
+            var base64ImageSrc = event.target.result;
+            var range = quill.getSelection();
+            quill.insertEmbed(range.index, 'image', base64ImageSrc);
+            quill.setSelection(range.index + 1);
+          };
+          reader.readAsDataURL(blob);
+        }
+      }
+      if (hasImage) {
+        e.preventDefault();
+      }
+    }
+  });
+
+  document.getElementById('transpose-amount').textContent = transposeAmount;
+
+  const channelButtons = document.querySelectorAll('.channel-button');
+  channelButtons.forEach(button => {
+    button.addEventListener('click', () => {
+      const channel = button.getAttribute('data-channel');
+
+      if (channel === 'Omni') {
+        if (selectedMidiChannels.includes('Omni')) {
+          selectedMidiChannels = [];
+          button.classList.remove('pressed');
+        } else {
+          selectedMidiChannels = ['Omni'];
+          channelButtons.forEach(btn => btn.classList.remove('pressed'));
+          button.classList.add('pressed');
+        }
+      } else {
+        if (selectedMidiChannels.includes('Omni')) {
+          selectedMidiChannels = [];
+          const omniButton = document.querySelector('.channel-button[data-channel="Omni"]');
+          omniButton.classList.remove('pressed');
+        }
+
+        if (selectedMidiChannels.includes(channel)) {
+          selectedMidiChannels = selectedMidiChannels.filter(ch => ch !== channel);
+          button.classList.remove('pressed');
+        } else {
+          selectedMidiChannels.push(channel);
+          button.classList.add('pressed');
+        }
+      }
+
+      if (selectedMemoryIndex !== null) {
+        const selectedSequence = memoryList[selectedMemoryIndex];
+        processSequenceNotes(selectedSequence);
+        currentNoteIndex = -1;
+      }
+    });
+  });
+});
+
+function toggleMemoryEditor() {
+  memoryEditorVisible = !memoryEditorVisible;
+  const memoryEditorContainer = document.getElementById('memory-editor-container');
+  if (memoryEditorVisible) {
+    memoryEditorContainer.style.display = 'block';
+    populateMemoryEditor();
+  } else {
+    updateMemoryFromEditor();
+    updateMemoryList();
+    selectMemorySequence(selectedMemoryIndex);
+    memoryEditorContainer.style.display = 'none';
+  }
+}
+
+function updateEditorAssociationButton() {
+  const addEditorContentBtn = document.getElementById('add-editor-content-btn');
+  if (
+    selectedMemoryIndex !== null &&
+    !isContentEmpty(memoryList[selectedMemoryIndex].editorContent)
+  ) {
+    addEditorContentBtn.classList.add('editor-associated');
+  } else {
+    addEditorContentBtn.classList.remove('editor-associated');
+  }
+}
+
+function isContentEmpty(content) {
+  if (!content) return true;
+
+  const text = content.ops
+    .map(op => (typeof op.insert === 'string' ? op.insert : ''))
+    .join('')
+    .trim();
+
+  return text === '';
+}
+
+let memoryEditorVisible = false;
