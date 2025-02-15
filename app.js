@@ -799,31 +799,24 @@ function addToMemory() {
 
 function removeFromMemory() {
   if (selectedMemoryIndex === null) {
-    // No memory selected to clear
+    // No memory selected to remove
     return;
   }
 
-  // Clear all events for the selected memory
-  const selectedSequence = memoryList[selectedMemoryIndex];
-  selectedSequence.notes = [];
-  selectedSequence.duration = 0;
-  selectedSequence.selected = false;
+  // Remove the selected memory from the memoryList
+  memoryList.splice(selectedMemoryIndex, 1);
 
-  // Update the memory editor to reflect the cleared events
-  if (memoryEditorVisible) {
-    populateMemoryEditor();
-  }
-
-  // Clear recordedNotes if they correspond to the cleared memory
-  if (recordedNotes === selectedSequence.notes) {
-    recordedNotes = [];
-  }
-
-  // Update UI to reflect that no memory is selected
+  // Reset variables and UI elements
   selectedMemoryIndex = null;
+  recordedNotes = [];
+  quill.setContents([]);
   document.getElementById('selected-memory').textContent = 'No Memory Selected';
 
+  // Update the memory list display
   updateMemoryList();
+
+  // Disable the play button if no memories are left
+  document.getElementById('play-btn').disabled = memoryList.length === 0;
 }
 
 function addEditorContentToMemory() {
