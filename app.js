@@ -1593,6 +1593,7 @@ function populateMemoryEditor() {
       <input type="number" id="add-duration-input" placeholder="Duration" step="0.001">
       <select id="add-channel-select">
         <option value="Omni">Omni</option>
+        <option value="Split">Split</option>
         <option value="1">1</option>
         <option value="2">2</option>
         <option value="3">3</option>
@@ -1734,19 +1735,25 @@ function populateMemoryEditor() {
       const velocity = parseInt(velocityInput) || 100;
       const duration = parseFloat(durationInput) || 1.0;
 
-      noteNames.forEach(note => {
+      noteNames.forEach((note, index) => {
+        let channel = channelValue;
+
+        if (channelValue === 'Split') {
+          channel = String(((index) % 16) + 1); // Channels '1' to '16' as strings
+        }
+
         const noteOnEvent = {
           type: 'noteOn',
           note: note,
           velocity: velocity,
           time: startTime,
-          channel: channelValue
+          channel: channel
         };
         const noteOffEvent = {
           type: 'noteOff',
           note: note,
           time: startTime + duration,
-          channel: channelValue
+          channel: channel
         };
         newEvents.push(noteOnEvent, noteOffEvent);
       });
