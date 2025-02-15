@@ -2001,8 +2001,20 @@ function transposeNoteBySemitones(note, semitones) {
   let [_, noteName, octave] = match;
   octave = parseInt(octave);
 
-  // Preserve the original note name without normalization
-  const noteIndices = {
+  // Normalize the note name
+  if (noteName === 'B#') {
+    noteName = 'C';
+    octave += 1;
+  } else if (noteName === 'Cb') {
+    noteName = 'B';
+    octave -= 1;
+  } else if (noteName === 'E#') {
+    noteName = 'F';
+  } else if (noteName === 'Fb') {
+    noteName = 'E';
+  }
+
+  const noteOffsets = {
     'C': 0,
     'C#': 1,
     'Db': 1,
@@ -2010,8 +2022,6 @@ function transposeNoteBySemitones(note, semitones) {
     'D#': 3,
     'Eb': 3,
     'E': 4,
-    'Fb': 4,
-    'E#': 5,
     'F': 5,
     'F#': 6,
     'Gb': 6,
@@ -2021,40 +2031,54 @@ function transposeNoteBySemitones(note, semitones) {
     'A': 9,
     'A#': 10,
     'Bb': 10,
-    'B': 11,
-    'Cb': 11,
-    'B#': 0,
+    'B': 11
   };
 
-  const noteIndex = noteIndices[noteName];
-  if (noteIndex === undefined) return null;
+  let noteOffset = noteOffsets[noteName];
+  if (noteOffset === undefined) return null;
 
-  let newNoteIndex = noteIndex + semitones;
-  let newOctave = octave;
+  let midiNumber = octave * 12 + noteOffset;
+  midiNumber += semitones;
 
-  while (newNoteIndex < 0) {
+  if (midiNumber < 0) return null;
+
+  let newOctave = Math.floor(midiNumber / 12);
+  let newNoteIndex = midiNumber % 12;
+
+  if (newNoteIndex < 0) {
     newNoteIndex += 12;
     newOctave -= 1;
-  }
-  while (newNoteIndex >= 12) {
-    newNoteIndex -= 12;
-    newOctave += 1;
   }
 
   if (newOctave < startOctave || newOctave >= startOctave + totalOctaves) {
     return null;
   }
 
+  const indexToNoteNames = {
+    0: ['C'],
+    1: ['C#', 'Db'],
+    2: ['D'],
+    3: ['D#', 'Eb'],
+    4: ['E'],
+    5: ['F'],
+    6: ['F#', 'Gb'],
+    7: ['G'],
+    8: ['G#', 'Ab'],
+    9: ['A'],
+    10: ['A#', 'Bb'],
+    11: ['B']
+  };
+
   const originalIsFlat = noteName.includes('b');
-  const possibleNotes = Object.entries(noteIndices).filter(([key, value]) => value === newNoteIndex);
+  const possibleNoteNames = indexToNoteNames[newNoteIndex];
   let newNoteName;
 
-  if (originalIsFlat) {
-    const flatNote = possibleNotes.find(([key]) => key.includes('b'));
-    newNoteName = flatNote ? flatNote[0] : possibleNotes[0][0];
+  if (possibleNoteNames.length === 1) {
+    newNoteName = possibleNoteNames[0];
+  } else if (originalIsFlat) {
+    newNoteName = possibleNoteNames.find(n => n.includes('b')) || possibleNoteNames[0];
   } else {
-    const sharpNote = possibleNotes.find(([key]) => key.includes('#'));
-    newNoteName = sharpNote ? sharpNote[0] : possibleNotes[0][0];
+    newNoteName = possibleNoteNames.find(n => n.includes('#')) || possibleNoteNames[0];
   }
 
   return newNoteName + newOctave;
