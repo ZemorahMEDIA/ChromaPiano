@@ -64,6 +64,7 @@ let sequenceCounter = 1;
 let selectedMemoryIndex = null;
 let isLooping = false;
 let navigationActiveNotes = {};
+let activeFingerings = {};
 
 let midiAccessObject = null;
 let selectedMidiInput = null;
@@ -239,7 +240,7 @@ function getPlayableNoteName(note) {
   return note;
 }
 
-function noteOn(note, velocity = 127, isUserInteraction = false) {
+function noteOn(note, velocity = 127, isUserInteraction = false, fingering = null) {
   if (currentNoteInputField) {
     currentNoteInputField.value = note;
     currentNoteInputField = null;
@@ -274,6 +275,18 @@ function noteOn(note, velocity = 127, isUserInteraction = false) {
   activeNotes[note] = playedNote;
   highlightKey(note, true);
 
+  if (fingering && fingering !== 'N') {
+    pianoKeys.forEach(key => {
+      if (key.dataset.note === playableNote) {
+        const fingeringDiv = document.createElement('div');
+        fingeringDiv.classList.add('fingering');
+        fingeringDiv.textContent = fingering;
+        key.parentElement.appendChild(fingeringDiv);
+        activeFingerings[note] = fingeringDiv;
+      }
+    });
+  }
+
   if (isRecording && isUserInteraction) {
     recordedNotes.push({
       type: 'noteOn',
@@ -291,6 +304,11 @@ function noteOff(note, isUserInteraction = false) {
   activeNotes[note].stop();
   delete activeNotes[note];
   highlightKey(note, false);
+
+  if (activeFingerings[note]) {
+    activeFingerings[note].remove();
+    delete activeFingerings[note];
+  }
 
   if (isRecording && isUserInteraction) {
     recordedNotes.push({
@@ -451,6 +469,11 @@ function handleMIDIMessage(event) {
   const command = statusByte & 0xF0;
   const channel = (statusByte & 0x0F) + 1; // MIDI channels are 1-16
 
+  // Check if the message channel matches selectedMidiChannel, or if Omni is selected
+  if (selectedMidiChannel !== 'Omni' && channel !== parseInt(selectedMidiChannel)) {
+    return;
+  }
+
   const note = midiNoteToName(noteNumber);
   if (note) {
     if (currentNoteInputField) {
@@ -528,6 +551,10 @@ function initSequencerControls() {
 
   transposeDownBtn.addEventListener('click', transposeSelectedMemoryDown);
   transposeUpBtn.addEventListener('click', transposeSelectedMemoryUp);
+
+  // Add the reset MIDI button event listener
+  const resetMidiBtn = document.getElementById('reset-midi-btn');
+  resetMidiBtn.addEventListener('click', resetMidiAndFingerings);
 }
 
 let transposeAmount = 0;
@@ -558,7 +585,6 @@ function playNotesDuringRecording(events) {
   if (!isRecording) return;
 
   let eventIndex = 0;
-
   const scheduleNextEvent = () => {
     if (!isRecording || eventIndex >= events.length) {
       return;
@@ -650,101 +676,14 @@ function stopAction() {
   }
   stopNavigationActiveNotes();
   clearActiveNotes();
-}
 
-function startPlayback() {
-  if (isPlaying) return;
-
-  const selectedMemories = memoryList.filter(sequence => sequence.selected);
-  if (selectedMemories.length === 0) {
-    return;
+  // Remove all active fingerings when the stop button is clicked
+  for (const note in activeFingerings) {
+    if (activeFingerings.hasOwnProperty(note)) {
+      activeFingerings[note].remove();
+    }
   }
-
-  const playbackPercentage = tempoPercentage || 100;
-
-  isPlaying = true;
-  playbackStartTime = audioContext.currentTime;
-  document.getElementById('stop-btn').disabled = false;
-  document.getElementById('play-btn').disabled = true;
-
-  playSelectedMemories(selectedMemories, playbackPercentage);
-}
-
-function playSelectedMemories(sequencesToPlay, playbackPercentage) {
-  if (!isPlaying) return;
-
-  let totalOffsetTime = 0;
-  const scheduledEvents = [];
-  const timeScale = 100 / playbackPercentage;
-
-  sequencesToPlay.forEach(sequence => {
-    const sequenceStartTime = totalOffsetTime;
-
-    const timeUntilSequenceStart = sequenceStartTime - (audioContext.currentTime - playbackStartTime);
-    const displayTimer = setTimeout(() => {
-      if (!isPlaying) return;
-      document.getElementById('selected-memory').textContent = sequence.name;
-      quill.setContents(sequence.editorContent);
-    }, Math.max(0, timeUntilSequenceStart * 1000));
-    playbackTimers.push(displayTimer);
-
-    sequence.notes.forEach(noteEvent => {
-      if (selectedMidiChannel === 'Omni' || noteEvent.channel === selectedMidiChannel) {
-        scheduledEvents.push({
-          ...noteEvent,
-          time: (noteEvent.time * timeScale + sequenceStartTime)
-        });
-      }
-    });
-
-    if (sequence.notes.length > 0) {
-      const sequenceDuration = sequence.duration * timeScale;
-      totalOffsetTime += sequenceDuration + 1;
-    }
-  });
-
-  scheduledEvents.sort((a, b) => a.time - b.time);
-
-  let eventIndex = 0;
-  const scheduleNextEvent = () => {
-    if (!isPlaying) return;
-
-    if (eventIndex >= scheduledEvents.length) {
-      if (isLooping) {
-        eventIndex = 0;
-        playbackStartTime = audioContext.currentTime;
-        playSelectedMemories(sequencesToPlay, playbackPercentage);
-        return;
-      } else {
-        isPlaying = false;
-        playbackTimers = [];
-        document.getElementById('stop-btn').disabled = true;
-        document.getElementById('play-btn').disabled = false;
-        return;
-      }
-    }
-
-    const noteEvent = scheduledEvents[eventIndex];
-    const timeUntilEvent = noteEvent.time - (audioContext.currentTime - playbackStartTime);
-
-    const noteTimer = setTimeout(() => {
-      if (!isPlaying) return;
-      if (noteEvent.type === 'noteOn') {
-        noteOn(noteEvent.note, noteEvent.velocity);
-      } else if (noteEvent.type === 'noteOff') {
-        noteOff(noteEvent.note);
-      } else if (noteEvent.type === 'controlChange') {
-        // existing code for controlChange
-      } else if (noteEvent.type === 'programChange') {
-        // existing code for programChange
-      }
-      eventIndex++;
-      scheduleNextEvent();
-    }, Math.max(0, timeUntilEvent * 1000));
-
-    playbackTimers.push(noteTimer);
-  };
-  scheduleNextEvent();
+  activeFingerings = {};
 }
 
 function initMemoryControls() {
@@ -986,6 +925,14 @@ function clearApp() {
 
   transposeAmount = 0;
   document.getElementById('transpose-amount').textContent = transposeAmount;
+
+  // Remove all active fingerings
+  for (const note in activeFingerings) {
+    if (activeFingerings.hasOwnProperty(note)) {
+      activeFingerings[note].remove();
+    }
+  }
+  activeFingerings = {};
 }
 
 function clearActiveNotes() {
@@ -999,6 +946,54 @@ function clearActiveNotes() {
     key.style.background = '';
     key.classList.remove('pressed');
   });
+
+  // Remove all active fingerings
+  for (const note in activeFingerings) {
+    if (activeFingerings.hasOwnProperty(note)) {
+      activeFingerings[note].remove();
+    }
+  }
+  activeFingerings = {};
+}
+
+function stopNavigationActiveNotes() {
+  for (const note in navigationActiveNotes) {
+    if (navigationActiveNotes.hasOwnProperty(note)) {
+      navigationActiveNotes[note].stop();
+      highlightKey(note, false);
+    }
+  }
+  navigationActiveNotes = {};
+
+  // Remove all active fingerings associated with navigation notes
+  for (const note in activeFingerings) {
+    if (activeFingerings.hasOwnProperty(note)) {
+      activeFingerings[note].remove();
+      delete activeFingerings[note];
+    }
+  }
+}
+
+function noteOff(note, isUserInteraction = false) {
+  if (!activeNotes[note]) return;
+
+  activeNotes[note].stop();
+  delete activeNotes[note];
+  highlightKey(note, false);
+
+  if (activeFingerings[note]) {
+    activeFingerings[note].remove();
+    delete activeFingerings[note];
+  }
+
+  if (isRecording && isUserInteraction) {
+    recordedNotes.push({
+      type: 'noteOff',
+      note: note,
+      time: audioContext.currentTime - recordStartTime,
+      channel: selectedMidiChannel
+    });
+  }
 }
 
 function initKeyboardControls() {
@@ -1130,6 +1125,14 @@ function stopNavigationActiveNotes() {
     }
   }
   navigationActiveNotes = {};
+
+  // Remove all active fingerings
+  for (const note in activeFingerings) {
+    if (activeFingerings.hasOwnProperty(note)) {
+      activeFingerings[note].remove();
+    }
+  }
+  activeFingerings = {};
 }
 
 function processSequenceNotes(sequence) {
@@ -1137,19 +1140,24 @@ function processSequenceNotes(sequence) {
   const events = sequence.notes;
   if (events.length === 0) return;
 
+  // Filter events based on selectedMidiChannel
+  const filteredEvents = events.filter(event => selectedMidiChannel === 'Omni' || event.channel === selectedMidiChannel);
+
   let i = 0;
-  while (i < events.length) {
-    if (events[i].type === 'noteOn') {
-      const chordNotes = [events[i].note];
-      const startTime = events[i].time;
-      let j = i + 1;
-      while (j < events.length && events[j].time - events[i].time <= 0.2) { 
-        if (events[j].type === 'noteOn') {
-          chordNotes.push(events[j].note);
+  while (i < filteredEvents.length) {
+    if (filteredEvents[i].type === 'noteOn') {
+      const chordNotes = [];
+      const chordFingerings = {};
+      const startTime = filteredEvents[i].time;
+      let j = i;
+      while (j < filteredEvents.length && filteredEvents[j].time - filteredEvents[i].time <= 0.2) {
+        if (filteredEvents[j].type === 'noteOn') {
+          chordNotes.push(filteredEvents[j].note);
+          chordFingerings[filteredEvents[j].note] = filteredEvents[j].fingering || 'N';
         }
         j++;
       }
-      noteChordEvents.push({ notes: chordNotes, time: startTime });
+      noteChordEvents.push({ notes: chordNotes, fingerings: chordFingerings, time: startTime });
       i = j;
     } else {
       i++;
@@ -1178,11 +1186,12 @@ function playChordAtIndex(index) {
   stopNavigationActiveNotes();
 
   chordEvent.notes.forEach(note => {
-    noteOnNavigation(note);
+    const fingering = chordEvent.fingerings[note];
+    noteOnNavigation(note, fingering);
   });
 }
 
-function noteOnNavigation(note) {
+function noteOnNavigation(note, fingering = 'N') {
   if (navigationActiveNotes[note]) return;
   if (!pianoInstrument) return;
 
@@ -1191,6 +1200,18 @@ function noteOnNavigation(note) {
   const playedNote = pianoInstrument.play(playableNote);
   navigationActiveNotes[note] = playedNote;
   highlightKey(note, true);
+
+  if (fingering && fingering !== 'N') {
+    pianoKeys.forEach(key => {
+      if (key.dataset.note === playableNote) {
+        const fingeringDiv = document.createElement('div');
+        fingeringDiv.classList.add('fingering');
+        fingeringDiv.textContent = fingering;
+        key.parentElement.appendChild(fingeringDiv);
+        activeFingerings[note] = fingeringDiv;
+      }
+    });
+  }
 }
 
 function noteOffNavigation(note) {
@@ -1198,6 +1219,29 @@ function noteOffNavigation(note) {
   navigationActiveNotes[note].stop();
   delete navigationActiveNotes[note];
   highlightKey(note, false);
+
+  if (activeFingerings[note]) {
+    activeFingerings[note].remove();
+    delete activeFingerings[note];
+  }
+}
+
+function stopNavigationActiveNotes() {
+  for (const note in navigationActiveNotes) {
+    if (navigationActiveNotes.hasOwnProperty(note)) {
+      navigationActiveNotes[note].stop();
+      highlightKey(note, false);
+    }
+  }
+  navigationActiveNotes = {};
+
+  // Remove all active fingerings
+  for (const note in activeFingerings) {
+    if (activeFingerings.hasOwnProperty(note)) {
+      activeFingerings[note].remove();
+    }
+  }
+  activeFingerings = {};
 }
 
 function editMemoryName() {
@@ -1490,8 +1534,17 @@ document.addEventListener('DOMContentLoaded', () => {
       // Update button styles
       channelButtons.forEach(btn => btn.classList.remove('pressed'));
       button.classList.add('pressed');
+
+      // Reprocess sequence notes to update navigation
+      if (selectedMemoryIndex !== null) {
+        const selectedSequence = memoryList[selectedMemoryIndex];
+        processSequenceNotes(selectedSequence);
+        currentNoteIndex = -1;
+      }
     });
   });
+
+  // Update MIDI Channel button event listeners
 });
 
 function toggleMemoryEditor() {
@@ -1512,13 +1565,8 @@ function updateMemoryFromEditor() {
   if (selectedMemoryIndex === null) return;
 
   const selectedSequence = memoryList[selectedMemoryIndex];
-  const memoryEditorContainer = document.getElementById('memory-editor-container');
-
-  const memoryNameInput = document.getElementById('memory-name-input');
-  selectedSequence.name = memoryNameInput.value;
-
   const events = [];
-  const tableRows = memoryEditorContainer.querySelectorAll('#memory-editor-table tr');
+  const tableRows = document.getElementById('memory-editor-container').querySelectorAll('#memory-editor-table tr');
   // Skip the header row
   for (let i = 1; i < tableRows.length; i++) {
     const row = tableRows[i];
@@ -1539,6 +1587,16 @@ function updateMemoryFromEditor() {
       if (event.type === 'noteOn') {
         const velocityInput = eventParamsCell.querySelector('.event-velocity');
         event.velocity = parseInt(velocityInput.value) || 100;
+
+        const fingeringSelect = eventParamsCell.querySelector('.event-fingering');
+        event.fingering = fingeringSelect ? fingeringSelect.value : 'N';
+
+        // Set channel based on fingering
+        if (event.fingering.startsWith('L')) {
+          event.channel = '1';
+        } else if (event.fingering.startsWith('R')) {
+          event.channel = '2';
+        }
       }
     } else if (event.type === 'controlChange') {
       const ccNumberInput = eventParamsCell.querySelector('.event-controller-number');
@@ -1552,6 +1610,22 @@ function updateMemoryFromEditor() {
 
     events.push(event);
   }
+
+  // After processing all events, ensure that noteOff events have channels matching their corresponding noteOn events
+  const noteOnEventStackByNote = {};
+  events.forEach(event => {
+    if (event.type === 'noteOn') {
+      if (!noteOnEventStackByNote[event.note]) {
+        noteOnEventStackByNote[event.note] = [];
+      }
+      noteOnEventStackByNote[event.note].push(event);
+    } else if (event.type === 'noteOff') {
+      if (noteOnEventStackByNote[event.note] && noteOnEventStackByNote[event.note].length > 0) {
+        const noteOnEvent = noteOnEventStackByNote[event.note].pop();
+        event.channel = noteOnEvent.channel;
+      }
+    }
+  });
 
   events.sort((a, b) => a.time - b.time);
   selectedSequence.notes = events;
@@ -1622,9 +1696,9 @@ function populateMemoryEditor() {
 
   events.forEach((event, index) => {
     html += `<tr class="event-row ${event.type === 'noteOn' ? 'note-on' :
-                                     event.type === 'noteOff' ? 'note-off' :
-                                     event.type === 'controlChange' ? 'control-change' :
-                                     event.type === 'programChange' ? 'program-change' : ''}">
+                                           event.type === 'noteOff' ? 'note-off' :
+                                           event.type === 'controlChange' ? 'control-change' :
+                                           event.type === 'programChange' ? 'program-change' : ''}">
       <td><input type="number" step="0.001" class="event-time" value="${event.time.toFixed(3)}"></td>
       <td>
         <select class="event-type">
@@ -1640,7 +1714,20 @@ function populateMemoryEditor() {
       let formattedNote = formatNoteForDisplay(event.note);
       html += `<input type="text" class="event-note event-note-font" value="${formattedNote}">`;
       if (event.type === 'noteOn') {
-        html += ` Velocity: <input type="number" class="event-velocity" value="${event.velocity !== undefined ? event.velocity : 100}" min="1" max="127">`;
+        html += ` <span class="icon volume-icon"></span><input type="number" class="event-velocity" value="${event.velocity !== undefined ? event.velocity : 100}" min="1" max="127">`;
+        html += ` <span class="icon hand-icon"></span><select class="event-fingering">
+                      <option value="N"${!event.fingering || event.fingering === 'N' ? ' selected' : ''}>N</option>
+                      <option value="L1"${event.fingering === 'L1' ? ' selected' : ''}>L1</option>
+                      <option value="L2"${event.fingering === 'L2' ? ' selected' : ''}>L2</option>
+                      <option value="L3"${event.fingering === 'L3' ? ' selected' : ''}>L3</option>
+                      <option value="L4"${event.fingering === 'L4' ? ' selected' : ''}>L4</option>
+                      <option value="L5"${event.fingering === 'L5' ? ' selected' : ''}>L5</option>
+                      <option value="R1"${event.fingering === 'R1' ? ' selected' : ''}>R1</option>
+                      <option value="R2"${event.fingering === 'R2' ? ' selected' : ''}>R2</option>
+                      <option value="R3"${event.fingering === 'R3' ? ' selected' : ''}>R3</option>
+                      <option value="R4"${event.fingering === 'R4' ? ' selected' : ''}>R4</option>
+                      <option value="R5"${event.fingering === 'R5' ? ' selected' : ''}>R5</option>
+                  </select>`;
       }
     } else if (event.type === 'controlChange') {
       html += `CC#: <input type="number" class="event-controller-number" value="${event.controllerNumber}" min="0" max="127">
@@ -1649,7 +1736,7 @@ function populateMemoryEditor() {
       html += `Program Number: <input type="number" class="event-program-number" value="${event.programNumber}" min="0" max="127">`;
     }
 
-    html += `Channel: <select class="event-channel">
+    html += ` <span class="icon antenna-icon"></span><select class="event-channel">
       <option value="Omni"${event.channel === 'Omni' ? ' selected' : ''}>Omni</option>
       <option value="1"${event.channel === '1' ? ' selected' : ''}>1</option>
       <option value="2"${event.channel === '2' ? ' selected' : ''}>2</option>
@@ -1817,7 +1904,19 @@ function updateEventParamsCell(row) {
   eventParamsCell.innerHTML = '';
 
   if (eventType === 'noteOn') {
-    eventParamsCell.innerHTML = `<input type="text" class="event-note event-note-font" value=""> Velocity: <input type="number" class="event-velocity" value="100" min="1" max="127">`;
+    eventParamsCell.innerHTML = `<input type="text" class="event-note event-note-font" value=""> <span class="icon volume-icon"></span><input type="number" class="event-velocity" value="100" min="1" max="127"> <span class="icon hand-icon"></span><select class="event-fingering">
+                    <option value="N">N</option>
+                    <option value="L1">L1</option>
+                    <option value="L2">L2</option>
+                    <option value="L3">L3</option>
+                    <option value="L4">L4</option>
+                    <option value="L5">L5</option>
+                    <option value="R1">R1</option>
+                    <option value="R2">R2</option>
+                    <option value="R3">R3</option>
+                    <option value="R4">R4</option>
+                    <option value="R5">R5</option>
+                </select>`;
   } else if (eventType === 'noteOff') {
     eventParamsCell.innerHTML = `<input type="text" class="event-note event-note-font" value="">`;
   } else if (eventType === 'controlChange') {
@@ -2082,4 +2181,64 @@ function transposeNoteBySemitones(note, semitones) {
   }
 
   return newNoteName + newOctave;
+}
+
+function startPlayback() {
+  if (isPlaying || recordedNotes.length === 0) return;
+
+  isPlaying = true;
+  playbackStartTime = audioContext.currentTime;
+  document.getElementById('stop-btn').disabled = false;
+  document.getElementById('play-btn').disabled = true;
+
+  const tempoFactor = tempoPercentage / 100;
+
+  recordedNotes.forEach(noteEvent => {
+    // Check if the noteEvent is on the selected channel or Omni is selected
+    if (selectedMidiChannel !== 'Omni' && noteEvent.channel !== selectedMidiChannel) {
+      return;
+    }
+
+    const playbackTime = playbackStartTime + (noteEvent.time / tempoFactor);
+
+    if (noteEvent.type === 'noteOn') {
+      if (playbackTime < audioContext.currentTime) {
+        return;
+      }
+      const timerId = setTimeout(() => {
+        noteOn(noteEvent.note, noteEvent.velocity, false, noteEvent.fingering);
+      }, (playbackTime - audioContext.currentTime) * 1000);
+      playbackTimers.push(timerId);
+    } else if (noteEvent.type === 'noteOff') {
+      if (playbackTime < audioContext.currentTime) {
+        return;
+      }
+      const timerId = setTimeout(() => {
+        noteOff(noteEvent.note, false);
+      }, (playbackTime - audioContext.currentTime) * 1000);
+      playbackTimers.push(timerId);
+    }
+  });
+
+  // Schedule stop action
+  const duration = recordedNotes.reduce((maxTime, noteEvent) => {
+    if (selectedMidiChannel === 'Omni' || noteEvent.channel === selectedMidiChannel) {
+      return Math.max(maxTime, noteEvent.time / tempoFactor);
+    } else {
+      return maxTime;
+    }
+  }, 0);
+
+  const stopTimerId = setTimeout(() => {
+    stopAction();
+    if (isLooping) {
+      startPlayback();
+    }
+  }, duration * 1000);
+  playbackTimers.push(stopTimerId);
+}
+
+function resetMidiAndFingerings() {
+  clearActiveNotes();
+  stopNavigationActiveNotes();
 }
