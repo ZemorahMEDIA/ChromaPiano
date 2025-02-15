@@ -915,6 +915,7 @@ function clearActiveNotes() {
   for (const note in activeFingerings) {
     if (activeFingerings.hasOwnProperty(note)) {
       activeFingerings[note].remove();
+      delete activeFingerings[note];
     }
   }
   activeFingerings = {};
@@ -935,6 +936,7 @@ function stopNavigationActiveNotes() {
       delete activeFingerings[note];
     }
   }
+  activeFingerings = {};
 }
 
 function initKeyboardControls() {
@@ -1386,7 +1388,7 @@ function populateMemoryEditor() {
     const channelValue = channelSelect.value;
 
     let startTime;
-    if (startInput.trim().toLowerCase() === 'last') {
+    if (!startInput.trim() || startInput.trim().toLowerCase() === 'last') {
       if (events.length > 0) {
         const lastEvent = events[events.length - 1];
         startTime = lastEvent.time;
@@ -1397,6 +1399,16 @@ function populateMemoryEditor() {
       startTime = parseFloat(startInput);
       if (isNaN(startTime)) {
         startTime = 0;
+      }
+    }
+
+    let duration;
+    if (!durationInput.trim()) {
+      duration = 1.0;
+    } else {
+      duration = parseFloat(durationInput);
+      if (isNaN(duration)) {
+        duration = 1.0;
       }
     }
 
@@ -1426,7 +1438,6 @@ function populateMemoryEditor() {
     if (notesInput) {
       const noteNames = notesInput.split(',').map(note => note.trim());
       const velocity = parseInt(velocityInput) || 100;
-      const duration = parseFloat(durationInput) || 1.0;
 
       noteNames.forEach((note, index) => {
         let channel = channelValue;
