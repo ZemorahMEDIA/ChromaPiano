@@ -773,6 +773,7 @@ function updateMemoryList() {
   });
   document.getElementById('play-btn').disabled = memoryList.length === 0;
   document.getElementById('save-btn').disabled = memoryList.length === 0;
+  updateChannelButtonStyles();
 }
 
 function selectMemorySequence(index) {
@@ -826,6 +827,7 @@ function addToMemory() {
   selectMemorySequence(memoryList.length - 1);
   updateMemoryList();
   document.getElementById('play-btn').disabled = false;
+  updateChannelButtonStyles();
 }
 
 function removeFromMemory() {
@@ -841,6 +843,7 @@ function removeFromMemory() {
   document.getElementById('selected-memory').textContent = 'No Memory Selected';
 
   updateMemoryList();
+  updateChannelButtonStyles();
 
   document.getElementById('play-btn').disabled = memoryList.length === 0;
 }
@@ -1898,6 +1901,44 @@ function updateMemoryFromEditor() {
 
   updateMemoryList();
   selectMemorySequence(selectedMemoryIndex);
+  updateChannelButtonStyles();
+}
+
+function updateChannelButtonStyles() {
+  let channelsWithEvents = new Set();
+
+  memoryList.forEach(sequence => {
+    sequence.notes.forEach(event => {
+      if (event.channel && event.channel !== 'Omni') {
+        channelsWithEvents.add(event.channel);
+      }
+    });
+  });
+
+  const channelButtons = document.querySelectorAll('.channel-button');
+
+  channelButtons.forEach(button => {
+    const channel = button.getAttribute('data-channel');
+    if (channel !== 'Omni') {
+      if (channelsWithEvents.has(channel)) {
+        button.classList.add('has-events');
+      } else {
+        button.classList.remove('has-events');
+      }
+    }
+  });
+}
+
+function clearApp() {
+  stopAction();
+  memoryList = [];
+  sequenceCounter = 1;
+  selectedMemoryIndex = null;
+  recordedNotes = [];
+  quill.setContents([]);
+  document.getElementById('selected-memory').textContent = 'No Memory Selected';
+  updateMemoryList();
+  updateChannelButtonStyles();
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -2129,6 +2170,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
   });
+  updateChannelButtonStyles();
 });
 
 function toggleMemoryEditor() {
@@ -2178,15 +2220,4 @@ function clearActiveNotes() {
     }
   }
   activeNotes = {};
-}
-
-function clearApp() {
-  stopAction();
-  memoryList = [];
-  sequenceCounter = 1;
-  selectedMemoryIndex = null;
-  recordedNotes = [];
-  quill.setContents([]);
-  document.getElementById('selected-memory').textContent = 'No Memory Selected';
-  updateMemoryList();
 }
