@@ -550,6 +550,57 @@ function initSequencerControls() {
   resetMidiBtn.addEventListener('click', resetMidiAndFingerings);
 }
 
+function saveMemoryList() {
+  const dataStr = JSON.stringify(memoryList);
+  const dataBlob = new Blob([dataStr], { type: 'application/json' });
+  const url = URL.createObjectURL(dataBlob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'memory_list.json';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function loadMemoryList() {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = '.json';
+
+  input.addEventListener('change', (event) => {
+    const file = event.target.files[0];
+    if (!file) {
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      try {
+        const data = JSON.parse(e.target.result);
+        if (Array.isArray(data)) {
+          memoryList = data;
+          updateMemoryList();
+          if (memoryList.length > 0) {
+            selectMemorySequence(0);
+          } else {
+            selectedMemoryIndex = null;
+            document.getElementById('selected-memory').textContent = 'No Memory Selected';
+            quill.setContents([]);
+          }
+        } else {
+          alert('Invalid file format.');
+        }
+      } catch (error) {
+        alert('Error reading file: ' + error);
+      }
+    };
+    reader.readAsText(file);
+  });
+
+  input.click();
+}
+
 let transposeAmount = 0;
 
 function startRecording() {
@@ -813,130 +864,728 @@ function stopPlayback() {
   document.getElementById('play-btn').disabled = false;
 }
 
-function saveMemoryList() {
-  const data = {
-    memoryList: memoryList
-  };
-  const dataString = JSON.stringify(data);
-  const blob = new Blob([dataString], { type: 'application/json' });
+function resetMidiAndFingerings() {
+  clearActiveNotes();
+  stopNavigationActiveNotes();
+}
+
+function populateMemoryEditor() {
+  const memoryEditorContainer = document.getElementById('memory-editor-container');
+  let selectedEventIndices = [];
+
+  if (selectedMemoryIndex === null) {
+    memoryEditorContainer.innerHTML = '<p>No memory selected.</p>';
+    return;
+  }
+
+  const selectedSequence = memoryList[selectedMemoryIndex];
+  const events = selectedSequence.notes;
+
+  let html = `
+  <div id="memory-editor-name">
+    <label for="memory-name-input">Memory Name:</label>
+    <input type="text" id="memory-name-input" value="${selectedSequence.name}">
+  </div>
+  <div id="memory-editor-controls">
+    <div class="group-label"><span>Events</span></div>
+    <div id="memory-add-fields">
+      <input type="text" id="add-notes-input" placeholder="Notes">
+      <input type="number" id="add-velocity-input" value="100" placeholder="Velocity" min="1" max="127">
+      <input type="text" id="add-start-input" placeholder="Start">
+      <input type="number" id="add-duration-input" placeholder="Duration" step="0.001">
+      <select id="add-channel-select">
+        <option value="Omni">Omni</option>
+        <option value="Split">Split</option>
+        <option value="1">1</option>
+        <option value="2">2</option>
+        <option value="3">3</option>
+        <option value="4">4</option>
+        <option value="5">5</option>
+        <option value="6">6</option>
+        <option value="7">7</option>
+        <option value="8">8</option>
+        <option value="9">9</option>
+        <option value="10">10</option>
+        <option value="11">11</option>
+        <option value="12">12</option>
+        <option value="13">13</option>
+        <option value="14">14</option>
+        <option value="15">15</option>
+        <option value="16">16</option>
+      </select>
+      <input type="number" id="add-cc-number-input" placeholder="CC#" min="0" max="127">
+      <input type="number" id="add-cc-value-input" placeholder="CCV" min="0" max="127">
+      <input type="number" id="add-pc-input" placeholder="PC">
+    </div>
+    <button id="add-entry-btn">Add</button>
+  </div>
+  <table id="memory-editor-table">
+    <tr><th>Time (s)</th><th>Type</th><th>Parameters</th><th>Action</th></tr>`;
+
+  events.forEach((event, index) => {
+    html += `<tr class="event-row ${event.type === 'noteOn' ? 'note-on' :
+                                   event.type === 'noteOff' ? 'note-off' :
+                                   event.type === 'controlChange' ? 'control-change' :
+                                   event.type === 'programChange' ? 'program-change' : ''}" data-index="${index}">
+      <td><input type="number" step="0.001" class="event-time" value="${event.time.toFixed(3)}"></td>
+      <td>
+        <select class="event-type">
+          <option value="noteOn"${event.type === 'noteOn' ? ' selected' : ''}>noteOn</option>
+          <option value="noteOff"${event.type === 'noteOff' ? ' selected' : ''}>noteOff</option>
+          <option value="controlChange"${event.type === 'controlChange' ? ' selected' : ''}>controlChange</option>
+          <option value="programChange"${event.type === 'programChange' ? ' selected' : ''}>programChange</option>
+        </select>
+      </td>
+      <td class="event-params">`;
+
+    if (event.type === 'noteOn') {
+      let formattedNote = formatNoteForDisplay(event.note);
+      html += `<input type="text" class="event-note event-note-font" value="${formattedNote}">`;
+      if (event.velocity !== undefined) {
+        html += ` <span class="icon volume-icon"></span><input type="number" class="event-velocity" value="${event.velocity}" min="1" max="127">`;
+      } else {
+        html += ` <span class="icon volume-icon"></span><input type="number" class="event-velocity" value="100" min="1" max="127">`;
+      }
+
+      if (event.fingering) {
+        html += ` <span class="icon hand-icon"></span><select class="event-fingering">
+                      <option value="N"${event.fingering === 'N' ? ' selected' : ''}>N</option>
+                      <option value="L1"${event.fingering === 'L1' ? ' selected' : ''}>L1</option>
+                      <option value="L2"${event.fingering === 'L2' ? ' selected' : ''}>L2</option>
+                      <option value="L3"${event.fingering === 'L3' ? ' selected' : ''}>L3</option>
+                      <option value="L4"${event.fingering === 'L4' ? ' selected' : ''}>L4</option>
+                      <option value="L5"${event.fingering === 'L5' ? ' selected' : ''}>L5</option>
+                      <option value="R1"${event.fingering === 'R1' ? ' selected' : ''}>R1</option>
+                      <option value="R2"${event.fingering === 'R2' ? ' selected' : ''}>R2</option>
+                      <option value="R3"${event.fingering === 'R3' ? ' selected' : ''}>R3</option>
+                      <option value="R4"${event.fingering === 'R4' ? ' selected' : ''}>R4</option>
+                      <option value="R5"${event.fingering === 'R5' ? ' selected' : ''}>R5</option>
+                  </select>`;
+      } else {
+        html += ` <span class="icon hand-icon"></span><select class="event-fingering">
+                      <option value="N" selected>N</option>
+                      <option value="L1">L1</option>
+                      <option value="L2">L2</option>
+                      <option value="L3">L3</option>
+                      <option value="L4">L4</option>
+                      <option value="L5">L5</option>
+                      <option value="R1">R1</option>
+                      <option value="R2">R2</option>
+                      <option value="R3">R3</option>
+                      <option value="R4">R4</option>
+                      <option value="R5">R5</option>
+                  </select>`;
+      }
+    } else if (event.type === 'noteOff') {
+      let formattedNote = formatNoteForDisplay(event.note);
+      html += `<input type="text" class="event-note event-note-font" value="${formattedNote}">`;
+    } else if (event.type === 'controlChange') {
+      html += `CC#: <input type="number" class="event-controller-number" value="${event.controllerNumber}" min="0" max="127">
+               CCV: <input type="number" class="event-controller-value" value="${event.controllerValue}" min="0" max="127">`;
+    } else if (event.type === 'programChange') {
+      html += `Program Number: <input type="number" class="event-program-number" value="${event.programNumber}" min="0" max="127">`;
+    }
+
+    html += ` <span class="icon antenna-icon"></span><select class="event-channel">
+      <option value="Omni"${event.channel === 'Omni' ? ' selected' : ''}>Omni</option>
+      <option value="1"${event.channel === '1' ? ' selected' : ''}>1</option>
+      <option value="2"${event.channel === '2' ? ' selected' : ''}>2</option>
+      <option value="3"${event.channel === '3' ? ' selected' : ''}>3</option>
+      <option value="4"${event.channel === '4' ? ' selected' : ''}>4</option>
+      <option value="5"${event.channel === '5' ? ' selected' : ''}>5</option>
+      <option value="6"${event.channel === '6' ? ' selected' : ''}>6</option>
+      <option value="7"${event.channel === '7' ? ' selected' : ''}>7</option>
+      <option value="8"${event.channel === '8' ? ' selected' : ''}>8</option>
+      <option value="9"${event.channel === '9' ? ' selected' : ''}>9</option>
+      <option value="10"${event.channel === '10' ? ' selected' : ''}>10</option>
+      <option value="11"${event.channel === '11' ? ' selected' : ''}>11</option>
+      <option value="12"${event.channel === '12' ? ' selected' : ''}>12</option>
+      <option value="13"${event.channel === '13' ? ' selected' : ''}>13</option>
+      <option value="14"${event.channel === '14' ? ' selected' : ''}>14</option>
+      <option value="15"${event.channel === '15' ? ' selected' : ''}>15</option>
+      <option value="16"${event.channel === '16' ? ' selected' : ''}>16</option>
+    </select>
+    </td>
+      <td class="action-cell"><button class="delete-entry-btn">X</button></td>
+    </tr>`;
+  });
+
+  html += '</table>';
+  memoryEditorContainer.innerHTML = html;
+
+  const memoryNameInput = document.getElementById('memory-name-input');
+  memoryNameInput.addEventListener('blur', updateMemoryFromEditor);
+
+  const addEntryBtn = document.getElementById('add-entry-btn');
+  addEntryBtn.addEventListener('click', function () {
+    const notesInput = document.getElementById('add-notes-input').value.trim();
+    const velocityInput = document.getElementById('add-velocity-input').value;
+    const startInput = document.getElementById('add-start-input').value;
+    const durationInput = document.getElementById('add-duration-input').value;
+    const ccNumberInput = document.getElementById('add-cc-number-input').value;
+    const ccValueInput = document.getElementById('add-cc-value-input').value;
+    const pcInput = document.getElementById('add-pc-input').value;
+    const channelSelect = document.getElementById('add-channel-select');
+    const channelValue = channelSelect.value;
+
+    let startTime;
+    if (!startInput.trim() || startInput.trim().toLowerCase() === 'last') {
+      if (events.length > 0) {
+        const lastEvent = events[events.length - 1];
+        startTime = lastEvent.time;
+      } else {
+        startTime = 0;
+      }
+    } else {
+      startTime = parseFloat(startInput);
+      if (isNaN(startTime)) {
+        startTime = 0;
+      }
+    }
+
+    let duration;
+    if (!durationInput.trim()) {
+      duration = 1.0;
+    } else {
+      duration = parseFloat(durationInput);
+      if (isNaN(duration)) {
+        duration = 1.0;
+      }
+    }
+
+    const newEvents = [];
+
+    if (ccNumberInput && ccValueInput) {
+      const ccEvent = {
+        type: 'controlChange',
+        time: startTime,
+        controllerNumber: parseInt(ccNumberInput),
+        controllerValue: parseInt(ccValueInput),
+        channel: channelValue
+      };
+      newEvents.push(ccEvent);
+    }
+
+    if (pcInput) {
+      const pcEvent = {
+        type: 'programChange',
+        time: startTime,
+        programNumber: parseInt(pcInput),
+        channel: channelValue
+      };
+      newEvents.push(pcEvent);
+    }
+
+    if (notesInput) {
+      const noteNames = notesInput.split(',').map(note => note.trim());
+      const velocity = parseInt(velocityInput) || 100;
+
+      noteNames.forEach((note, index) => {
+        let channel = channelValue;
+
+        if (channelValue === 'Split') {
+          channel = String(((index) % 16) + 1);
+        }
+
+        const noteOnEvent = {
+          type: 'noteOn',
+          note: note,
+          velocity: velocity,
+          time: startTime,
+          channel: channel
+        };
+        const noteOffEvent = {
+          type: 'noteOff',
+          note: note,
+          time: startTime + duration,
+          channel: channel
+        };
+        newEvents.push(noteOnEvent, noteOffEvent);
+      });
+    }
+
+    events.push(...newEvents);
+    events.sort((a, b) => a.time - b.time);
+    selectedSequence.duration = Math.max(selectedSequence.duration, ...events.map(event => event.time));
+
+    populateMemoryEditor();
+  });
+
+  const deleteButtons = memoryEditorContainer.querySelectorAll('.delete-entry-btn');
+  deleteButtons.forEach((button, index) => {
+    button.addEventListener('click', function () {
+      events.splice(index, 1);
+      populateMemoryEditor();
+    });
+  });
+
+  const eventTypeSelects = memoryEditorContainer.querySelectorAll('.event-type');
+  eventTypeSelects.forEach(select => {
+    select.addEventListener('change', function () {
+      const row = this.closest('tr');
+      updateEventParamsCell(row);
+      updateRowClass(row);
+    });
+  });
+
+  const eventParamsFields = memoryEditorContainer.querySelectorAll('.event-params input');
+  eventParamsFields.forEach(inputField => {
+    inputField.addEventListener('input', function () {
+      const row = this.closest('tr');
+      updateRowClass(row);
+    });
+  });
+
+  const noteInputs = memoryEditorContainer.querySelectorAll('.event-note');
+  noteInputs.forEach(noteInput => {
+    noteInput.addEventListener('focus', function () {
+      currentNoteInputField = noteInput;
+    });
+    noteInput.addEventListener('blur', function () {
+      if (currentNoteInputField === noteInput) {
+        currentNoteInputField = null;
+      }
+    });
+  });
+
+  const eventChannelSelects = memoryEditorContainer.querySelectorAll('.event-channel');
+  eventChannelSelects.forEach(select => {
+    select.addEventListener('change', function () {
+    });
+  });
+
+  const actionCells = memoryEditorContainer.querySelectorAll('.action-cell');
+  actionCells.forEach(cell => {
+    cell.addEventListener('click', function(e) {
+      e.stopPropagation(); // Prevent the event from triggering other handlers
+      const row = this.closest('tr');
+      const eventIndex = parseInt(row.dataset.index, 10);
+      if (selectedEventIndices.includes(eventIndex)) {
+        // Deselect
+        selectedEventIndices = selectedEventIndices.filter(index => index !== eventIndex);
+        row.classList.remove('selected');
+      } else {
+        // Select
+        selectedEventIndices.push(eventIndex);
+        row.classList.add('selected');
+      }
+    });
+  });
+
+  const eventInputs = memoryEditorContainer.querySelectorAll('.event-time, .event-type, .event-params input, .event-params select, .event-channel');
+  eventInputs.forEach(input => {
+    input.addEventListener('input', function() {
+      const row = this.closest('tr');
+      const eventIndex = parseInt(row.dataset.index, 10);
+      const eventTypeSelect = row.querySelector('.event-type');
+      const eventType = eventTypeSelect.value;
+      if (selectedEventIndices.length > 1 && selectedEventIndices.includes(eventIndex)) {
+        // Copy changes to other selected events of the same type
+        const inputField = this;
+        const valueToCopy = inputField.value;
+        const fieldClassList = Array.from(inputField.classList);
+
+        selectedEventIndices.forEach(index => {
+          if (index !== eventIndex) {
+            const targetRow = memoryEditorContainer.querySelector(`tr[data-index="${index}"]`);
+            if (targetRow) {
+              const targetEventTypeSelect = targetRow.querySelector('.event-type');
+              const targetEventType = targetEventTypeSelect.value;
+              if (targetEventType === eventType) {
+                let targetInput;
+
+                // Find corresponding input in targetRow
+                if (fieldClassList.includes('event-time')) {
+                  targetInput = targetRow.querySelector('.event-time');
+                } else if (fieldClassList.includes('event-type')) {
+                  targetInput = targetRow.querySelector('.event-type');
+                  if (targetInput.value !== valueToCopy) {
+                    targetInput.value = valueToCopy;
+                    updateEventParamsCell(targetRow);
+                  }
+                } else if (fieldClassList.includes('event-channel')) {
+                  targetInput = targetRow.querySelector('.event-channel');
+                } else if (inputField.closest('.event-params')) {
+                  const paramClass = fieldClassList.find(cls => cls.startsWith('event-'));
+                  if (paramClass) {
+                    targetInput = targetRow.querySelector(`.event-params .${paramClass}`);
+                  }
+                }
+                if (targetInput) {
+                  targetInput.value = valueToCopy;
+                }
+              }
+            }
+          }
+        });
+      }
+      updateRowClass(row);
+    });
+  });
+}
+
+function updateEventParamsCell(row) {
+  const eventType = row.querySelector('.event-type').value;
+  const eventParamsCell = row.querySelector('.event-params');
+  eventParamsCell.innerHTML = '';
+
+  if (eventType === 'noteOn') {
+    eventParamsCell.innerHTML = `<input type="text" class="event-note event-note-font" value=""> <span class="icon volume-icon"></span><input type="number" class="event-velocity" value="100" min="1" max="127"> <span class="icon hand-icon"></span><select class="event-fingering">
+                    <option value="N">N</option>
+                    <option value="L1">L1</option>
+                    <option value="L2">L2</option>
+                    <option value="L3">L3</option>
+                    <option value="L4">L4</option>
+                    <option value="L5">L5</option>
+                    <option value="R1">R1</option>
+                    <option value="R2">R2</option>
+                    <option value="R3">R3</option>
+                    <option value="R4">R4</option>
+                    <option value="R5">R5</option>
+                </select>`;
+  } else if (eventType === 'noteOff') {
+    eventParamsCell.innerHTML = `<input type="text" class="event-note event-note-font" value="">`;
+  } else if (eventType === 'controlChange') {
+    eventParamsCell.innerHTML = `CC#: <input type="number" class="event-controller-number" value="0" min="0" max="127">
+                                 CCV: <input type="number" class="event-controller-value" value="0" min="0" max="127">`;
+  } else if (eventType === 'programChange') {
+    eventParamsCell.innerHTML = `Program Number: <input type="number" class="event-program-number" value="0" min="0" max="127">`;
+  }
+
+  const noteInput = eventParamsCell.querySelector('.event-note');
+  if (noteInput) {
+    noteInput.addEventListener('focus', function () {
+      currentNoteInputField = noteInput;
+    });
+    noteInput.addEventListener('blur', function () {
+      if (currentNoteInputField === noteInput) {
+        currentNoteInputField = null;
+      }
+    });
+  }
+
+  const paramsFields = eventParamsCell.querySelectorAll('input, select');
+  paramsFields.forEach(inputField => {
+    inputField.addEventListener('input', function () {
+      const row = this.closest('tr');
+      const eventIndex = parseInt(row.dataset.index, 10);
+      const eventTypeSelect = row.querySelector('.event-type');
+      const eventType = eventTypeSelect.value;
+      if (selectedEventIndices.length > 1 && selectedEventIndices.includes(eventIndex)) {
+        // Copy changes to other selected events of the same type
+        const valueToCopy = inputField.value;
+        const fieldClassList = Array.from(inputField.classList);
+        selectedEventIndices.forEach(index => {
+          if (index !== eventIndex) {
+            const targetRow = memoryEditorContainer.querySelector(`tr[data-index="${index}"]`);
+            if (targetRow) {
+              const targetEventTypeSelect = targetRow.querySelector('.event-type');
+              const targetEventType = targetEventTypeSelect.value;
+              if (targetEventType === eventType) {
+                let targetInput;
+                const paramClass = fieldClassList.find(cls => cls.startsWith('event-'));
+                if (paramClass) {
+                  targetInput = targetRow.querySelector(`.event-params .${paramClass}`);
+                }
+                if (targetInput) {
+                  targetInput.value = valueToCopy;
+                }
+              }
+            }
+          }
+        });
+      }
+      updateRowClass(row);
+    });
+  });
+}
+
+function updateRowClass(row) {
+  const eventType = row.querySelector('.event-type').value;
+  row.classList.remove('note-on', 'note-off', 'control-change', 'program-change');
+  if (eventType === 'noteOn') {
+    row.classList.add('note-on');
+  } else if (eventType === 'noteOff') {
+    row.classList.add('note-off');
+  } else if (eventType === 'controlChange') {
+    row.classList.add('control-change');
+  } else if (eventType === 'programChange') {
+    row.classList.add('program-change');
+  }
+}
+
+function selectMemoryByName(name) {
+  const index = memoryList.findIndex(sequence => sequence.name === name);
+  if (index >= 0) {
+    selectMemorySequence(index);
+  }
+}
+
+function normalizeNoteName(noteName) {
+  return noteName;
+}
+
+function formatNoteForDisplay(note) {
+  return note.replace(/#/g, '\u266F').replace(/b/g, '\u266D');
+}
+
+function normalizeNoteFromInput(note) {
+  return note.replace(/\u266F/g, '#').replace(/\u266D/g, 'b');
+}
+
+function exportSelectedMemoryAsMidi() {
+  if (selectedMemoryIndex === null) {
+    alert('No memory selected to export.');
+    return;
+  }
+
+  const selectedSequence = memoryList[selectedMemoryIndex];
+
+  const track = new MidiWriter.Track();
+
+  track.setTempo(100);
+
+  let noteOnEvents = {};
+  const events = selectedSequence.notes;
+
+  events.forEach(event => {
+    if (event.type === 'noteOn') {
+      noteOnEvents[event.note] = { time: event.time, velocity: event.velocity !== undefined ? event.velocity : 100 };
+    } else if (event.type === 'noteOff') {
+      if (noteOnEvents[event.note] !== undefined) {
+        const startTime = noteOnEvents[event.note].time;
+        const velocity = noteOnEvents[event.note].velocity;
+        const duration = event.time - startTime;
+
+        const startTick = Math.round(startTime * (100 / 60) * 128);
+        const durationTicks = Math.round(duration * (100 / 60) * 128) || 1;
+
+        const noteEvent = new MidiWriter.NoteEvent({
+          pitch: [event.note],
+          duration: 'T' + durationTicks,
+          startTick: startTick,
+          velocity: velocity
+        });
+        track.addEvent(noteEvent);
+
+        delete noteOnEvents[event.note];
+      }
+    } else if (event.type === 'controlChange') {
+      const controllerEvent = new MidiWriter.ControllerChangeEvent({
+        controllerNumber: event.controllerNumber,
+        controllerValue: event.controllerValue,
+        startTick: Math.round(event.time * (100 / 60) * 128)
+      });
+      track.addEvent(controllerEvent);
+    } else if (event.type === 'programChange') {
+      const programChangeEvent = new MidiWriter.ProgramChangeEvent({
+        instrument: event.programNumber,
+        startTick: Math.round(event.time * (100 / 60) * 128)
+      });
+      track.addEvent(programChangeEvent);
+    }
+  });
+
+  const write = new MidiWriter.Writer([track]);
+  const midiFileData = write.buildFile();
+
+  const blob = new Blob([midiFileData], { type: 'audio/midi' });
+
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  let filename = 'memoryList.json';
-  if (memoryList.length > 0 && memoryList[0].name) {
-    filename = memoryList[0].name + '.json';
-  }
-  a.download = filename;
+  a.download = `${selectedSequence.name}.mid`;
+  document.body.appendChild(a);
   a.click();
+  document.body.removeChild(a);
   URL.revokeObjectURL(url);
 }
 
-function loadMemoryList() {
-  const input = document.createElement('input');
-  input.type = 'file';
-  input.accept = 'application/json';
+function transposeSelectedMemoryDown() {
+  transposeSelectedMemory(-1);
+}
 
-  input.onchange = e => {
-    const file = e.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = event => {
-      try {
-        const data = JSON.parse(event.target.result);
-        if (data && data.memoryList) {
-          let previousMemoryListLength = memoryList.length;
-          memoryList = memoryList.concat(data.memoryList);
-          updateMemoryList();
-          document.getElementById('play-btn').disabled = memoryList.length === 0;
+function transposeSelectedMemoryUp() {
+  transposeSelectedMemory(1);
+}
 
-          if (data.memoryList.length > 0) {
-            selectMemorySequence(previousMemoryListLength);
-          }
-        }
-      } catch (err) {
-        console.error('Invalid memory list file.', err);
-      }
+function transposeSelectedMemory(semitones) {
+  if (selectedMemoryIndex === null || selectedMemoryIndex >= memoryList.length) {
+    alert('No memory selected to transpose.');
+    return;
+  }
+
+  const sequence = memoryList[selectedMemoryIndex];
+  const transposedNotes = sequence.notes.map(noteEvent => {
+    const transposedNote = transposeNoteBySemitones(noteEvent.note, semitones);
+    if (!transposedNote) {
+      return null;
+    }
+    return {
+      ...noteEvent,
+      note: transposedNote
     };
-    reader.readAsText(file);
-  };
-  input.click();
-}
-
-function clearApp() {
-  isRecording = false;
-  isPlaying = false;
-  recordedNotes = [];
-  recordStartTime = null;
-  playbackStartTime = null;
-  recordingTimers.forEach(timerId => clearTimeout(timerId));
-  recordingTimers = [];
-  playbackTimers.forEach(timerId => clearTimeout(timerId));
-  playbackTimers = [];
-  memoryList = [];
-  sequenceCounter = 1;
-  updateMemoryList();
-  quill.setContents([]);
-  document.getElementById('play-btn').disabled = true;
-  document.getElementById('stop-btn').disabled = true;
-  document.getElementById('save-btn').disabled = false;
-  const recordBtn = document.getElementById('record-btn');
-  recordBtn.classList.remove('pressed');
-  clearActiveNotes();
-  document.getElementById('selected-memory').textContent = 'No Memory Selected';
-
-  selectedMemoryIndex = null;
-  if (memoryEditorVisible) {
-    populateMemoryEditor();
-  }
-
-  transposeAmount = 0;
-  document.getElementById('transpose-amount').textContent = transposeAmount;
-
-  for (const note in activeFingerings) {
-    if (activeFingerings.hasOwnProperty(note)) {
-      activeFingerings[note].remove();
-    }
-  }
-  activeFingerings = {};
-}
-
-function clearActiveNotes() {
-  for (const note in activeNotes) {
-    if (activeNotes.hasOwnProperty(note)) {
-      activeNotes[note].stop();
-    }
-  }
-  activeNotes = {};
-  pianoKeys.forEach(key => {
-    key.style.background = '';
-    key.classList.remove('pressed');
   });
 
-  for (const note in activeFingerings) {
-    if (activeFingerings.hasOwnProperty(note)) {
-      activeFingerings[note].remove();
-      delete activeFingerings[note];
-    }
+  if (transposedNotes.includes(null)) {
+    alert('Transposition goes out of piano range.');
+    return;
   }
-  activeFingerings = {};
+
+  sequence.notes = transposedNotes;
+  transposeAmount += semitones;
+  document.getElementById('transpose-amount').textContent = transposeAmount;
+
+  const selectedMemoryName = document.getElementById('selected-memory').textContent;
+  if (selectedMemoryName === sequence.name) {
+    recordedNotes = JSON.parse(JSON.stringify(sequence.notes));
+  }
+
+  processSequenceNotes(sequence);
+  currentNoteIndex = -1;
 }
 
-function stopNavigationActiveNotes() {
-  for (const note in navigationActiveNotes) {
-    if (navigationActiveNotes.hasOwnProperty(note)) {
-      navigationActiveNotes[note].stop();
-      highlightKey(note, false);
-    }
-  }
-  navigationActiveNotes = {};
+function transposeNoteBySemitones(note, semitones) {
+  const noteRegex = /^([A-G](?:#|b)?)(\d)$/;
+  const match = note.match(noteRegex);
+  if (!match) return null;
 
-  for (const note in activeFingerings) {
-    if (activeFingerings.hasOwnProperty(note)) {
-      activeFingerings[note].remove();
-      delete activeFingerings[note];
-    }
+  let [_, noteName, octave] = match;
+  octave = parseInt(octave);
+
+  if (noteName === 'B#') {
+    noteName = 'C';
+    octave += 1;
+  } else if (noteName === 'Cb') {
+    noteName = 'B';
+    octave -= 1;
+  } else if (noteName === 'E#') {
+    noteName = 'F';
+  } else if (noteName === 'Fb') {
+    noteName = 'E';
   }
-  activeFingerings = {};
+
+  const noteOffsets = {
+    'C': 0,
+    'C#': 1,
+    'Db': 1,
+    'D': 2,
+    'D#': 3,
+    'Eb': 3,
+    'E': 4,
+    'F': 5,
+    'F#': 6,
+    'Gb': 6,
+    'G': 7,
+    'G#': 8,
+    'Ab': 8,
+    'A': 9,
+    'A#': 10,
+    'Bb': 10,
+    'B': 11
+  };
+
+  let noteOffset = noteOffsets[noteName];
+  if (noteOffset === undefined) return null;
+
+  let midiNumber = octave * 12 + noteOffset;
+  midiNumber += semitones;
+
+  if (midiNumber < 0) return null;
+
+  let newOctave = Math.floor(midiNumber / 12);
+  let newNoteIndex = midiNumber % 12;
+
+  if (newNoteIndex < 0) {
+    newNoteIndex += 12;
+    newOctave -= 1;
+  }
+
+  if (newOctave < startOctave || newOctave >= startOctave + totalOctaves) {
+    return null;
+  }
+
+  const indexToNoteNames = {
+    0: ['C'],
+    1: ['C#', 'Db'],
+    2: ['D'],
+    3: ['D#', 'Eb'],
+    4: ['E'],
+    5: ['F'],
+    6: ['F#', 'Gb'],
+    7: ['G'],
+    8: ['G#', 'Ab'],
+    9: ['A'],
+    10: ['A#', 'Bb'],
+    11: ['B']
+  };
+
+  const originalIsFlat = noteName.includes('b');
+  const possibleNoteNames = indexToNoteNames[newNoteIndex];
+  let newNoteName;
+
+  if (possibleNoteNames.length === 1) {
+    newNoteName = possibleNoteNames[0];
+  } else if (originalIsFlat) {
+    newNoteName = possibleNoteNames.find(n => n.includes('b')) || possibleNoteNames[0];
+  } else {
+    newNoteName = possibleNoteNames.find(n => n.includes('#')) || possibleNoteNames[0];
+  }
+
+  return newNoteName + newOctave;
+}
+
+function startPlayback() {
+  if (isPlaying || recordedNotes.length === 0) return;
+
+  isPlaying = true;
+  playbackStartTime = audioContext.currentTime;
+  document.getElementById('stop-btn').disabled = false;
+  document.getElementById('play-btn').disabled = true;
+
+  const tempoFactor = tempoPercentage / 100;
+
+  recordedNotes.forEach(noteEvent => {
+    if (!selectedMidiChannels.includes('Omni') && !selectedMidiChannels.includes(noteEvent.channel)) {
+      return;
+    }
+
+    const playbackTime = playbackStartTime + (noteEvent.time / tempoFactor);
+
+    if (noteEvent.type === 'noteOn') {
+      if (playbackTime < audioContext.currentTime) {
+        return;
+      }
+      const timerId = setTimeout(() => {
+        noteOn(noteEvent.note, noteEvent.velocity, false, noteEvent.fingering);
+      }, (playbackTime - audioContext.currentTime) * 1000);
+      playbackTimers.push(timerId);
+    } else if (noteEvent.type === 'noteOff') {
+      if (playbackTime < audioContext.currentTime) {
+        return;
+      }
+      const timerId = setTimeout(() => {
+        noteOff(noteEvent.note, false);
+      }, (playbackTime - audioContext.currentTime) * 1000);
+      playbackTimers.push(timerId);
+    }
+  });
+
+  const duration = recordedNotes.reduce((maxTime, noteEvent) => {
+    if (selectedMidiChannels.includes('Omni') || selectedMidiChannels.includes(noteEvent.channel)) {
+      return Math.max(maxTime, noteEvent.time / tempoFactor);
+    } else {
+      return maxTime;
+    }
+  }, 0);
+
+  const stopTimerId = setTimeout(() => {
+    stopAction();
+    if (isLooping) {
+      startPlayback();
+    }
+  }, duration * 1000);
+  playbackTimers.push(stopTimerId);
 }
 
 function initKeyboardControls() {
@@ -1251,611 +1900,6 @@ function updateMemoryFromEditor() {
   selectMemorySequence(selectedMemoryIndex);
 }
 
-function populateMemoryEditor() {
-  const memoryEditorContainer = document.getElementById('memory-editor-container');
-
-  if (selectedMemoryIndex === null) {
-    memoryEditorContainer.innerHTML = '<p>No memory selected.</p>';
-    return;
-  }
-
-  const selectedSequence = memoryList[selectedMemoryIndex];
-  const events = selectedSequence.notes;
-
-  let html = `
-  <div id="memory-editor-name">
-    <label for="memory-name-input">Memory Name:</label>
-    <input type="text" id="memory-name-input" value="${selectedSequence.name}">
-  </div>
-  <div id="memory-editor-controls">
-    <div class="group-label"><span>Events</span></div>
-    <div id="memory-add-fields">
-      <input type="text" id="add-notes-input" placeholder="Notes">
-      <input type="number" id="add-velocity-input" value="100" placeholder="Velocity" min="1" max="127">
-      <input type="text" id="add-start-input" placeholder="Start">
-      <input type="number" id="add-duration-input" placeholder="Duration" step="0.001">
-      <select id="add-channel-select">
-        <option value="Omni">Omni</option>
-        <option value="Split">Split</option>
-        <option value="1">1</option>
-        <option value="2">2</option>
-        <option value="3">3</option>
-        <option value="4">4</option>
-        <option value="5">5</option>
-        <option value="6">6</option>
-        <option value="7">7</option>
-        <option value="8">8</option>
-        <option value="9">9</option>
-        <option value="10">10</option>
-        <option value="11">11</option>
-        <option value="12">12</option>
-        <option value="13">13</option>
-        <option value="14">14</option>
-        <option value="15">15</option>
-        <option value="16">16</option>
-      </select>
-      <input type="number" id="add-cc-number-input" placeholder="CC#" min="0" max="127">
-      <input type="number" id="add-cc-value-input" placeholder="CCV" min="0" max="127">
-      <input type="number" id="add-pc-input" placeholder="PC">
-    </div>
-    <button id="add-entry-btn">Add</button>
-  </div>
-  <table id="memory-editor-table">
-    <tr><th>Time (s)</th><th>Type</th><th>Parameters</th><th>Action</th></tr>`;
-
-  events.forEach((event, index) => {
-    html += `<tr class="event-row ${event.type === 'noteOn' ? 'note-on' :
-                                           event.type === 'noteOff' ? 'note-off' :
-                                           event.type === 'controlChange' ? 'control-change' :
-                                           event.type === 'programChange' ? 'program-change' : ''}">
-      <td><input type="number" step="0.001" class="event-time" value="${event.time.toFixed(3)}"></td>
-      <td>
-        <select class="event-type">
-          <option value="noteOn"${event.type === 'noteOn' ? ' selected' : ''}>noteOn</option>
-          <option value="noteOff"${event.type === 'noteOff' ? ' selected' : ''}>noteOff</option>
-          <option value="controlChange"${event.type === 'controlChange' ? ' selected' : ''}>controlChange</option>
-          <option value="programChange"${event.type === 'programChange' ? ' selected' : ''}>programChange</option>
-        </select>
-      </td>
-      <td class="event-params">`;
-
-    if (event.type === 'noteOn' || event.type === 'noteOff') {
-      let formattedNote = formatNoteForDisplay(event.note);
-      html += `<input type="text" class="event-note event-note-font" value="${formattedNote}">`;
-      if (event.type === 'noteOn') {
-        html += ` <span class="icon volume-icon"></span><input type="number" class="event-velocity" value="${event.velocity !== undefined ? event.velocity : 100}" min="1" max="127">`;
-        html += ` <span class="icon hand-icon"></span><select class="event-fingering">
-                      <option value="N"${!event.fingering || event.fingering === 'N' ? ' selected' : ''}>N</option>
-                      <option value="L1"${event.fingering === 'L1' ? ' selected' : ''}>L1</option>
-                      <option value="L2"${event.fingering === 'L2' ? ' selected' : ''}>L2</option>
-                      <option value="L3"${event.fingering === 'L3' ? ' selected' : ''}>L3</option>
-                      <option value="L4"${event.fingering === 'L4' ? ' selected' : ''}>L4</option>
-                      <option value="L5"${event.fingering === 'L5' ? ' selected' : ''}>L5</option>
-                      <option value="R1"${event.fingering === 'R1' ? ' selected' : ''}>R1</option>
-                      <option value="R2"${event.fingering === 'R2' ? ' selected' : ''}>R2</option>
-                      <option value="R3"${event.fingering === 'R3' ? ' selected' : ''}>R3</option>
-                      <option value="R4"${event.fingering === 'R4' ? ' selected' : ''}>R4</option>
-                      <option value="R5"${event.fingering === 'R5' ? ' selected' : ''}>R5</option>
-                  </select>`;
-      }
-    } else if (event.type === 'controlChange') {
-      html += `CC#: <input type="number" class="event-controller-number" value="${event.controllerNumber}" min="0" max="127">
-               CCV: <input type="number" class="event-controller-value" value="${event.controllerValue}" min="0" max="127">`;
-    } else if (event.type === 'programChange') {
-      html += `Program Number: <input type="number" class="event-program-number" value="${event.programNumber}" min="0" max="127">`;
-    }
-
-    html += ` <span class="icon antenna-icon"></span><select class="event-channel">
-      <option value="Omni"${event.channel === 'Omni' ? ' selected' : ''}>Omni</option>
-      <option value="1"${event.channel === '1' ? ' selected' : ''}>1</option>
-      <option value="2"${event.channel === '2' ? ' selected' : ''}>2</option>
-      <option value="3"${event.channel === '3' ? ' selected' : ''}>3</option>
-      <option value="4"${event.channel === '4' ? ' selected' : ''}>4</option>
-      <option value="5"${event.channel === '5' ? ' selected' : ''}>5</option>
-      <option value="6"${event.channel === '6' ? ' selected' : ''}>6</option>
-      <option value="7"${event.channel === '7' ? ' selected' : ''}>7</option>
-      <option value="8"${event.channel === '8' ? ' selected' : ''}>8</option>
-      <option value="9"${event.channel === '9' ? ' selected' : ''}>9</option>
-      <option value="10"${event.channel === '10' ? ' selected' : ''}>10</option>
-      <option value="11"${event.channel === '11' ? ' selected' : ''}>11</option>
-      <option value="12"${event.channel === '12' ? ' selected' : ''}>12</option>
-      <option value="13"${event.channel === '13' ? ' selected' : ''}>13</option>
-      <option value="14"${event.channel === '14' ? ' selected' : ''}>14</option>
-      <option value="15"${event.channel === '15' ? ' selected' : ''}>15</option>
-      <option value="16"${event.channel === '16' ? ' selected' : ''}>16</option>
-    </select>
-    </td>
-      <td><button class="delete-entry-btn">X</button></td>
-    </tr>`;
-  });
-
-  html += '</table>';
-  memoryEditorContainer.innerHTML = html;
-
-  const memoryNameInput = document.getElementById('memory-name-input');
-  memoryNameInput.addEventListener('blur', updateMemoryFromEditor);
-
-  const addEntryBtn = document.getElementById('add-entry-btn');
-  addEntryBtn.addEventListener('click', function () {
-    const notesInput = document.getElementById('add-notes-input').value.trim();
-    const velocityInput = document.getElementById('add-velocity-input').value;
-    const startInput = document.getElementById('add-start-input').value;
-    const durationInput = document.getElementById('add-duration-input').value;
-    const ccNumberInput = document.getElementById('add-cc-number-input').value;
-    const ccValueInput = document.getElementById('add-cc-value-input').value;
-    const pcInput = document.getElementById('add-pc-input').value;
-    const channelSelect = document.getElementById('add-channel-select');
-    const channelValue = channelSelect.value;
-
-    let startTime;
-    if (!startInput.trim() || startInput.trim().toLowerCase() === 'last') {
-      if (events.length > 0) {
-        const lastEvent = events[events.length - 1];
-        startTime = lastEvent.time;
-      } else {
-        startTime = 0;
-      }
-    } else {
-      startTime = parseFloat(startInput);
-      if (isNaN(startTime)) {
-        startTime = 0;
-      }
-    }
-
-    let duration;
-    if (!durationInput.trim()) {
-      duration = 1.0;
-    } else {
-      duration = parseFloat(durationInput);
-      if (isNaN(duration)) {
-        duration = 1.0;
-      }
-    }
-
-    const newEvents = [];
-
-    if (ccNumberInput && ccValueInput) {
-      const ccEvent = {
-        type: 'controlChange',
-        time: startTime,
-        controllerNumber: parseInt(ccNumberInput),
-        controllerValue: parseInt(ccValueInput),
-        channel: channelValue
-      };
-      newEvents.push(ccEvent);
-    }
-
-    if (pcInput) {
-      const pcEvent = {
-        type: 'programChange',
-        time: startTime,
-        programNumber: parseInt(pcInput),
-        channel: channelValue
-      };
-      newEvents.push(pcEvent);
-    }
-
-    if (notesInput) {
-      const noteNames = notesInput.split(',').map(note => note.trim());
-      const velocity = parseInt(velocityInput) || 100;
-
-      noteNames.forEach((note, index) => {
-        let channel = channelValue;
-
-        if (channelValue === 'Split') {
-          channel = String(((index) % 16) + 1);
-        }
-
-        const noteOnEvent = {
-          type: 'noteOn',
-          note: note,
-          velocity: velocity,
-          time: startTime,
-          channel: channel
-        };
-        const noteOffEvent = {
-          type: 'noteOff',
-          note: note,
-          time: startTime + duration,
-          channel: channel
-        };
-        newEvents.push(noteOnEvent, noteOffEvent);
-      });
-    }
-
-    events.push(...newEvents);
-    events.sort((a, b) => a.time - b.time);
-    selectedSequence.duration = Math.max(selectedSequence.duration, ...events.map(event => event.time));
-
-    populateMemoryEditor();
-  });
-
-  const deleteButtons = memoryEditorContainer.querySelectorAll('.delete-entry-btn');
-  deleteButtons.forEach((button, index) => {
-    button.addEventListener('click', function () {
-      events.splice(index, 1);
-      populateMemoryEditor();
-    });
-  });
-
-  const eventTypeSelects = memoryEditorContainer.querySelectorAll('.event-type');
-  eventTypeSelects.forEach(select => {
-    select.addEventListener('change', function () {
-      const row = this.closest('tr');
-      updateEventParamsCell(row);
-      updateRowClass(row);
-    });
-  });
-
-  const eventParamsFields = memoryEditorContainer.querySelectorAll('.event-params input');
-  eventParamsFields.forEach(inputField => {
-    inputField.addEventListener('input', function () {
-      const row = this.closest('tr');
-      updateRowClass(row);
-    });
-  });
-
-  const noteInputs = memoryEditorContainer.querySelectorAll('.event-note');
-  noteInputs.forEach(noteInput => {
-    noteInput.addEventListener('focus', function () {
-      currentNoteInputField = noteInput;
-    });
-    noteInput.addEventListener('blur', function () {
-      if (currentNoteInputField === noteInput) {
-        currentNoteInputField = null;
-      }
-    });
-  });
-
-  const eventChannelSelects = memoryEditorContainer.querySelectorAll('.event-channel');
-  eventChannelSelects.forEach(select => {
-    select.addEventListener('change', function () {
-    });
-  });
-}
-
-function updateEventParamsCell(row) {
-  const eventType = row.querySelector('.event-type').value;
-  const eventParamsCell = row.querySelector('.event-params');
-  eventParamsCell.innerHTML = '';
-
-  if (eventType === 'noteOn') {
-    eventParamsCell.innerHTML = `<input type="text" class="event-note event-note-font" value=""> <span class="icon volume-icon"></span><input type="number" class="event-velocity" value="100" min="1" max="127"> <span class="icon hand-icon"></span><select class="event-fingering">
-                    <option value="N">N</option>
-                    <option value="L1">L1</option>
-                    <option value="L2">L2</option>
-                    <option value="L3">L3</option>
-                    <option value="L4">L4</option>
-                    <option value="L5">L5</option>
-                    <option value="R1">R1</option>
-                    <option value="R2">R2</option>
-                    <option value="R3">R3</option>
-                    <option value="R4">R4</option>
-                    <option value="R5">R5</option>
-                </select>`;
-  } else if (eventType === 'noteOff') {
-    eventParamsCell.innerHTML = `<input type="text" class="event-note event-note-font" value="">`;
-  } else if (eventType === 'controlChange') {
-    eventParamsCell.innerHTML = `CC#: <input type="number" class="event-controller-number" value="0" min="0" max="127">
-                                 CCV: <input type="number" class="event-controller-value" value="0" min="0" max="127">`;
-  } else if (eventType === 'programChange') {
-    eventParamsCell.innerHTML = `Program Number: <input type="number" class="event-program-number" value="0" min="0" max="127">`;
-  }
-
-  const noteInput = eventParamsCell.querySelector('.event-note');
-  if (noteInput) {
-    noteInput.addEventListener('focus', function () {
-      currentNoteInputField = noteInput;
-    });
-    noteInput.addEventListener('blur', function () {
-      if (currentNoteInputField === noteInput) {
-        currentNoteInputField = null;
-      }
-    });
-  }
-
-  const paramsFields = eventParamsCell.querySelectorAll('input');
-  paramsFields.forEach(inputField => {
-    inputField.addEventListener('input', function () {
-      const row = this.closest('tr');
-      updateRowClass(row);
-    });
-  });
-}
-
-function updateRowClass(row) {
-  const eventType = row.querySelector('.event-type').value;
-  row.classList.remove('note-on', 'note-off', 'control-change', 'program-change');
-  if (eventType === 'noteOn') {
-    row.classList.add('note-on');
-  } else if (eventType === 'noteOff') {
-    row.classList.add('note-off');
-  } else if (eventType === 'controlChange') {
-    row.classList.add('control-change');
-  } else if (eventType === 'programChange') {
-    row.classList.add('program-change');
-  }
-}
-
-function selectMemoryByName(name) {
-  const index = memoryList.findIndex(sequence => sequence.name === name);
-  if (index >= 0) {
-    selectMemorySequence(index);
-  }
-}
-
-function normalizeNoteName(noteName) {
-  return noteName;
-}
-
-function formatNoteForDisplay(note) {
-  return note.replace(/#/g, '\u266F').replace(/b/g, '\u266D');
-}
-
-function normalizeNoteFromInput(note) {
-  return note.replace(/\u266F/g, '#').replace(/\u266D/g, 'b');
-}
-
-function exportSelectedMemoryAsMidi() {
-  if (selectedMemoryIndex === null) {
-    alert('No memory selected to export.');
-    return;
-  }
-
-  const selectedSequence = memoryList[selectedMemoryIndex];
-
-  const track = new MidiWriter.Track();
-
-  track.setTempo(100);
-
-  let noteOnEvents = {};
-  const events = selectedSequence.notes;
-
-  events.forEach(event => {
-    if (event.type === 'noteOn') {
-      noteOnEvents[event.note] = { time: event.time, velocity: event.velocity !== undefined ? event.velocity : 100 };
-    } else if (event.type === 'noteOff') {
-      if (noteOnEvents[event.note] !== undefined) {
-        const startTime = noteOnEvents[event.note].time;
-        const velocity = noteOnEvents[event.note].velocity;
-        const duration = event.time - startTime;
-
-        const startTick = Math.round(startTime * (100 / 60) * 128);
-        const durationTicks = Math.round(duration * (100 / 60) * 128) || 1;
-
-        const noteEvent = new MidiWriter.NoteEvent({
-          pitch: [event.note],
-          duration: 'T' + durationTicks,
-          startTick: startTick,
-          velocity: velocity
-        });
-        track.addEvent(noteEvent);
-
-        delete noteOnEvents[event.note];
-      }
-    } else if (event.type === 'controlChange') {
-      const controllerEvent = new MidiWriter.ControllerChangeEvent({
-        controllerNumber: event.controllerNumber,
-        controllerValue: event.controllerValue,
-        startTick: Math.round(event.time * (100 / 60) * 128)
-      });
-      track.addEvent(controllerEvent);
-    } else if (event.type === 'programChange') {
-      const programChangeEvent = new MidiWriter.ProgramChangeEvent({
-        instrument: event.programNumber,
-        startTick: Math.round(event.time * (100 / 60) * 128)
-      });
-      track.addEvent(programChangeEvent);
-    }
-  });
-
-  const write = new MidiWriter.Writer([track]);
-  const midiFileData = write.buildFile();
-
-  const blob = new Blob([midiFileData], { type: 'audio/midi' });
-
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `${selectedSequence.name}.mid`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-}
-
-function transposeSelectedMemoryDown() {
-  transposeSelectedMemory(-1);
-}
-
-function transposeSelectedMemoryUp() {
-  transposeSelectedMemory(1);
-}
-
-function transposeSelectedMemory(semitones) {
-  if (selectedMemoryIndex === null || selectedMemoryIndex >= memoryList.length) {
-    alert('No memory selected to transpose.');
-    return;
-  }
-
-  const sequence = memoryList[selectedMemoryIndex];
-  const transposedNotes = sequence.notes.map(noteEvent => {
-    const transposedNote = transposeNoteBySemitones(noteEvent.note, semitones);
-    if (!transposedNote) {
-      return null;
-    }
-    return {
-      ...noteEvent,
-      note: transposedNote
-    };
-  });
-
-  if (transposedNotes.includes(null)) {
-    alert('Transposition goes out of piano range.');
-    return;
-  }
-
-  sequence.notes = transposedNotes;
-  transposeAmount += semitones;
-  document.getElementById('transpose-amount').textContent = transposeAmount;
-
-  const selectedMemoryName = document.getElementById('selected-memory').textContent;
-  if (selectedMemoryName === sequence.name) {
-    recordedNotes = JSON.parse(JSON.stringify(sequence.notes));
-  }
-
-  processSequenceNotes(sequence);
-  currentNoteIndex = -1;
-}
-
-function transposeNoteBySemitones(note, semitones) {
-  const noteRegex = /^([A-G](?:#|b)?)(\d)$/;
-  const match = note.match(noteRegex);
-  if (!match) return null;
-
-  let [_, noteName, octave] = match;
-  octave = parseInt(octave);
-
-  if (noteName === 'B#') {
-    noteName = 'C';
-    octave += 1;
-  } else if (noteName === 'Cb') {
-    noteName = 'B';
-    octave -= 1;
-  } else if (noteName === 'E#') {
-    noteName = 'F';
-  } else if (noteName === 'Fb') {
-    noteName = 'E';
-  }
-
-  const noteOffsets = {
-    'C': 0,
-    'C#': 1,
-    'Db': 1,
-    'D': 2,
-    'D#': 3,
-    'Eb': 3,
-    'E': 4,
-    'F': 5,
-    'F#': 6,
-    'Gb': 6,
-    'G': 7,
-    'G#': 8,
-    'Ab': 8,
-    'A': 9,
-    'A#': 10,
-    'Bb': 10,
-    'B': 11
-  };
-
-  let noteOffset = noteOffsets[noteName];
-  if (noteOffset === undefined) return null;
-
-  let midiNumber = octave * 12 + noteOffset;
-  midiNumber += semitones;
-
-  if (midiNumber < 0) return null;
-
-  let newOctave = Math.floor(midiNumber / 12);
-  let newNoteIndex = midiNumber % 12;
-
-  if (newNoteIndex < 0) {
-    newNoteIndex += 12;
-    newOctave -= 1;
-  }
-
-  if (newOctave < startOctave || newOctave >= startOctave + totalOctaves) {
-    return null;
-  }
-
-  const indexToNoteNames = {
-    0: ['C'],
-    1: ['C#', 'Db'],
-    2: ['D'],
-    3: ['D#', 'Eb'],
-    4: ['E'],
-    5: ['F'],
-    6: ['F#', 'Gb'],
-    7: ['G'],
-    8: ['G#', 'Ab'],
-    9: ['A'],
-    10: ['A#', 'Bb'],
-    11: ['B']
-  };
-
-  const originalIsFlat = noteName.includes('b');
-  const possibleNoteNames = indexToNoteNames[newNoteIndex];
-  let newNoteName;
-
-  if (possibleNoteNames.length === 1) {
-    newNoteName = possibleNoteNames[0];
-  } else if (originalIsFlat) {
-    newNoteName = possibleNoteNames.find(n => n.includes('b')) || possibleNoteNames[0];
-  } else {
-    newNoteName = possibleNoteNames.find(n => n.includes('#')) || possibleNoteNames[0];
-  }
-
-  return newNoteName + newOctave;
-}
-
-function startPlayback() {
-  if (isPlaying || recordedNotes.length === 0) return;
-
-  isPlaying = true;
-  playbackStartTime = audioContext.currentTime;
-  document.getElementById('stop-btn').disabled = false;
-  document.getElementById('play-btn').disabled = true;
-
-  const tempoFactor = tempoPercentage / 100;
-
-  recordedNotes.forEach(noteEvent => {
-    if (!selectedMidiChannels.includes('Omni') && !selectedMidiChannels.includes(noteEvent.channel)) {
-      return;
-    }
-
-    const playbackTime = playbackStartTime + (noteEvent.time / tempoFactor);
-
-    if (noteEvent.type === 'noteOn') {
-      if (playbackTime < audioContext.currentTime) {
-        return;
-      }
-      const timerId = setTimeout(() => {
-        noteOn(noteEvent.note, noteEvent.velocity, false, noteEvent.fingering);
-      }, (playbackTime - audioContext.currentTime) * 1000);
-      playbackTimers.push(timerId);
-    } else if (noteEvent.type === 'noteOff') {
-      if (playbackTime < audioContext.currentTime) {
-        return;
-      }
-      const timerId = setTimeout(() => {
-        noteOff(noteEvent.note, false);
-      }, (playbackTime - audioContext.currentTime) * 1000);
-      playbackTimers.push(timerId);
-    }
-  });
-
-  const duration = recordedNotes.reduce((maxTime, noteEvent) => {
-    if (selectedMidiChannels.includes('Omni') || selectedMidiChannels.includes(noteEvent.channel)) {
-      return Math.max(maxTime, noteEvent.time / tempoFactor);
-    } else {
-      return maxTime;
-    }
-  }, 0);
-
-  const stopTimerId = setTimeout(() => {
-    stopAction();
-    if (isLooping) {
-      startPlayback();
-    }
-  }, duration * 1000);
-  playbackTimers.push(stopTimerId);
-}
-
-function resetMidiAndFingerings() {
-  clearActiveNotes();
-  stopNavigationActiveNotes();
-}
-
 document.addEventListener('DOMContentLoaded', () => {
   createPiano();
   initMIDI();
@@ -2125,3 +2169,24 @@ function isContentEmpty(content) {
 }
 
 let memoryEditorVisible = false;
+
+function clearActiveNotes() {
+  for (const note in activeNotes) {
+    if (activeNotes.hasOwnProperty(note)) {
+      activeNotes[note].stop();
+      highlightKey(note, false);
+    }
+  }
+  activeNotes = {};
+}
+
+function clearApp() {
+  stopAction();
+  memoryList = [];
+  sequenceCounter = 1;
+  selectedMemoryIndex = null;
+  recordedNotes = [];
+  quill.setContents([]);
+  document.getElementById('selected-memory').textContent = 'No Memory Selected';
+  updateMemoryList();
+}
