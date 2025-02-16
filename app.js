@@ -556,7 +556,11 @@ function saveMemoryList() {
   const url = URL.createObjectURL(dataBlob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = 'memory_list.json';
+  let filename = 'memory_list.json';
+  if (memoryList.length > 0) {
+    filename = memoryList[0].name + '.json';
+  }
+  a.download = filename;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
