@@ -872,3 +872,17 @@ body {
 .action-cell {
   cursor: pointer; /* Indicate that the cell is clickable */
 }
+
+.channel-button.has-events {
+  box-shadow: 0 0 10px red;
+  animation: redGlow 2s infinite alternate;
+}
+
+@keyframes redGlow {
+  from {
+    box-shadow: 0 0 5px red;
+  }
+  to {
+    box-shadow: 0 0 15px red;
+  }
+}
