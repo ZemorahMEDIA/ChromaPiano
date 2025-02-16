@@ -863,3 +863,12 @@ body {
 .event-type {
   width: 120px;
 }
+
+/* Style for selected event rows in memory editor */
+.event-row.selected {
+  background: lightblue;
+}
+
+.action-cell {
+  cursor: pointer; /* Indicate that the cell is clickable */
+}
