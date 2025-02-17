@@ -729,31 +729,25 @@ body {
 
 #memory-add-controls {
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  align-items: stretch;
+  margin-bottom: 10px;
 }
 
 #memory-add-controls .group-label {
-  flex: 1;
   text-align: center;
   font-size: 16px;
   color: white;
+  margin-bottom: 5px;
 }
 
 #memory-add-fields {
   display: flex;
-  align-items: center;
   flex-wrap: wrap;
-  flex: 3;
+  align-items: center;
 }
 
-#memory-add-fields input {
-  margin-right: 5px;
-  padding: 4px;
-  background-color: #252526;
-  color: #d4d4d4;
-  border: 1px solid #3c3c3c;
-}
-
+#memory-add-fields input,
 #memory-add-fields select {
   margin-right: 5px;
   padding: 4px;
@@ -779,13 +773,14 @@ body {
 }
 
 #add-entry-btn {
+  margin-top: 10px;
+  align-self: center;
   background-color: #444;
   border: 1px solid #000;
   color: white;
   padding: 4px 8px;
   border-radius: 4px;
   cursor: pointer;
-  margin-left: 10px;
   white-space: nowrap;
 }
 
@@ -823,6 +818,23 @@ body {
   vertical-align: middle;
 }
 
+#memory-editor-table .event-params .event-note {
+  width: 50px;
+  display: inline-block;
+}
+
+#memory-editor-table .event-params .event-channel {
+  width: 50px;
+  display: inline-block;
+  margin-left: 5px;
+}
+
+/* Ensure other fields remain the same */
+#memory-editor-table .event-params input,
+#memory-editor-table .event-params select {
+  vertical-align: middle;
+}
+
 /* Adjust the Parameters cell to prevent wrapping */
 #memory-editor-table .event-params {
   white-space: nowrap;
@@ -857,11 +869,27 @@ body {
 }
 
 .event-time {
-  width: 80px;
+  width: 50px;
 }
 
 .event-type {
-  width: 120px;
+  width: 100px;
+}
+
+.event-note {
+  width: 50px;
+}
+
+.event-velocity {
+  width: 50px;
+}
+
+.event-fingering {
+  width: 50px;
+}
+
+.event-channel {
+  width: 50px;
 }
 
 /* Style for selected event rows in memory editor */
@@ -871,6 +899,27 @@ body {
 
 .action-cell {
   cursor: pointer; /* Indicate that the cell is clickable */
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.action-cell button {
+  margin: 0;
+  padding: 2px 6px;
+  background-color: #444;
+  border: 1px solid #000;
+  color: white;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.action-cell button:hover {
+  background-color: #555;
+}
+
+.action-cell button:active {
+  background-color: #333;
 }
 
 .channel-button.has-events {
@@ -885,4 +934,31 @@ body {
   to {
     box-shadow: 0 0 15px red;
   }
+}
+
+#annotation-display {
+  text-align: center;
+  font-size: 1.2em;
+  margin: 10px 0;
+  color: white;
+  display: none;
+}
+
+/* Styles for the annotation textarea in the memory editor */
+.event-annotation {
+  width: 100%;
+  box-sizing: border-box;
+  background-color: #1e1e1e;
+  color: #d4d4d4;
+  border: 1px solid #3c3c3c;
+  padding: 8px;
+  resize: vertical;
+  font-family: 'Courier New', monospace;
+}
+
+/* Style for the annotation row to ensure proper spacing */
+.annotation-row td {
+  padding: 0;
+  margin: 0;
+  border: none;
 }
