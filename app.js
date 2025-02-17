@@ -65,6 +65,8 @@ let selectedMemoryIndex = null;
 let isLooping = false;
 let navigationActiveNotes = {};
 let activeFingerings = {};
+let activeKeyAnnotations = {};
+let navigationActiveKeyAnnotations = {};
 
 let midiAccessObject = null;
 let selectedMidiInput = null;
@@ -102,9 +104,6 @@ let noteChordEvents = [];
 let currentNoteIndex = -1;
 
 let selectedMidiChannels = ['Omni']; // Default selected channels
-
-let activeKeyAnnotations = {};
-let navigationActiveKeyAnnotations = {};
 
 function createPiano() {
   const piano = document.getElementById('piano');
@@ -757,6 +756,12 @@ function stopAction() {
     }
   }
   activeFingerings = {};
+
+  // Clear annotations when stopping playback
+  const activeAnnotations = {};
+  const annotationDisplay = document.getElementById('annotation-display');
+  annotationDisplay.textContent = '';
+  annotationDisplay.style.display = 'none';
 }
 
 function initMemoryControls() {
@@ -1566,7 +1571,7 @@ function startPlayback() {
 
   const tempoFactor = tempoPercentage / 100;
   const annotationDisplay = document.getElementById('annotation-display');
-  let activeAnnotations = new Set();
+  let activeAnnotations = {};
 
   recordedNotes.forEach(noteEvent => {
     if (!selectedMidiChannels.includes('Omni') && !selectedMidiChannels.includes(noteEvent.channel)) {
@@ -1589,12 +1594,11 @@ function startPlayback() {
         );
 
         // Display annotation text outside brackets
-        if (noteEvent.annotation && !activeAnnotations.has(noteEvent.note)) {
+        if (noteEvent.annotation) {
           const annotationText = noteEvent.annotation.replace(/\[.*?\]/g, '').trim();
           if (annotationText) {
-            annotationDisplay.textContent = annotationText;
-            annotationDisplay.style.display = 'block';
-            activeAnnotations.add(noteEvent.note);
+            activeAnnotations[noteEvent.note] = annotationText;
+            updateAnnotationDisplay();
           }
         }
       }, (playbackTime - audioContext.currentTime) * 1000);
@@ -1606,15 +1610,27 @@ function startPlayback() {
       const timerId = setTimeout(() => {
         noteOff(noteEvent.note, false);
 
-        if (activeAnnotations.has(noteEvent.note)) {
-          annotationDisplay.style.display = 'none';
-          annotationDisplay.textContent = '';
-          activeAnnotations.delete(noteEvent.note);
+        // Remove annotation if exists
+        if (activeAnnotations[noteEvent.note]) {
+          delete activeAnnotations[noteEvent.note];
+          updateAnnotationDisplay();
         }
       }, (playbackTime - audioContext.currentTime) * 1000);
       playbackTimers.push(timerId);
     }
   });
+
+  function updateAnnotationDisplay() {
+    const annotationsArray = Object.values(activeAnnotations);
+    if (annotationsArray.length > 0) {
+      const annotationText = annotationsArray.join(' ');
+      annotationDisplay.textContent = annotationText;
+      annotationDisplay.style.display = 'block';
+    } else {
+      annotationDisplay.textContent = '';
+      annotationDisplay.style.display = 'none';
+    }
+  }
 
   const duration = recordedNotes.reduce((maxTime, noteEvent) => {
     if (selectedMidiChannels.includes('Omni') || selectedMidiChannels.includes(noteEvent.channel)) {
@@ -1766,16 +1782,15 @@ function processSequenceNotes(sequence) {
     if (filteredEvents[i].type === 'noteOn') {
       const chordNotes = [];
       const chordFingerings = {};
-      const chordAnnotations = [];
+      const chordAnnotations = {};
       const startTime = filteredEvents[i].time;
       let j = i;
       while (j < filteredEvents.length && filteredEvents[j].time - filteredEvents[i].time <= 0.2) {
         if (filteredEvents[j].type === 'noteOn') {
-          chordNotes.push(filteredEvents[j].note);
-          chordFingerings[filteredEvents[j].note] = filteredEvents[j].fingering || 'N';
-          if (filteredEvents[j].annotation) {
-            chordAnnotations.push(filteredEvents[j].annotation);
-          }
+          const note = filteredEvents[j].note;
+          chordNotes.push(note);
+          chordFingerings[note] = filteredEvents[j].fingering || 'N';
+          chordAnnotations[note] = filteredEvents[j].annotation || '';
         }
         j++;
       }
@@ -1787,20 +1802,6 @@ function processSequenceNotes(sequence) {
   }
 }
 
-function goToNextNoteOrChord() {
-  if (!noteChordEvents.length) return;
-  stopNavigationActiveNotes();
-  currentNoteIndex = (currentNoteIndex + 1) % noteChordEvents.length;
-  playChordAtIndex(currentNoteIndex);
-}
-
-function goToPreviousNoteOrChord() {
-  if (!noteChordEvents.length) return;
-  stopNavigationActiveNotes();
-  currentNoteIndex = (currentNoteIndex - 1 + noteChordEvents.length) % noteChordEvents.length;
-  playChordAtIndex(currentNoteIndex);
-}
-
 function playChordAtIndex(index) {
   const chordEvent = noteChordEvents[index];
   if (!chordEvent) return;
@@ -1809,19 +1810,22 @@ function playChordAtIndex(index) {
 
   chordEvent.notes.forEach(note => {
     const fingering = chordEvent.fingerings[note];
-    const annotation = chordEvent.annotations.find(ann => ann.includes(note)) || chordEvent.annotations.join('\n');
+    const annotation = chordEvent.annotations[note] || '';
     noteOnNavigation(note, fingering, annotation);
   });
 
-  if (chordEvent.annotations && chordEvent.annotations.length > 0) {
-    const annotationText = chordEvent.annotations
+  if (chordEvent.annotations) {
+    const annotationTexts = Object.values(chordEvent.annotations)
       .map(ann => ann.replace(/\[.*?\]/g, '').trim())
-      .filter(text => text)
-      .join('\n');
-    if (annotationText) {
+      .filter(text => text);
+    if (annotationTexts.length > 0) {
       const annotationDisplay = document.getElementById('annotation-display');
-      annotationDisplay.textContent = annotationText;
+      annotationDisplay.textContent = annotationTexts.join(' ');
       annotationDisplay.style.display = 'block';
+    } else {
+      const annotationDisplay = document.getElementById('annotation-display');
+      annotationDisplay.textContent = '';
+      annotationDisplay.style.display = 'none';
     }
   }
 }
@@ -1831,7 +1835,6 @@ function noteOnNavigation(note, fingering = 'N', annotation = null) {
   if (!pianoInstrument) return;
 
   const playableNote = getPlayableNoteName(note);
-
   const playedNote = pianoInstrument.play(playableNote);
   navigationActiveNotes[note] = playedNote;
   highlightKey(note, true);
@@ -1848,7 +1851,6 @@ function noteOnNavigation(note, fingering = 'N', annotation = null) {
     });
   }
 
-  // Handle special annotation text within brackets
   if (annotation) {
     const bracketTextMatch = annotation.match(/\[(.*?)\]/);
     if (bracketTextMatch) {
@@ -2227,7 +2229,7 @@ document.addEventListener('DOMContentLoaded', () => {
           var reader = new FileReader();
           reader.onload = function(event) {
             var base64ImageSrc = event.target.result;
-            var range = quill.getSelection();
+            var range = quill.getSelection(true);
             quill.insertEmbed(range.index, 'image', base64ImageSrc);
             quill.setSelection(range.index + 1);
           };
@@ -2329,4 +2331,20 @@ function clearActiveNotes() {
     }
   }
   activeNotes = {};
+}
+
+function goToPreviousNoteOrChord() {
+  if (noteChordEvents.length === 0) return;
+  if (currentNoteIndex <= 0) {
+    currentNoteIndex = noteChordEvents.length - 1;
+  } else {
+    currentNoteIndex--;
+  }
+  playChordAtIndex(currentNoteIndex);
+}
+
+function goToNextNoteOrChord() {
+  if (noteChordEvents.length === 0) return;
+  currentNoteIndex = (currentNoteIndex + 1) % noteChordEvents.length;
+  playChordAtIndex(currentNoteIndex);
 }
