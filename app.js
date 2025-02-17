@@ -894,46 +894,47 @@ function populateMemoryEditor() {
     <input type="text" id="memory-name-input" value="${selectedSequence.name}">
   </div>
   <div id="memory-editor-controls">
-    <div class="group-label"><span>Events</span></div>
-    <div id="memory-add-fields">
-      <input type="text" id="add-notes-input" placeholder="Notes">
-      <input type="number" id="add-velocity-input" value="100" placeholder="Velocity" min="1" max="127">
-      <input type="text" id="add-start-input" placeholder="Start">
-      <input type="number" id="add-duration-input" placeholder="Duration" step="0.001">
-      <select id="add-channel-select">
-        <option value="Omni">Omni</option>
-        <option value="Split">Split</option>
-        <option value="1">1</option>
-        <option value="2">2</option>
-        <option value="3">3</option>
-        <option value="4">4</option>
-        <option value="5">5</option>
-        <option value="6">6</option>
-        <option value="7">7</option>
-        <option value="8">8</option>
-        <option value="9">9</option>
-        <option value="10">10</option>
-        <option value="11">11</option>
-        <option value="12">12</option>
-        <option value="13">13</option>
-        <option value="14">14</option>
-        <option value="15">15</option>
-        <option value="16">16</option>
-      </select>
-      <input type="number" id="add-cc-number-input" placeholder="CC#" min="0" max="127">
-      <input type="number" id="add-cc-value-input" placeholder="CCV" min="0" max="127">
-      <input type="number" id="add-pc-input" placeholder="PC">
+    <div id="memory-add-controls">
+      <div class="group-label"><span>Events</span></div>
+      <div id="memory-add-fields">
+        <input type="text" id="add-notes-input" placeholder="Notes">
+        <input type="number" id="add-velocity-input" value="100" placeholder="Velocity" min="1" max="127">
+        <input type="text" id="add-start-input" placeholder="Start">
+        <input type="number" id="add-duration-input" placeholder="Duration" step="0.001">
+        <select id="add-channel-select">
+          <option value="Omni">Omni</option>
+          <option value="1">1</option>
+          <option value="2">2</option>
+          <option value="3">3</option>
+          <option value="4">4</option>
+          <option value="5">5</option>
+          <option value="6">6</option>
+          <option value="7">7</option>
+          <option value="8">8</option>
+          <option value="9">9</option>
+          <option value="10">10</option>
+          <option value="11">11</option>
+          <option value="12">12</option>
+          <option value="13">13</option>
+          <option value="14">14</option>
+          <option value="15">15</option>
+          <option value="16">16</option>
+        </select>
+        <input type="number" id="add-cc-number-input" placeholder="CC#" min="0" max="127">
+        <input type="number" id="add-cc-value-input" placeholder="CCV" min="0" max="127">
+        <input type="number" id="add-pc-input" placeholder="PC">
+      </div>
+      <button id="add-entry-btn">Add</button>
     </div>
-    <button id="add-entry-btn">Add</button>
   </div>
   <table id="memory-editor-table">
     <tr><th>Time (s)</th><th>Type</th><th>Parameters</th><th>Action</th></tr>`;
 
   events.forEach((event, index) => {
     html += `<tr class="event-row ${event.type === 'noteOn' ? 'note-on' :
-                                   event.type === 'noteOff' ? 'note-off' :
-                                   event.type === 'controlChange' ? 'control-change' :
-                                   event.type === 'programChange' ? 'program-change' : ''}" data-index="${index}">
+                                       event.type === 'noteOff' ? 'note-off' :
+                                       event.type === 'controlChange' ? 'control-change' :
+                                       event.type === 'programChange' ? 'program-change' : ''}" data-index="${index}">
       <td><input type="number" step="0.001" class="event-time" value="${event.time.toFixed(3)}"></td>
       <td>
         <select class="event-type">
@@ -947,45 +948,64 @@ function populateMemoryEditor() {
 
     if (event.type === 'noteOn') {
       let formattedNote = formatNoteForDisplay(event.note);
-      html += `<input type="text" class="event-note event-note-font" value="${formattedNote}">`;
-      if (event.velocity !== undefined) {
-        html += ` <span class="icon volume-icon"></span><input type="number" class="event-velocity" value="${event.velocity}" min="1" max="127">`;
-      } else {
-        html += ` <span class="icon volume-icon"></span><input type="number" class="event-velocity" value="100" min="1" max="127">`;
-      }
-
-      if (event.fingering) {
-        html += ` <span class="icon hand-icon"></span><select class="event-fingering">
-                      <option value="N"${event.fingering === 'N' ? ' selected' : ''}>N</option>
-                      <option value="L1"${event.fingering === 'L1' ? ' selected' : ''}>L1</option>
-                      <option value="L2"${event.fingering === 'L2' ? ' selected' : ''}>L2</option>
-                      <option value="L3"${event.fingering === 'L3' ? ' selected' : ''}>L3</option>
-                      <option value="L4"${event.fingering === 'L4' ? ' selected' : ''}>L4</option>
-                      <option value="L5"${event.fingering === 'L5' ? ' selected' : ''}>L5</option>
-                      <option value="R1"${event.fingering === 'R1' ? ' selected' : ''}>R1</option>
-                      <option value="R2"${event.fingering === 'R2' ? ' selected' : ''}>R2</option>
-                      <option value="R3"${event.fingering === 'R3' ? ' selected' : ''}>R3</option>
-                      <option value="R4"${event.fingering === 'R4' ? ' selected' : ''}>R4</option>
-                      <option value="R5"${event.fingering === 'R5' ? ' selected' : ''}>R5</option>
-                  </select>`;
-      } else {
-        html += ` <span class="icon hand-icon"></span><select class="event-fingering">
-                      <option value="N" selected>N</option>
-                      <option value="L1">L1</option>
-                      <option value="L2">L2</option>
-                      <option value="L3">L3</option>
-                      <option value="L4">L4</option>
-                      <option value="L5">L5</option>
-                      <option value="R1">R1</option>
-                      <option value="R2">R2</option>
-                      <option value="R3">R3</option>
-                      <option value="R4">R4</option>
-                      <option value="R5">R5</option>
-                  </select>`;
-      }
+      html += `
+        <input type="text" class="event-note event-note-font" value="${formattedNote}">
+        <select class="event-channel">
+          <option value="Omni"${event.channel === 'Omni' ? ' selected' : ''}>Omni</option>
+          <option value="1"${event.channel === '1' ? ' selected' : ''}>1</option>
+          <option value="2"${event.channel === '2' ? ' selected' : ''}>2</option>
+          <option value="3"${event.channel === '3' ? ' selected' : ''}>3</option>
+          <option value="4"${event.channel === '4' ? ' selected' : ''}>4</option>
+          <option value="5"${event.channel === '5' ? ' selected' : ''}>5</option>
+          <option value="6"${event.channel === '6' ? ' selected' : ''}>6</option>
+          <option value="7"${event.channel === '7' ? ' selected' : ''}>7</option>
+          <option value="8"${event.channel === '8' ? ' selected' : ''}>8</option>
+          <option value="9"${event.channel === '9' ? ' selected' : ''}>9</option>
+          <option value="10"${event.channel === '10' ? ' selected' : ''}>10</option>
+          <option value="11"${event.channel === '11' ? ' selected' : ''}>11</option>
+          <option value="12"${event.channel === '12' ? ' selected' : ''}>12</option>
+          <option value="13"${event.channel === '13' ? ' selected' : ''}>13</option>
+          <option value="14"${event.channel === '14' ? ' selected' : ''}>14</option>
+          <option value="15"${event.channel === '15' ? ' selected' : ''}>15</option>
+          <option value="16"${event.channel === '16' ? ' selected' : ''}>16</option>
+        </select>
+        <span class="icon volume-icon"></span><input type="number" class="event-velocity" value="${event.velocity !== undefined ? event.velocity : 100}" min="1" max="127">
+        <span class="icon hand-icon"></span><select class="event-fingering">
+          <option value="N"${event.fingering === 'N' ? ' selected' : ''}>N</option>
+          <option value="L1"${event.fingering === 'L1' ? ' selected' : ''}>L1</option>
+          <option value="L2"${event.fingering === 'L2' ? ' selected' : ''}>L2</option>
+          <option value="L3"${event.fingering === 'L3' ? ' selected' : ''}>L3</option>
+          <option value="L4"${event.fingering === 'L4' ? ' selected' : ''}>L4</option>
+          <option value="L5"${event.fingering === 'L5' ? ' selected' : ''}>L5</option>
+          <option value="R1"${event.fingering === 'R1' ? ' selected' : ''}>R1</option>
+          <option value="R2"${event.fingering === 'R2' ? ' selected' : ''}>R2</option>
+          <option value="R3"${event.fingering === 'R3' ? ' selected' : ''}>R3</option>
+          <option value="R4"${event.fingering === 'R4' ? ' selected' : ''}>R4</option>
+          <option value="R5"${event.fingering === 'R5' ? ' selected' : ''}>R5</option>
+        </select>`;
     } else if (event.type === 'noteOff') {
       let formattedNote = formatNoteForDisplay(event.note);
-      html += `<input type="text" class="event-note event-note-font" value="${formattedNote}">`;
+      html += `
+        <input type="text" class="event-note event-note-font" value="${formattedNote}">
+        <select class="event-channel">
+          <option value="Omni"${event.channel === 'Omni' ? ' selected' : ''}>Omni</option>
+          <option value="1"${event.channel === '1' ? ' selected' : ''}>1</option>
+          <option value="2"${event.channel === '2' ? ' selected' : ''}>2</option>
+          <option value="3"${event.channel === '3' ? ' selected' : ''}>3</option>
+          <option value="4"${event.channel === '4' ? ' selected' : ''}>4</option>
+          <option value="5"${event.channel === '5' ? ' selected' : ''}>5</option>
+          <option value="6"${event.channel === '6' ? ' selected' : ''}>6</option>
+          <option value="7"${event.channel === '7' ? ' selected' : ''}>7</option>
+          <option value="8"${event.channel === '8' ? ' selected' : ''}>8</option>
+          <option value="9"${event.channel === '9' ? ' selected' : ''}>9</option>
+          <option value="10"${event.channel === '10' ? ' selected' : ''}>10</option>
+          <option value="11"${event.channel === '11' ? ' selected' : ''}>11</option>
+          <option value="12"${event.channel === '12' ? ' selected' : ''}>12</option>
+          <option value="13"${event.channel === '13' ? ' selected' : ''}>13</option>
+          <option value="14"${event.channel === '14' ? ' selected' : ''}>14</option>
+          <option value="15"${event.channel === '15' ? ' selected' : ''}>15</option>
+          <option value="16"${event.channel === '16' ? ' selected' : ''}>16</option>
+        </select>`;
     } else if (event.type === 'controlChange') {
       html += `CC#: <input type="number" class="event-controller-number" value="${event.controllerNumber}" min="0" max="127">
                CCV: <input type="number" class="event-controller-value" value="${event.controllerValue}" min="0" max="127">`;
@@ -993,136 +1013,44 @@ function populateMemoryEditor() {
       html += `Program Number: <input type="number" class="event-program-number" value="${event.programNumber}" min="0" max="127">`;
     }
 
-    html += ` <span class="icon antenna-icon"></span><select class="event-channel">
-      <option value="Omni"${event.channel === 'Omni' ? ' selected' : ''}>Omni</option>
-      <option value="1"${event.channel === '1' ? ' selected' : ''}>1</option>
-      <option value="2"${event.channel === '2' ? ' selected' : ''}>2</option>
-      <option value="3"${event.channel === '3' ? ' selected' : ''}>3</option>
-      <option value="4"${event.channel === '4' ? ' selected' : ''}>4</option>
-      <option value="5"${event.channel === '5' ? ' selected' : ''}>5</option>
-      <option value="6"${event.channel === '6' ? ' selected' : ''}>6</option>
-      <option value="7"${event.channel === '7' ? ' selected' : ''}>7</option>
-      <option value="8"${event.channel === '8' ? ' selected' : ''}>8</option>
-      <option value="9"${event.channel === '9' ? ' selected' : ''}>9</option>
-      <option value="10"${event.channel === '10' ? ' selected' : ''}>10</option>
-      <option value="11"${event.channel === '11' ? ' selected' : ''}>11</option>
-      <option value="12"${event.channel === '12' ? ' selected' : ''}>12</option>
-      <option value="13"${event.channel === '13' ? ' selected' : ''}>13</option>
-      <option value="14"${event.channel === '14' ? ' selected' : ''}>14</option>
-      <option value="15"${event.channel === '15' ? ' selected' : ''}>15</option>
-      <option value="16"${event.channel === '16' ? ' selected' : ''}>16</option>
-    </select>
-    </td>
-      <td class="action-cell"><button class="delete-entry-btn">X</button></td>
+    html += `</td>
+      <td class="action-cell">
+        <button class="annotation-toggle-btn">+</button>
+        <button class="delete-entry-btn">X</button>
+      </td>
     </tr>`;
+
+    if (event.type === 'noteOn') {
+      html += `<tr class="annotation-row" data-index="${index}" style="display: none;">
+        <td colspan="4">
+          <textarea class="event-annotation">${event.annotation || ''}</textarea>
+        </td>
+      </tr>`;
+    }
   });
 
   html += '</table>';
   memoryEditorContainer.innerHTML = html;
-
-  const memoryNameInput = document.getElementById('memory-name-input');
-  memoryNameInput.addEventListener('blur', updateMemoryFromEditor);
-
-  const addEntryBtn = document.getElementById('add-entry-btn');
-  addEntryBtn.addEventListener('click', function () {
-    const notesInput = document.getElementById('add-notes-input').value.trim();
-    const velocityInput = document.getElementById('add-velocity-input').value;
-    const startInput = document.getElementById('add-start-input').value;
-    const durationInput = document.getElementById('add-duration-input').value;
-    const ccNumberInput = document.getElementById('add-cc-number-input').value;
-    const ccValueInput = document.getElementById('add-cc-value-input').value;
-    const pcInput = document.getElementById('add-pc-input').value;
-    const channelSelect = document.getElementById('add-channel-select');
-    const channelValue = channelSelect.value;
-
-    let startTime;
-    if (!startInput.trim() || startInput.trim().toLowerCase() === 'last') {
-      if (events.length > 0) {
-        const lastEvent = events[events.length - 1];
-        startTime = lastEvent.time;
-      } else {
-        startTime = 0;
-      }
-    } else {
-      startTime = parseFloat(startInput);
-      if (isNaN(startTime)) {
-        startTime = 0;
-      }
-    }
-
-    let duration;
-    if (!durationInput.trim()) {
-      duration = 1.0;
-    } else {
-      duration = parseFloat(durationInput);
-      if (isNaN(duration)) {
-        duration = 1.0;
-      }
-    }
-
-    const newEvents = [];
-
-    if (ccNumberInput && ccValueInput) {
-      const ccEvent = {
-        type: 'controlChange',
-        time: startTime,
-        controllerNumber: parseInt(ccNumberInput),
-        controllerValue: parseInt(ccValueInput),
-        channel: channelValue
-      };
-      newEvents.push(ccEvent);
-    }
-
-    if (pcInput) {
-      const pcEvent = {
-        type: 'programChange',
-        time: startTime,
-        programNumber: parseInt(pcInput),
-        channel: channelValue
-      };
-      newEvents.push(pcEvent);
-    }
-
-    if (notesInput) {
-      const noteNames = notesInput.split(',').map(note => note.trim());
-      const velocity = parseInt(velocityInput) || 100;
-
-      noteNames.forEach((note, index) => {
-        let channel = channelValue;
-
-        if (channelValue === 'Split') {
-          channel = String(((index) % 16) + 1);
-        }
-
-        const noteOnEvent = {
-          type: 'noteOn',
-          note: note,
-          velocity: velocity,
-          time: startTime,
-          channel: channel
-        };
-        const noteOffEvent = {
-          type: 'noteOff',
-          note: note,
-          time: startTime + duration,
-          channel: channel
-        };
-        newEvents.push(noteOnEvent, noteOffEvent);
-      });
-    }
-
-    events.push(...newEvents);
-    events.sort((a, b) => a.time - b.time);
-    selectedSequence.duration = Math.max(selectedSequence.duration, ...events.map(event => event.time));
-
-    populateMemoryEditor();
-  });
 
   const deleteButtons = memoryEditorContainer.querySelectorAll('.delete-entry-btn');
   deleteButtons.forEach((button, index) => {
     button.addEventListener('click', function () {
       events.splice(index, 1);
       populateMemoryEditor();
+    });
+  });
+
+  const annotationToggleButtons = memoryEditorContainer.querySelectorAll('.annotation-toggle-btn');
+  annotationToggleButtons.forEach((button) => {
+    button.addEventListener('click', function () {
+      const row = this.closest('tr');
+      const eventIndex = parseInt(row.dataset.index, 10);
+      const annotationRow = memoryEditorContainer.querySelector(`.annotation-row[data-index="${eventIndex}"]`);
+      if (annotationRow.style.display === 'none') {
+        annotationRow.style.display = 'table-row';
+      } else {
+        annotationRow.style.display = 'none';
+      }
     });
   });
 
@@ -1229,6 +1157,11 @@ function populateMemoryEditor() {
       updateRowClass(row);
     });
   });
+
+  const addEntryBtn = memoryEditorContainer.querySelector('#add-entry-btn');
+  if (addEntryBtn) {
+    addEntryBtn.addEventListener('click', addEntryToMemory);
+  }
 }
 
 function updateEventParamsCell(row) {
@@ -1237,21 +1170,61 @@ function updateEventParamsCell(row) {
   eventParamsCell.innerHTML = '';
 
   if (eventType === 'noteOn') {
-    eventParamsCell.innerHTML = `<input type="text" class="event-note event-note-font" value=""> <span class="icon volume-icon"></span><input type="number" class="event-velocity" value="100" min="1" max="127"> <span class="icon hand-icon"></span><select class="event-fingering">
-                    <option value="N">N</option>
-                    <option value="L1">L1</option>
-                    <option value="L2">L2</option>
-                    <option value="L3">L3</option>
-                    <option value="L4">L4</option>
-                    <option value="L5">L5</option>
-                    <option value="R1">R1</option>
-                    <option value="R2">R2</option>
-                    <option value="R3">R3</option>
-                    <option value="R4">R4</option>
-                    <option value="R5">R5</option>
-                </select>`;
+    eventParamsCell.innerHTML = `<input type="text" class="event-note event-note-font" value="">
+                                 <select class="event-channel">
+                                   <option value="Omni">Omni</option>
+                                   <option value="1">1</option>
+                                   <option value="2">2</option>
+                                   <option value="3">3</option>
+                                   <option value="4">4</option>
+                                   <option value="5">5</option>
+                                   <option value="6">6</option>
+                                   <option value="7">7</option>
+                                   <option value="8">8</option>
+                                   <option value="9">9</option>
+                                   <option value="10">10</option>
+                                   <option value="11">11</option>
+                                   <option value="12">12</option>
+                                   <option value="13">13</option>
+                                   <option value="14">14</option>
+                                   <option value="15">15</option>
+                                   <option value="16">16</option>
+                                 </select>
+                                 <span class="icon volume-icon"></span><input type="number" class="event-velocity" value="100" min="1" max="127">
+                                 <span class="icon hand-icon"></span><select class="event-fingering">
+                                   <option value="N">N</option>
+                                   <option value="L1">L1</option>
+                                   <option value="L2">L2</option>
+                                   <option value="L3">L3</option>
+                                   <option value="L4">L4</option>
+                                   <option value="L5">L5</option>
+                                   <option value="R1">R1</option>
+                                   <option value="R2">R2</option>
+                                   <option value="R3">R3</option>
+                                   <option value="R4">R4</option>
+                                   <option value="R5">R5</option>
+                                </select>`;
   } else if (eventType === 'noteOff') {
-    eventParamsCell.innerHTML = `<input type="text" class="event-note event-note-font" value="">`;
+    eventParamsCell.innerHTML = `<input type="text" class="event-note event-note-font" value="">
+                                 <select class="event-channel">
+                                   <option value="Omni">Omni</option>
+                                   <option value="1">1</option>
+                                   <option value="2">2</option>
+                                   <option value="3">3</option>
+                                   <option value="4">4</option>
+                                   <option value="5">5</option>
+                                   <option value="6">6</option>
+                                   <option value="7">7</option>
+                                   <option value="8">8</option>
+                                   <option value="9">9</option>
+                                   <option value="10">10</option>
+                                   <option value="11">11</option>
+                                   <option value="12">12</option>
+                                   <option value="13">13</option>
+                                   <option value="14">14</option>
+                                   <option value="15">15</option>
+                                   <option value="16">16</option>
+                                 </select>`;
   } else if (eventType === 'controlChange') {
     eventParamsCell.innerHTML = `CC#: <input type="number" class="event-controller-number" value="0" min="0" max="127">
                                  CCV: <input type="number" class="event-controller-value" value="0" min="0" max="127">`;
@@ -1275,33 +1248,6 @@ function updateEventParamsCell(row) {
   paramsFields.forEach(inputField => {
     inputField.addEventListener('input', function () {
       const row = this.closest('tr');
-      const eventIndex = parseInt(row.dataset.index, 10);
-      const eventTypeSelect = row.querySelector('.event-type');
-      const eventType = eventTypeSelect.value;
-      if (selectedEventIndices.length > 1 && selectedEventIndices.includes(eventIndex)) {
-        // Copy changes to other selected events of the same type
-        const valueToCopy = inputField.value;
-        const fieldClassList = Array.from(inputField.classList);
-        selectedEventIndices.forEach(index => {
-          if (index !== eventIndex) {
-            const targetRow = memoryEditorContainer.querySelector(`tr[data-index="${index}"]`);
-            if (targetRow) {
-              const targetEventTypeSelect = targetRow.querySelector('.event-type');
-              const targetEventType = targetEventTypeSelect.value;
-              if (targetEventType === eventType) {
-                let targetInput;
-                const paramClass = fieldClassList.find(cls => cls.startsWith('event-'));
-                if (paramClass) {
-                  targetInput = targetRow.querySelector(`.event-params .${paramClass}`);
-                }
-                if (targetInput) {
-                  targetInput.value = valueToCopy;
-                }
-              }
-            }
-          }
-        });
-      }
       updateRowClass(row);
     });
   });
@@ -1338,6 +1284,92 @@ function formatNoteForDisplay(note) {
 
 function normalizeNoteFromInput(note) {
   return note.replace(/\u266F/g, '#').replace(/\u266D/g, 'b');
+}
+
+function updateMemoryFromEditor() {
+  if (selectedMemoryIndex === null) return;
+
+  const selectedSequence = memoryList[selectedMemoryIndex];
+
+  const memoryNameInput = document.getElementById('memory-name-input');
+  if (memoryNameInput) {
+    selectedSequence.name = memoryNameInput.value;
+
+    const memoryListItems = document.querySelectorAll('#memory-list li');
+    memoryListItems.forEach((li) => {
+      const index = parseInt(li.dataset.index, 10);
+      if (index === selectedMemoryIndex) {
+        const label = li.querySelector('span');
+        label.textContent = selectedSequence.name;
+      }
+    });
+  }
+
+  const events = [];
+  const eventRows = document.querySelectorAll('#memory-editor-table .event-row');
+  eventRows.forEach((row) => {
+    const eventIndex = parseInt(row.dataset.index, 10);
+    const timeInput = row.querySelector('.event-time');
+    const eventTypeSelect = row.querySelector('.event-type');
+    const eventParamsCell = row.querySelector('.event-params');
+
+    if (!timeInput || !eventTypeSelect || !eventParamsCell) return;
+
+    const event = {
+      time: parseFloat(timeInput.value),
+      type: eventTypeSelect.value,
+      channel: 'Omni',
+    };
+
+    if (event.type === 'noteOn') {
+      const noteInput = eventParamsCell.querySelector('.event-note');
+      const velocityInput = eventParamsCell.querySelector('.event-velocity');
+      const fingeringSelect = eventParamsCell.querySelector('.event-fingering');
+
+      if (noteInput && velocityInput && fingeringSelect) {
+        event.note = normalizeNoteFromInput(noteInput.value);
+        event.velocity = parseInt(velocityInput.value, 10);
+        event.fingering = fingeringSelect.value;
+      }
+
+      const annotationRow = document.querySelector(`.annotation-row[data-index="${eventIndex}"]`);
+      if (annotationRow) {
+        const annotationTextarea = annotationRow.querySelector('.event-annotation');
+        event.annotation = annotationTextarea.value;
+      }
+    } else if (event.type === 'noteOff') {
+      const noteInput = eventParamsCell.querySelector('.event-note');
+      if (noteInput) {
+        event.note = normalizeNoteFromInput(noteInput.value);
+      }
+    } else if (event.type === 'controlChange') {
+      const controllerNumberInput = eventParamsCell.querySelector('.event-controller-number');
+      const controllerValueInput = eventParamsCell.querySelector('.event-controller-value');
+      if (controllerNumberInput && controllerValueInput) {
+        event.controllerNumber = parseInt(controllerNumberInput.value, 10);
+        event.controllerValue = parseInt(controllerValueInput.value, 10);
+      }
+    } else if (event.type === 'programChange') {
+      const programNumberInput = eventParamsCell.querySelector('.event-program-number');
+      if (programNumberInput) {
+        event.programNumber = parseInt(programNumberInput.value, 10);
+      }
+    }
+
+    events.push(event);
+  });
+
+  selectedSequence.notes = events;
+  let totalDuration = 0;
+  selectedSequence.notes.forEach((noteEvent) => {
+    if (noteEvent.time > totalDuration) {
+      totalDuration = noteEvent.time;
+    }
+  });
+  selectedSequence.duration = totalDuration;
+
+  updateMemoryList();
+  selectMemorySequence(selectedMemoryIndex);
 }
 
 function exportSelectedMemoryAsMidi() {
@@ -1551,6 +1583,8 @@ function startPlayback() {
   document.getElementById('play-btn').disabled = true;
 
   const tempoFactor = tempoPercentage / 100;
+  const annotationDisplay = document.getElementById('annotation-display');
+  let activeAnnotations = new Set();
 
   recordedNotes.forEach(noteEvent => {
     if (!selectedMidiChannels.includes('Omni') && !selectedMidiChannels.includes(noteEvent.channel)) {
@@ -1565,6 +1599,12 @@ function startPlayback() {
       }
       const timerId = setTimeout(() => {
         noteOn(noteEvent.note, noteEvent.velocity, false, noteEvent.fingering);
+
+        if (noteEvent.annotation && !activeAnnotations.has(noteEvent.note)) {
+          annotationDisplay.textContent = noteEvent.annotation;
+          annotationDisplay.style.display = 'block';
+          activeAnnotations.add(noteEvent.note);
+        }
       }, (playbackTime - audioContext.currentTime) * 1000);
       playbackTimers.push(timerId);
     } else if (noteEvent.type === 'noteOff') {
@@ -1573,6 +1613,12 @@ function startPlayback() {
       }
       const timerId = setTimeout(() => {
         noteOff(noteEvent.note, false);
+
+        if (activeAnnotations.has(noteEvent.note)) {
+          annotationDisplay.style.display = 'none';
+          annotationDisplay.textContent = '';
+          activeAnnotations.delete(noteEvent.note);
+        }
       }, (playbackTime - audioContext.currentTime) * 1000);
       playbackTimers.push(timerId);
     }
@@ -1728,16 +1774,20 @@ function processSequenceNotes(sequence) {
     if (filteredEvents[i].type === 'noteOn') {
       const chordNotes = [];
       const chordFingerings = {};
+      const chordAnnotations = [];
       const startTime = filteredEvents[i].time;
       let j = i;
       while (j < filteredEvents.length && filteredEvents[j].time - filteredEvents[i].time <= 0.2) {
         if (filteredEvents[j].type === 'noteOn') {
           chordNotes.push(filteredEvents[j].note);
           chordFingerings[filteredEvents[j].note] = filteredEvents[j].fingering || 'N';
+          if (filteredEvents[j].annotation) {
+            chordAnnotations.push(filteredEvents[j].annotation);
+          }
         }
         j++;
       }
-      noteChordEvents.push({ notes: chordNotes, fingerings: chordFingerings, time: startTime });
+      noteChordEvents.push({ notes: chordNotes, fingerings: chordFingerings, time: startTime, annotations: chordAnnotations });
       i = j;
     } else {
       i++;
@@ -1769,6 +1819,12 @@ function playChordAtIndex(index) {
     const fingering = chordEvent.fingerings[note];
     noteOnNavigation(note, fingering);
   });
+
+  if (chordEvent.annotations && chordEvent.annotations.length > 0) {
+    const annotationDisplay = document.getElementById('annotation-display');
+    annotationDisplay.textContent = chordEvent.annotations.join('\n');
+    annotationDisplay.style.display = 'block';
+  }
 }
 
 function noteOnNavigation(note, fingering = 'N') {
@@ -1821,6 +1877,10 @@ function stopNavigationActiveNotes() {
     }
   }
   activeFingerings = {};
+
+  const annotationDisplay = document.getElementById('annotation-display');
+  annotationDisplay.style.display = 'none';
+  annotationDisplay.textContent = '';
 }
 
 function updateMemoryFromEditor() {
@@ -1831,72 +1891,74 @@ function updateMemoryFromEditor() {
   const memoryNameInput = document.getElementById('memory-name-input');
   if (memoryNameInput) {
     selectedSequence.name = memoryNameInput.value;
+
+    const memoryListItems = document.querySelectorAll('#memory-list li');
+    memoryListItems.forEach((li) => {
+      const index = parseInt(li.dataset.index, 10);
+      if (index === selectedMemoryIndex) {
+        const label = li.querySelector('span');
+        label.textContent = selectedSequence.name;
+      }
+    });
   }
 
   const events = [];
-  const tableRows = document.getElementById('memory-editor-container').querySelectorAll('#memory-editor-table tr');
-  for (let i = 1; i < tableRows.length; i++) {
-    const row = tableRows[i];
+  const eventRows = document.querySelectorAll('#memory-editor-table .event-row');
+  eventRows.forEach((row) => {
+    const eventIndex = parseInt(row.dataset.index, 10);
     const timeInput = row.querySelector('.event-time');
     const eventTypeSelect = row.querySelector('.event-type');
     const eventParamsCell = row.querySelector('.event-params');
-    const channelSelect = row.querySelector('.event-channel');
+
+    if (!timeInput || !eventTypeSelect || !eventParamsCell) return;
 
     const event = {
       time: parseFloat(timeInput.value),
       type: eventTypeSelect.value,
-      channel: channelSelect.value,
+      channel: 'Omni',
     };
 
-    if (event.type === 'noteOn' || event.type === 'noteOff') {
+    if (event.type === 'noteOn') {
       const noteInput = eventParamsCell.querySelector('.event-note');
-      event.note = normalizeNoteFromInput(noteInput.value);
-      if (event.type === 'noteOn') {
-        const velocityInput = eventParamsCell.querySelector('.event-velocity');
-        event.velocity = parseInt(velocityInput.value) || 100;
+      const velocityInput = eventParamsCell.querySelector('.event-velocity');
+      const fingeringSelect = eventParamsCell.querySelector('.event-fingering');
 
-        const fingeringSelect = eventParamsCell.querySelector('.event-fingering');
-        event.fingering = fingeringSelect ? fingeringSelect.value : 'N';
+      if (noteInput && velocityInput && fingeringSelect) {
+        event.note = normalizeNoteFromInput(noteInput.value);
+        event.velocity = parseInt(velocityInput.value, 10);
+        event.fingering = fingeringSelect.value;
+      }
 
-        if (event.fingering.startsWith('L')) {
-          event.channel = '1';
-        } else if (event.fingering.startsWith('R')) {
-          event.channel = '2';
-        }
+      const annotationRow = document.querySelector(`.annotation-row[data-index="${eventIndex}"]`);
+      if (annotationRow) {
+        const annotationTextarea = annotationRow.querySelector('.event-annotation');
+        event.annotation = annotationTextarea.value;
+      }
+    } else if (event.type === 'noteOff') {
+      const noteInput = eventParamsCell.querySelector('.event-note');
+      if (noteInput) {
+        event.note = normalizeNoteFromInput(noteInput.value);
       }
     } else if (event.type === 'controlChange') {
-      const ccNumberInput = eventParamsCell.querySelector('.event-controller-number');
-      const ccValueInput = eventParamsCell.querySelector('.event-controller-value');
-      event.controllerNumber = parseInt(ccNumberInput.value);
-      event.controllerValue = parseInt(ccValueInput.value);
+      const controllerNumberInput = eventParamsCell.querySelector('.event-controller-number');
+      const controllerValueInput = eventParamsCell.querySelector('.event-controller-value');
+      if (controllerNumberInput && controllerValueInput) {
+        event.controllerNumber = parseInt(controllerNumberInput.value, 10);
+        event.controllerValue = parseInt(controllerValueInput.value, 10);
+      }
     } else if (event.type === 'programChange') {
       const programNumberInput = eventParamsCell.querySelector('.event-program-number');
-      event.programNumber = parseInt(programNumberInput.value);
+      if (programNumberInput) {
+        event.programNumber = parseInt(programNumberInput.value, 10);
+      }
     }
 
     events.push(event);
-  }
-
-  const noteOnEventStackByNote = {};
-  events.forEach(event => {
-    if (event.type === 'noteOn') {
-      if (!noteOnEventStackByNote[event.note]) {
-        noteOnEventStackByNote[event.note] = [];
-      }
-      noteOnEventStackByNote[event.note].push(event);
-    } else if (event.type === 'noteOff') {
-      if (noteOnEventStackByNote[event.note] && noteOnEventStackByNote[event.note].length > 0) {
-        const noteOnEvent = noteOnEventStackByNote[event.note].pop();
-        event.channel = noteOnEvent.channel;
-      }
-    }
   });
 
-  events.sort((a, b) => a.time - b.time);
   selectedSequence.notes = events;
-
   let totalDuration = 0;
-  selectedSequence.notes.forEach(noteEvent => {
+  selectedSequence.notes.forEach((noteEvent) => {
     if (noteEvent.time > totalDuration) {
       totalDuration = noteEvent.time;
     }
@@ -1905,7 +1967,10 @@ function updateMemoryFromEditor() {
 
   updateMemoryList();
   selectMemorySequence(selectedMemoryIndex);
-  updateChannelButtonStyles();
+}
+
+function normalizeNoteFromInput(note) {
+  return note.replace(/\u266F/g, '#').replace(/\u266D/g, 'b');
 }
 
 function updateChannelButtonStyles() {
@@ -1943,6 +2008,89 @@ function clearApp() {
   document.getElementById('selected-memory').textContent = 'No Memory Selected';
   updateMemoryList();
   updateChannelButtonStyles();
+}
+
+function addEntryToMemory() {
+  if (selectedMemoryIndex === null) return;
+
+  const memoryEditorContainer = document.getElementById('memory-editor-container');
+  const selectedSequence = memoryList[selectedMemoryIndex];
+  const events = selectedSequence.notes;
+
+  const addNotesInput = memoryEditorContainer.querySelector('#add-notes-input');
+  const addVelocityInput = memoryEditorContainer.querySelector('#add-velocity-input');
+  const addStartInput = memoryEditorContainer.querySelector('#add-start-input');
+  const addDurationInput = memoryEditorContainer.querySelector('#add-duration-input');
+  const addCCNumberInput = memoryEditorContainer.querySelector('#add-cc-number-input');
+  const addCCValueInput = memoryEditorContainer.querySelector('#add-cc-value-input');
+  const addPCInput = memoryEditorContainer.querySelector('#add-pc-input');
+  const addChannelSelect = memoryEditorContainer.querySelector('#add-channel-select');
+
+  const notesInputValue = addNotesInput.value.trim();
+  const velocity = parseInt(addVelocityInput.value) || 100;
+  let startTime = parseFloat(addStartInput.value);
+  let duration = parseFloat(addDurationInput.value);
+  const channel = addChannelSelect.value || 'Omni';
+  const ccNumber = parseInt(addCCNumberInput.value);
+  const ccValue = parseInt(addCCValueInput.value);
+  const programNumber = parseInt(addPCInput.value);
+
+  if (isNaN(startTime)) {
+    if (events.length > 0) {
+      startTime = events[events.length - 1].time;
+    } else {
+      startTime = 0;
+    }
+  }
+
+  if (isNaN(duration)) {
+    duration = 1;
+  }
+
+  if (notesInputValue) {
+    const noteNames = notesInputValue.split(',').map(n => n.trim());
+    noteNames.forEach(note => {
+      const noteOnEvent = {
+        time: startTime,
+        type: 'noteOn',
+        note: note,
+        velocity: velocity,
+        channel: channel,
+      };
+      const noteOffEvent = {
+        time: startTime + duration,
+        type: 'noteOff',
+        note: note,
+        channel: channel,
+      };
+      events.push(noteOnEvent);
+      events.push(noteOffEvent);
+    });
+  } else if (!isNaN(ccNumber) && !isNaN(ccValue)) {
+    const ccEvent = {
+      time: startTime,
+      type: 'controlChange',
+      controllerNumber: ccNumber,
+      controllerValue: ccValue,
+      channel: channel,
+    };
+    events.push(ccEvent);
+  } else if (!isNaN(programNumber)) {
+    const pcEvent = {
+      time: startTime,
+      type: 'programChange',
+      programNumber: programNumber,
+      channel: channel,
+    };
+    events.push(pcEvent);
+  } else {
+    alert('Please enter valid note(s), or CC/PC values.');
+    return;
+  }
+
+  events.sort((a, b) => a.time - b.time);
+
+  populateMemoryEditor();
 }
 
 document.addEventListener('DOMContentLoaded', () => {
