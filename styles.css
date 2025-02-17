@@ -409,6 +409,14 @@ body {
   font-size: 0.8em;
 }
 
+.key-annotation {
+  position: absolute;
+  width: 100%;
+  text-align: center;
+  color: white;
+  font-size: 12px;
+}
+
 #editor-container {
   display: none;
   max-width: 800px;
