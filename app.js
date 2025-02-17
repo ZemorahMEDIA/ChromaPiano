@@ -103,6 +103,9 @@ let currentNoteIndex = -1;
 
 let selectedMidiChannels = ['Omni']; // Default selected channels
 
+let activeKeyAnnotations = {};
+let navigationActiveKeyAnnotations = {};
+
 function createPiano() {
   const piano = document.getElementById('piano');
   piano.innerHTML = '';
@@ -238,7 +241,7 @@ function getPlayableNoteName(note) {
   return note;
 }
 
-function noteOn(note, velocity = 127, isUserInteraction = false, fingering = null) {
+function noteOn(note, velocity = 127, isUserInteraction = false, fingering = null, annotation = null) {
   if (currentNoteInputField) {
     currentNoteInputField.value = note;
     currentNoteInputField = null;
@@ -282,6 +285,33 @@ function noteOn(note, velocity = 127, isUserInteraction = false, fingering = nul
     });
   }
 
+  // Handle special annotation text within brackets
+  if (annotation) {
+    const bracketTextMatch = annotation.match(/\[(.*?)\]/);
+    if (bracketTextMatch) {
+      const bracketText = bracketTextMatch[1];
+
+      pianoKeys.forEach(key => {
+        if (key.dataset.note === playableNote) {
+          const annotationDiv = document.createElement('div');
+          annotationDiv.classList.add('key-annotation');
+          annotationDiv.textContent = bracketText;
+
+          key.parentElement.style.position = 'relative';
+          annotationDiv.style.position = 'absolute';
+          annotationDiv.style.top = key.offsetHeight + 'px';
+          annotationDiv.style.width = '100%';
+          annotationDiv.style.textAlign = 'center';
+          annotationDiv.style.color = 'white';
+          annotationDiv.style.fontSize = '12px';
+
+          key.parentElement.appendChild(annotationDiv);
+          activeKeyAnnotations[note] = annotationDiv;
+        }
+      });
+    }
+  }
+
   if (isRecording && isUserInteraction) {
     recordedNotes.push({
       type: 'noteOn',
@@ -303,6 +333,11 @@ function noteOff(note, isUserInteraction = false) {
   if (activeFingerings[note]) {
     activeFingerings[note].remove();
     delete activeFingerings[note];
+  }
+
+  if (activeKeyAnnotations[note]) {
+    activeKeyAnnotations[note].remove();
+    delete activeKeyAnnotations[note];
   }
 
   if (isRecording && isUserInteraction) {
@@ -903,6 +938,7 @@ function populateMemoryEditor() {
         <input type="number" id="add-duration-input" placeholder="Duration" step="0.001">
         <select id="add-channel-select">
           <option value="Omni">Omni</option>
+          <option value="Split">Split</option>
           <option value="1">1</option>
           <option value="2">2</option>
           <option value="3">3</option>
@@ -932,9 +968,9 @@ function populateMemoryEditor() {
 
   events.forEach((event, index) => {
     html += `<tr class="event-row ${event.type === 'noteOn' ? 'note-on' :
-                                       event.type === 'noteOff' ? 'note-off' :
-                                       event.type === 'controlChange' ? 'control-change' :
-                                       event.type === 'programChange' ? 'program-change' : ''}" data-index="${index}">
+                                     event.type === 'noteOff' ? 'note-off' :
+                                     event.type === 'controlChange' ? 'control-change' :
+                                     event.type === 'programChange' ? 'program-change' : ''}" data-index="${index}">
       <td><input type="number" step="0.001" class="event-time" value="${event.time.toFixed(3)}"></td>
       <td>
         <select class="event-type">
@@ -946,12 +982,13 @@ function populateMemoryEditor() {
       </td>
       <td class="event-params">`;
 
-    if (event.type === 'noteOn') {
+    if (event.type === 'noteOn' || event.type === 'noteOff') {
       let formattedNote = formatNoteForDisplay(event.note);
       html += `
-        <input type="text" class="event-note event-note-font" value="${formattedNote}">
-        <select class="event-channel">
+        <input type="text" class="event-note event-note-font" value="${formattedNote}" style="width:50px;">
+        <select class="event-channel" style="width:50px;">
           <option value="Omni"${event.channel === 'Omni' ? ' selected' : ''}>Omni</option>
+          <option value="Split"${event.channel === 'Split' ? ' selected' : ''}>Split</option>
           <option value="1"${event.channel === '1' ? ' selected' : ''}>1</option>
           <option value="2"${event.channel === '2' ? ' selected' : ''}>2</option>
           <option value="3"${event.channel === '3' ? ' selected' : ''}>3</option>
@@ -969,43 +1006,8 @@ function populateMemoryEditor() {
           <option value="15"${event.channel === '15' ? ' selected' : ''}>15</option>
           <option value="16"${event.channel === '16' ? ' selected' : ''}>16</option>
         </select>
-        <span class="icon volume-icon"></span><input type="number" class="event-velocity" value="${event.velocity !== undefined ? event.velocity : 100}" min="1" max="127">
-        <span class="icon hand-icon"></span><select class="event-fingering">
-          <option value="N"${event.fingering === 'N' ? ' selected' : ''}>N</option>
-          <option value="L1"${event.fingering === 'L1' ? ' selected' : ''}>L1</option>
-          <option value="L2"${event.fingering === 'L2' ? ' selected' : ''}>L2</option>
-          <option value="L3"${event.fingering === 'L3' ? ' selected' : ''}>L3</option>
-          <option value="L4"${event.fingering === 'L4' ? ' selected' : ''}>L4</option>
-          <option value="L5"${event.fingering === 'L5' ? ' selected' : ''}>L5</option>
-          <option value="R1"${event.fingering === 'R1' ? ' selected' : ''}>R1</option>
-          <option value="R2"${event.fingering === 'R2' ? ' selected' : ''}>R2</option>
-          <option value="R3"${event.fingering === 'R3' ? ' selected' : ''}>R3</option>
-          <option value="R4"${event.fingering === 'R4' ? ' selected' : ''}>R4</option>
-          <option value="R5"${event.fingering === 'R5' ? ' selected' : ''}>R5</option>
-        </select>`;
-    } else if (event.type === 'noteOff') {
-      let formattedNote = formatNoteForDisplay(event.note);
-      html += `
-        <input type="text" class="event-note event-note-font" value="${formattedNote}">
-        <select class="event-channel">
-          <option value="Omni"${event.channel === 'Omni' ? ' selected' : ''}>Omni</option>
-          <option value="1"${event.channel === '1' ? ' selected' : ''}>1</option>
-          <option value="2"${event.channel === '2' ? ' selected' : ''}>2</option>
-          <option value="3"${event.channel === '3' ? ' selected' : ''}>3</option>
-          <option value="4"${event.channel === '4' ? ' selected' : ''}>4</option>
-          <option value="5"${event.channel === '5' ? ' selected' : ''}>5</option>
-          <option value="6"${event.channel === '6' ? ' selected' : ''}>6</option>
-          <option value="7"${event.channel === '7' ? ' selected' : ''}>7</option>
-          <option value="8"${event.channel === '8' ? ' selected' : ''}>8</option>
-          <option value="9"${event.channel === '9' ? ' selected' : ''}>9</option>
-          <option value="10"${event.channel === '10' ? ' selected' : ''}>10</option>
-          <option value="11"${event.channel === '11' ? ' selected' : ''}>11</option>
-          <option value="12"${event.channel === '12' ? ' selected' : ''}>12</option>
-          <option value="13"${event.channel === '13' ? ' selected' : ''}>13</option>
-          <option value="14"${event.channel === '14' ? ' selected' : ''}>14</option>
-          <option value="15"${event.channel === '15' ? ' selected' : ''}>15</option>
-          <option value="16"${event.channel === '16' ? ' selected' : ''}>16</option>
-        </select>`;
+        <!-- Existing parameters like velocity and fingering -->
+      `;
     } else if (event.type === 'controlChange') {
       html += `CC#: <input type="number" class="event-controller-number" value="${event.controllerNumber}" min="0" max="127">
                CCV: <input type="number" class="event-controller-value" value="${event.controllerValue}" min="0" max="127">`;
@@ -1173,6 +1175,7 @@ function updateEventParamsCell(row) {
     eventParamsCell.innerHTML = `<input type="text" class="event-note event-note-font" value="">
                                  <select class="event-channel">
                                    <option value="Omni">Omni</option>
+                                   <option value="Split">Split</option>
                                    <option value="1">1</option>
                                    <option value="2">2</option>
                                    <option value="3">3</option>
@@ -1208,6 +1211,7 @@ function updateEventParamsCell(row) {
     eventParamsCell.innerHTML = `<input type="text" class="event-note event-note-font" value="">
                                  <select class="event-channel">
                                    <option value="Omni">Omni</option>
+                                   <option value="Split">Split</option>
                                    <option value="1">1</option>
                                    <option value="2">2</option>
                                    <option value="3">3</option>
@@ -1317,30 +1321,31 @@ function updateMemoryFromEditor() {
 
     const event = {
       time: parseFloat(timeInput.value),
-      type: eventTypeSelect.value,
-      channel: 'Omni',
+      type: eventTypeSelect.value
     };
 
-    if (event.type === 'noteOn') {
+    if (event.type === 'noteOn' || event.type === 'noteOff') {
       const noteInput = eventParamsCell.querySelector('.event-note');
-      const velocityInput = eventParamsCell.querySelector('.event-velocity');
-      const fingeringSelect = eventParamsCell.querySelector('.event-fingering');
-
-      if (noteInput && velocityInput && fingeringSelect) {
+      const channelSelect = eventParamsCell.querySelector('.event-channel');
+      if (noteInput && channelSelect) {
         event.note = normalizeNoteFromInput(noteInput.value);
-        event.velocity = parseInt(velocityInput.value, 10);
-        event.fingering = fingeringSelect.value;
+        event.channel = channelSelect.value;
       }
 
-      const annotationRow = document.querySelector(`.annotation-row[data-index="${eventIndex}"]`);
-      if (annotationRow) {
-        const annotationTextarea = annotationRow.querySelector('.event-annotation');
-        event.annotation = annotationTextarea.value;
-      }
-    } else if (event.type === 'noteOff') {
-      const noteInput = eventParamsCell.querySelector('.event-note');
-      if (noteInput) {
-        event.note = normalizeNoteFromInput(noteInput.value);
+      if (event.type === 'noteOn') {
+        const velocityInput = eventParamsCell.querySelector('.event-velocity');
+        const fingeringSelect = eventParamsCell.querySelector('.event-fingering');
+
+        if (velocityInput && fingeringSelect) {
+          event.velocity = parseInt(velocityInput.value, 10);
+          event.fingering = fingeringSelect.value;
+        }
+
+        const annotationRow = document.querySelector(`.annotation-row[data-index="${eventIndex}"]`);
+        if (annotationRow) {
+          const annotationTextarea = annotationRow.querySelector('.event-annotation');
+          event.annotation = annotationTextarea.value;
+        }
       }
     } else if (event.type === 'controlChange') {
       const controllerNumberInput = eventParamsCell.querySelector('.event-controller-number');
@@ -1372,72 +1377,115 @@ function updateMemoryFromEditor() {
   selectMemorySequence(selectedMemoryIndex);
 }
 
-function exportSelectedMemoryAsMidi() {
-  if (selectedMemoryIndex === null) {
-    alert('No memory selected to export.');
+function addEntryToMemory() {
+  if (selectedMemoryIndex === null) return;
+
+  const memoryEditorContainer = document.getElementById('memory-editor-container');
+  const selectedSequence = memoryList[selectedMemoryIndex];
+  const events = selectedSequence.notes;
+
+  const addNotesInput = memoryEditorContainer.querySelector('#add-notes-input');
+  const addVelocityInput = memoryEditorContainer.querySelector('#add-velocity-input');
+  const addStartInput = memoryEditorContainer.querySelector('#add-start-input');
+  const addDurationInput = memoryEditorContainer.querySelector('#add-duration-input');
+  const addCCNumberInput = memoryEditorContainer.querySelector('#add-cc-number-input');
+  const addCCValueInput = memoryEditorContainer.querySelector('#add-cc-value-input');
+  const addPCInput = memoryEditorContainer.querySelector('#add-pc-input');
+  const addChannelSelect = memoryEditorContainer.querySelector('#add-channel-select');
+
+  const notesInputValue = addNotesInput.value.trim();
+  const velocity = parseInt(addVelocityInput.value) || 100;
+  let startTime = parseFloat(addStartInput.value);
+  let duration = parseFloat(addDurationInput.value);
+  const selectedChannel = addChannelSelect.value || 'Omni';
+  const ccNumber = parseInt(addCCNumberInput.value);
+  const ccValue = parseInt(addCCValueInput.value);
+  const programNumber = parseInt(addPCInput.value);
+
+  if (isNaN(startTime)) {
+    if (events.length > 0) {
+      startTime = events[events.length - 1].time;
+    } else {
+      startTime = 0;
+    }
+  }
+
+  if (isNaN(duration)) {
+    duration = 1;
+  }
+
+  if (notesInputValue) {
+    const noteNames = notesInputValue.split(',').map(n => n.trim());
+
+    if (selectedChannel === 'Split') {
+      let currentChannel = 1;
+      noteNames.forEach(note => {
+        const channel = currentChannel.toString();
+        const noteOnEvent = {
+          time: startTime,
+          type: 'noteOn',
+          note: note,
+          velocity: velocity,
+          channel: channel,
+        };
+        const noteOffEvent = {
+          time: startTime + duration,
+          type: 'noteOff',
+          note: note,
+          channel: channel,
+        };
+        events.push(noteOnEvent);
+        events.push(noteOffEvent);
+
+        currentChannel++;
+        if (currentChannel > 16) {
+          currentChannel = 1;
+        }
+      });
+    } else {
+      noteNames.forEach(note => {
+        const noteOnEvent = {
+          time: startTime,
+          type: 'noteOn',
+          note: note,
+          velocity: velocity,
+          channel: selectedChannel,
+        };
+        const noteOffEvent = {
+          time: startTime + duration,
+          type: 'noteOff',
+          note: note,
+          channel: selectedChannel,
+        };
+        events.push(noteOnEvent);
+        events.push(noteOffEvent);
+      });
+    }
+  } else if (!isNaN(ccNumber) && !isNaN(ccValue)) {
+    const ccEvent = {
+      time: startTime,
+      type: 'controlChange',
+      controllerNumber: ccNumber,
+      controllerValue: ccValue,
+      channel: selectedChannel,
+    };
+    events.push(ccEvent);
+  } else if (!isNaN(programNumber)) {
+    const pcEvent = {
+      time: startTime,
+      type: 'programChange',
+      programNumber: programNumber,
+      channel: selectedChannel,
+    };
+    events.push(pcEvent);
+  } else {
+    alert('Please enter valid note(s), or CC/PC values.');
     return;
   }
 
-  const selectedSequence = memoryList[selectedMemoryIndex];
+  events.sort((a, b) => a.time - b.time);
 
-  const track = new MidiWriter.Track();
-
-  track.setTempo(100);
-
-  let noteOnEvents = {};
-  const events = selectedSequence.notes;
-
-  events.forEach(event => {
-    if (event.type === 'noteOn') {
-      noteOnEvents[event.note] = { time: event.time, velocity: event.velocity !== undefined ? event.velocity : 100 };
-    } else if (event.type === 'noteOff') {
-      if (noteOnEvents[event.note] !== undefined) {
-        const startTime = noteOnEvents[event.note].time;
-        const velocity = noteOnEvents[event.note].velocity;
-        const duration = event.time - startTime;
-
-        const startTick = Math.round(startTime * (100 / 60) * 128);
-        const durationTicks = Math.round(duration * (100 / 60) * 128) || 1;
-
-        const noteEvent = new MidiWriter.NoteEvent({
-          pitch: [event.note],
-          duration: 'T' + durationTicks,
-          startTick: startTick,
-          velocity: velocity
-        });
-        track.addEvent(noteEvent);
-
-        delete noteOnEvents[event.note];
-      }
-    } else if (event.type === 'controlChange') {
-      const controllerEvent = new MidiWriter.ControllerChangeEvent({
-        controllerNumber: event.controllerNumber,
-        controllerValue: event.controllerValue,
-        startTick: Math.round(event.time * (100 / 60) * 128)
-      });
-      track.addEvent(controllerEvent);
-    } else if (event.type === 'programChange') {
-      const programChangeEvent = new MidiWriter.ProgramChangeEvent({
-        instrument: event.programNumber,
-        startTick: Math.round(event.time * (100 / 60) * 128)
-      });
-      track.addEvent(programChangeEvent);
-    }
-  });
-
-  const write = new MidiWriter.Writer([track]);
-  const midiFileData = write.buildFile();
-
-  const blob = new Blob([midiFileData], { type: 'audio/midi' });
-
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `${selectedSequence.name}.mid`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  populateMemoryEditor();
 }
 
 function transposeSelectedMemoryDown() {
@@ -1449,128 +1497,62 @@ function transposeSelectedMemoryUp() {
 }
 
 function transposeSelectedMemory(semitones) {
-  if (selectedMemoryIndex === null || selectedMemoryIndex >= memoryList.length) {
-    alert('No memory selected to transpose.');
-    return;
-  }
+  if (selectedMemoryIndex === null) return;
 
   const sequence = memoryList[selectedMemoryIndex];
-  const transposedNotes = sequence.notes.map(noteEvent => {
-    const transposedNote = transposeNoteBySemitones(noteEvent.note, semitones);
-    if (!transposedNote) {
-      return null;
+  sequence.notes.forEach(event => {
+    if (event.type === 'noteOn' || event.type === 'noteOff') {
+      event.note = transposeNote(event.note, semitones);
     }
-    return {
-      ...noteEvent,
-      note: transposedNote
-    };
   });
 
-  if (transposedNotes.includes(null)) {
-    alert('Transposition goes out of piano range.');
-    return;
-  }
-
-  sequence.notes = transposedNotes;
   transposeAmount += semitones;
   document.getElementById('transpose-amount').textContent = transposeAmount;
-
-  const selectedMemoryName = document.getElementById('selected-memory').textContent;
-  if (selectedMemoryName === sequence.name) {
-    recordedNotes = JSON.parse(JSON.stringify(sequence.notes));
-  }
-
-  processSequenceNotes(sequence);
-  currentNoteIndex = -1;
 }
 
-function transposeNoteBySemitones(note, semitones) {
-  const noteRegex = /^([A-G](?:#|b)?)(\d)$/;
-  const match = note.match(noteRegex);
-  if (!match) return null;
+function transposeNote(note, semitones) {
+  const match = note.match(/^([A-G]#?)(\d+)$/);
+  if (!match) return note;
 
-  let [_, noteName, octave] = match;
-  octave = parseInt(octave);
+  let noteName = match[1];
+  let octave = parseInt(match[2], 10);
 
-  if (noteName === 'B#') {
-    noteName = 'C';
-    octave += 1;
-  } else if (noteName === 'Cb') {
-    noteName = 'B';
-    octave -= 1;
-  } else if (noteName === 'E#') {
-    noteName = 'F';
-  } else if (noteName === 'Fb') {
-    noteName = 'E';
-  }
-
-  const noteOffsets = {
+  const noteIndexMap = {
     'C': 0,
     'C#': 1,
-    'Db': 1,
     'D': 2,
     'D#': 3,
-    'Eb': 3,
     'E': 4,
     'F': 5,
     'F#': 6,
-    'Gb': 6,
     'G': 7,
     'G#': 8,
-    'Ab': 8,
     'A': 9,
     'A#': 10,
-    'Bb': 10,
     'B': 11
   };
 
-  let noteOffset = noteOffsets[noteName];
-  if (noteOffset === undefined) return null;
+  let noteIndex = noteIndexMap[noteName];
+  if (noteIndex === undefined) return note;
 
-  let midiNumber = octave * 12 + noteOffset;
-  midiNumber += semitones;
+  let newNoteIndex = noteIndex + semitones;
+  let newOctave = octave;
 
-  if (midiNumber < 0) return null;
-
-  let newOctave = Math.floor(midiNumber / 12);
-  let newNoteIndex = midiNumber % 12;
-
-  if (newNoteIndex < 0) {
+  while (newNoteIndex < 0) {
     newNoteIndex += 12;
     newOctave -= 1;
   }
-
-  if (newOctave < startOctave || newOctave >= startOctave + totalOctaves) {
-    return null;
+  while (newNoteIndex > 11) {
+    newNoteIndex -= 12;
+    newOctave += 1;
   }
 
-  const indexToNoteNames = {
-    0: ['C'],
-    1: ['C#', 'Db'],
-    2: ['D'],
-    3: ['D#', 'Eb'],
-    4: ['E'],
-    5: ['F'],
-    6: ['F#', 'Gb'],
-    7: ['G'],
-    8: ['G#', 'Ab'],
-    9: ['A'],
-    10: ['A#', 'Bb'],
-    11: ['B']
-  };
+  const indexToNote = Object.keys(noteIndexMap).reduce((obj, key) => {
+    obj[noteIndexMap[key]] = key;
+    return obj;
+  }, {});
 
-  const originalIsFlat = noteName.includes('b');
-  const possibleNoteNames = indexToNoteNames[newNoteIndex];
-  let newNoteName;
-
-  if (possibleNoteNames.length === 1) {
-    newNoteName = possibleNoteNames[0];
-  } else if (originalIsFlat) {
-    newNoteName = possibleNoteNames.find(n => n.includes('b')) || possibleNoteNames[0];
-  } else {
-    newNoteName = possibleNoteNames.find(n => n.includes('#')) || possibleNoteNames[0];
-  }
-
+  const newNoteName = indexToNote[newNoteIndex];
   return newNoteName + newOctave;
 }
 
@@ -1598,12 +1580,22 @@ function startPlayback() {
         return;
       }
       const timerId = setTimeout(() => {
-        noteOn(noteEvent.note, noteEvent.velocity, false, noteEvent.fingering);
+        noteOn(
+          noteEvent.note,
+          noteEvent.velocity,
+          false,
+          noteEvent.fingering,
+          noteEvent.annotation
+        );
 
+        // Display annotation text outside brackets
         if (noteEvent.annotation && !activeAnnotations.has(noteEvent.note)) {
-          annotationDisplay.textContent = noteEvent.annotation;
-          annotationDisplay.style.display = 'block';
-          activeAnnotations.add(noteEvent.note);
+          const annotationText = noteEvent.annotation.replace(/\[.*?\]/g, '').trim();
+          if (annotationText) {
+            annotationDisplay.textContent = annotationText;
+            annotationDisplay.style.display = 'block';
+            activeAnnotations.add(noteEvent.note);
+          }
         }
       }, (playbackTime - audioContext.currentTime) * 1000);
       playbackTimers.push(timerId);
@@ -1817,17 +1809,24 @@ function playChordAtIndex(index) {
 
   chordEvent.notes.forEach(note => {
     const fingering = chordEvent.fingerings[note];
-    noteOnNavigation(note, fingering);
+    const annotation = chordEvent.annotations.find(ann => ann.includes(note)) || chordEvent.annotations.join('\n');
+    noteOnNavigation(note, fingering, annotation);
   });
 
   if (chordEvent.annotations && chordEvent.annotations.length > 0) {
-    const annotationDisplay = document.getElementById('annotation-display');
-    annotationDisplay.textContent = chordEvent.annotations.join('\n');
-    annotationDisplay.style.display = 'block';
+    const annotationText = chordEvent.annotations
+      .map(ann => ann.replace(/\[.*?\]/g, '').trim())
+      .filter(text => text)
+      .join('\n');
+    if (annotationText) {
+      const annotationDisplay = document.getElementById('annotation-display');
+      annotationDisplay.textContent = annotationText;
+      annotationDisplay.style.display = 'block';
+    }
   }
 }
 
-function noteOnNavigation(note, fingering = 'N') {
+function noteOnNavigation(note, fingering = 'N', annotation = null) {
   if (navigationActiveNotes[note]) return;
   if (!pianoInstrument) return;
 
@@ -1848,10 +1847,38 @@ function noteOnNavigation(note, fingering = 'N') {
       }
     });
   }
+
+  // Handle special annotation text within brackets
+  if (annotation) {
+    const bracketTextMatch = annotation.match(/\[(.*?)\]/);
+    if (bracketTextMatch) {
+      const bracketText = bracketTextMatch[1];
+
+      pianoKeys.forEach(key => {
+        if (key.dataset.note === playableNote) {
+          const annotationDiv = document.createElement('div');
+          annotationDiv.classList.add('key-annotation');
+          annotationDiv.textContent = bracketText;
+
+          key.parentElement.style.position = 'relative';
+          annotationDiv.style.position = 'absolute';
+          annotationDiv.style.top = key.offsetHeight + 'px';
+          annotationDiv.style.width = '100%';
+          annotationDiv.style.textAlign = 'center';
+          annotationDiv.style.color = 'white';
+          annotationDiv.style.fontSize = '12px';
+
+          key.parentElement.appendChild(annotationDiv);
+          navigationActiveKeyAnnotations[note] = annotationDiv;
+        }
+      });
+    }
+  }
 }
 
 function noteOffNavigation(note) {
   if (!navigationActiveNotes[note]) return;
+
   navigationActiveNotes[note].stop();
   delete navigationActiveNotes[note];
   highlightKey(note, false);
@@ -1859,6 +1886,11 @@ function noteOffNavigation(note) {
   if (activeFingerings[note]) {
     activeFingerings[note].remove();
     delete activeFingerings[note];
+  }
+
+  if (navigationActiveKeyAnnotations[note]) {
+    navigationActiveKeyAnnotations[note].remove();
+    delete navigationActiveKeyAnnotations[note];
   }
 }
 
@@ -1877,6 +1909,13 @@ function stopNavigationActiveNotes() {
     }
   }
   activeFingerings = {};
+
+  for (const note in navigationActiveKeyAnnotations) {
+    if (navigationActiveKeyAnnotations.hasOwnProperty(note)) {
+      navigationActiveKeyAnnotations[note].remove();
+    }
+  }
+  navigationActiveKeyAnnotations = {};
 
   const annotationDisplay = document.getElementById('annotation-display');
   annotationDisplay.style.display = 'none';
@@ -1914,30 +1953,31 @@ function updateMemoryFromEditor() {
 
     const event = {
       time: parseFloat(timeInput.value),
-      type: eventTypeSelect.value,
-      channel: 'Omni',
+      type: eventTypeSelect.value
     };
 
-    if (event.type === 'noteOn') {
+    if (event.type === 'noteOn' || event.type === 'noteOff') {
       const noteInput = eventParamsCell.querySelector('.event-note');
-      const velocityInput = eventParamsCell.querySelector('.event-velocity');
-      const fingeringSelect = eventParamsCell.querySelector('.event-fingering');
-
-      if (noteInput && velocityInput && fingeringSelect) {
+      const channelSelect = eventParamsCell.querySelector('.event-channel');
+      if (noteInput && channelSelect) {
         event.note = normalizeNoteFromInput(noteInput.value);
-        event.velocity = parseInt(velocityInput.value, 10);
-        event.fingering = fingeringSelect.value;
+        event.channel = channelSelect.value;
       }
 
-      const annotationRow = document.querySelector(`.annotation-row[data-index="${eventIndex}"]`);
-      if (annotationRow) {
-        const annotationTextarea = annotationRow.querySelector('.event-annotation');
-        event.annotation = annotationTextarea.value;
-      }
-    } else if (event.type === 'noteOff') {
-      const noteInput = eventParamsCell.querySelector('.event-note');
-      if (noteInput) {
-        event.note = normalizeNoteFromInput(noteInput.value);
+      if (event.type === 'noteOn') {
+        const velocityInput = eventParamsCell.querySelector('.event-velocity');
+        const fingeringSelect = eventParamsCell.querySelector('.event-fingering');
+
+        if (velocityInput && fingeringSelect) {
+          event.velocity = parseInt(velocityInput.value, 10);
+          event.fingering = fingeringSelect.value;
+        }
+
+        const annotationRow = document.querySelector(`.annotation-row[data-index="${eventIndex}"]`);
+        if (annotationRow) {
+          const annotationTextarea = annotationRow.querySelector('.event-annotation');
+          event.annotation = annotationTextarea.value;
+        }
       }
     } else if (event.type === 'controlChange') {
       const controllerNumberInput = eventParamsCell.querySelector('.event-controller-number');
@@ -2008,89 +2048,6 @@ function clearApp() {
   document.getElementById('selected-memory').textContent = 'No Memory Selected';
   updateMemoryList();
   updateChannelButtonStyles();
-}
-
-function addEntryToMemory() {
-  if (selectedMemoryIndex === null) return;
-
-  const memoryEditorContainer = document.getElementById('memory-editor-container');
-  const selectedSequence = memoryList[selectedMemoryIndex];
-  const events = selectedSequence.notes;
-
-  const addNotesInput = memoryEditorContainer.querySelector('#add-notes-input');
-  const addVelocityInput = memoryEditorContainer.querySelector('#add-velocity-input');
-  const addStartInput = memoryEditorContainer.querySelector('#add-start-input');
-  const addDurationInput = memoryEditorContainer.querySelector('#add-duration-input');
-  const addCCNumberInput = memoryEditorContainer.querySelector('#add-cc-number-input');
-  const addCCValueInput = memoryEditorContainer.querySelector('#add-cc-value-input');
-  const addPCInput = memoryEditorContainer.querySelector('#add-pc-input');
-  const addChannelSelect = memoryEditorContainer.querySelector('#add-channel-select');
-
-  const notesInputValue = addNotesInput.value.trim();
-  const velocity = parseInt(addVelocityInput.value) || 100;
-  let startTime = parseFloat(addStartInput.value);
-  let duration = parseFloat(addDurationInput.value);
-  const channel = addChannelSelect.value || 'Omni';
-  const ccNumber = parseInt(addCCNumberInput.value);
-  const ccValue = parseInt(addCCValueInput.value);
-  const programNumber = parseInt(addPCInput.value);
-
-  if (isNaN(startTime)) {
-    if (events.length > 0) {
-      startTime = events[events.length - 1].time;
-    } else {
-      startTime = 0;
-    }
-  }
-
-  if (isNaN(duration)) {
-    duration = 1;
-  }
-
-  if (notesInputValue) {
-    const noteNames = notesInputValue.split(',').map(n => n.trim());
-    noteNames.forEach(note => {
-      const noteOnEvent = {
-        time: startTime,
-        type: 'noteOn',
-        note: note,
-        velocity: velocity,
-        channel: channel,
-      };
-      const noteOffEvent = {
-        time: startTime + duration,
-        type: 'noteOff',
-        note: note,
-        channel: channel,
-      };
-      events.push(noteOnEvent);
-      events.push(noteOffEvent);
-    });
-  } else if (!isNaN(ccNumber) && !isNaN(ccValue)) {
-    const ccEvent = {
-      time: startTime,
-      type: 'controlChange',
-      controllerNumber: ccNumber,
-      controllerValue: ccValue,
-      channel: channel,
-    };
-    events.push(ccEvent);
-  } else if (!isNaN(programNumber)) {
-    const pcEvent = {
-      time: startTime,
-      type: 'programChange',
-      programNumber: programNumber,
-      channel: channel,
-    };
-    events.push(pcEvent);
-  } else {
-    alert('Please enter valid note(s), or CC/PC values.');
-    return;
-  }
-
-  events.sort((a, b) => a.time - b.time);
-
-  populateMemoryEditor();
 }
 
 document.addEventListener('DOMContentLoaded', () => {
