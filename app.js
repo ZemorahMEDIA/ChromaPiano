@@ -2086,6 +2086,8 @@ function clearApp() {
   document.getElementById('selected-memory').textContent = 'No Memory Selected';
   updateMemoryList();
   updateChannelButtonStyles();
+  transposeAmount = 0;
+  document.getElementById('transpose-amount').textContent = transposeAmount;
 }
 
 document.addEventListener('DOMContentLoaded', () => {
