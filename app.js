@@ -1526,7 +1526,12 @@ function transposeSelectedMemory(semitones) {
   document.getElementById('transpose-amount').textContent = transposeAmount;
 
   processSequenceNotes(sequence);
+  recordedNotes = JSON.parse(JSON.stringify(sequence.notes));
   currentNoteIndex = -1;
+
+  if (memoryEditorVisible) {
+    populateMemoryEditor();
+  }
 }
 
 function transposeNote(note, semitones) {
@@ -1564,6 +1569,11 @@ function transposeNote(note, semitones) {
   while (newNoteIndex > 11) {
     newNoteIndex -= 12;
     newOctave += 1;
+  }
+
+  if (newOctave < 0 || newOctave > 9) {
+    // Octave out of range, return the original note
+    return note;
   }
 
   const indexToNote = Object.keys(noteIndexMap).reduce((obj, key) => {
