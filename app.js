@@ -562,6 +562,176 @@ function midiNoteToName(noteNumber) {
   return noteName + octave;
 }
 
+function parseDurationInput(input) {
+  const abbreviationMap = {
+    'W': 4,
+    'H': 2,
+    'Q': 1,
+    'E': 0.5,
+    'S': 0.25,
+    'T': 0.125
+  };
+
+  let totalDuration = 0;
+
+  // Split on underscores to handle additions
+  const parts = input.split('_');
+
+  for (let part of parts) {
+    let duration = 0;
+    let originalPart = part; // Keep the original part for error messages
+    let division = 1;
+
+    // Check for division
+    if (part.includes('/')) {
+      const divisionParts = part.split('/');
+      part = divisionParts[0];
+      division = parseFloat(divisionParts[1]);
+      if (isNaN(division) || division <= 0) {
+        alert(`Invalid division in duration: ${originalPart}`);
+        return NaN;
+      }
+    }
+
+    // Match abbreviation with optional dot
+    const match = part.match(/^([WHQEST])(\.?)$/);
+    if (match) {
+      let [, abbrev, dot] = match;
+      duration = abbreviationMap[abbrev];
+      if (dot) {
+        duration += duration / 2; // Add half of its value
+      }
+    } else {
+      // Try to parse as a number
+      duration = parseFloat(part);
+      if (isNaN(duration)) {
+        alert(`Invalid duration part: ${originalPart}`);
+        return NaN;
+      }
+    }
+
+    // Apply division
+    duration = duration / division;
+
+    totalDuration += duration;
+  }
+
+  return totalDuration;
+}
+
+function addEntryToMemory() {
+  if (selectedMemoryIndex === null) return;
+
+  const memoryEditorContainer = document.getElementById('memory-editor-container');
+  const selectedSequence = memoryList[selectedMemoryIndex];
+  const events = selectedSequence.notes;
+
+  const addNotesInput = memoryEditorContainer.querySelector('#add-notes-input');
+  const addVelocityInput = memoryEditorContainer.querySelector('#add-velocity-input');
+  const addStartInput = memoryEditorContainer.querySelector('#add-start-input');
+  const addDurationInput = memoryEditorContainer.querySelector('#add-duration-input');
+  const addCCNumberInput = memoryEditorContainer.querySelector('#add-cc-number-input');
+  const addCCValueInput = memoryEditorContainer.querySelector('#add-cc-value-input');
+  const addPCInput = memoryEditorContainer.querySelector('#add-pc-input');
+  const addChannelSelect = memoryEditorContainer.querySelector('#add-channel-select');
+
+  const notesInputValue = addNotesInput.value.trim();
+  const velocity = parseInt(addVelocityInput.value) || 100;
+  let startTime = parseFloat(addStartInput.value);
+  const durationInputValue = addDurationInput.value.trim();
+  const selectedChannel = addChannelSelect.value || 'Omni';
+  const ccNumber = parseInt(addCCNumberInput.value);
+  const ccValue = parseInt(addCCValueInput.value);
+  const programNumber = parseInt(addPCInput.value);
+
+  if (isNaN(startTime)) {
+    if (events.length > 0) {
+      startTime = events[events.length - 1].time;
+    } else {
+      startTime = 0;
+    }
+  }
+
+  let duration = parseDurationInput(durationInputValue);
+  if (isNaN(duration)) {
+    alert('Invalid duration format.');
+    return;
+  }
+
+  if (notesInputValue) {
+    const noteNames = notesInputValue.split(',').map(n => n.trim());
+
+    if (selectedChannel === 'Split') {
+      let currentChannel = 1;
+      noteNames.forEach(note => {
+        const channel = currentChannel.toString();
+        const noteOnEvent = {
+          time: startTime,
+          type: 'noteOn',
+          note: note,
+          velocity: velocity,
+          channel: channel,
+        };
+        const noteOffEvent = {
+          time: startTime + duration,
+          type: 'noteOff',
+          note: note,
+          channel: channel,
+        };
+        events.push(noteOnEvent);
+        events.push(noteOffEvent);
+
+        currentChannel++;
+        if (currentChannel > 16) {
+          currentChannel = 1;
+        }
+      });
+    } else {
+      noteNames.forEach(note => {
+        const noteOnEvent = {
+          time: startTime,
+          type: 'noteOn',
+          note: note,
+          velocity: velocity,
+          channel: selectedChannel,
+        };
+        const noteOffEvent = {
+          time: startTime + duration,
+          type: 'noteOff',
+          note: note,
+          channel: selectedChannel,
+        };
+        events.push(noteOnEvent);
+        events.push(noteOffEvent);
+      });
+    }
+  } else if (!isNaN(ccNumber) && !isNaN(ccValue)) {
+    const ccEvent = {
+      time: startTime,
+      type: 'controlChange',
+      controllerNumber: ccNumber,
+      controllerValue: ccValue,
+      channel: selectedChannel,
+    };
+    events.push(ccEvent);
+  } else if (!isNaN(programNumber)) {
+    const pcEvent = {
+      time: startTime,
+      type: 'programChange',
+      programNumber: programNumber,
+      channel: selectedChannel,
+    };
+    events.push(pcEvent);
+  } else {
+    alert('Please enter valid note(s), or CC/PC values.');
+    return;
+  }
+
+  events.sort((a, b) => a.time - b.time);
+
+  populateMemoryEditor();
+}
+
 function initSequencerControls() {
   const recordBtn = document.getElementById('record-btn');
   const playBtn = document.getElementById('play-btn');
@@ -951,7 +1121,7 @@ function populateMemoryEditor() {
         <input type="text" id="add-notes-input" placeholder="Notes">
         <input type="number" id="add-velocity-input" value="100" placeholder="Velocity" min="1" max="127">
         <input type="text" id="add-start-input" placeholder="Start">
-        <input type="number" id="add-duration-input" placeholder="Duration" step="0.001">
+        <input type="text" id="add-duration-input" placeholder="Duration">
         <select id="add-channel-select">
           <option value="Omni">Omni</option>
           <option value="Split">Split</option>
@@ -1391,117 +1561,6 @@ function updateMemoryFromEditor() {
 
   updateMemoryList();
   selectMemorySequence(selectedMemoryIndex);
-}
-
-function addEntryToMemory() {
-  if (selectedMemoryIndex === null) return;
-
-  const memoryEditorContainer = document.getElementById('memory-editor-container');
-  const selectedSequence = memoryList[selectedMemoryIndex];
-  const events = selectedSequence.notes;
-
-  const addNotesInput = memoryEditorContainer.querySelector('#add-notes-input');
-  const addVelocityInput = memoryEditorContainer.querySelector('#add-velocity-input');
-  const addStartInput = memoryEditorContainer.querySelector('#add-start-input');
-  const addDurationInput = memoryEditorContainer.querySelector('#add-duration-input');
-  const addCCNumberInput = memoryEditorContainer.querySelector('#add-cc-number-input');
-  const addCCValueInput = memoryEditorContainer.querySelector('#add-cc-value-input');
-  const addPCInput = memoryEditorContainer.querySelector('#add-pc-input');
-  const addChannelSelect = memoryEditorContainer.querySelector('#add-channel-select');
-
-  const notesInputValue = addNotesInput.value.trim();
-  const velocity = parseInt(addVelocityInput.value) || 100;
-  let startTime = parseFloat(addStartInput.value);
-  let duration = parseFloat(addDurationInput.value);
-  const selectedChannel = addChannelSelect.value || 'Omni';
-  const ccNumber = parseInt(addCCNumberInput.value);
-  const ccValue = parseInt(addCCValueInput.value);
-  const programNumber = parseInt(addPCInput.value);
-
-  if (isNaN(startTime)) {
-    if (events.length > 0) {
-      startTime = events[events.length - 1].time;
-    } else {
-      startTime = 0;
-    }
-  }
-
-  if (isNaN(duration)) {
-    duration = 1;
-  }
-
-  if (notesInputValue) {
-    const noteNames = notesInputValue.split(',').map(n => n.trim());
-
-    if (selectedChannel === 'Split') {
-      let currentChannel = 1;
-      noteNames.forEach(note => {
-        const channel = currentChannel.toString();
-        const noteOnEvent = {
-          time: startTime,
-          type: 'noteOn',
-          note: note,
-          velocity: velocity,
-          channel: channel,
-        };
-        const noteOffEvent = {
-          time: startTime + duration,
-          type: 'noteOff',
-          note: note,
-          channel: channel,
-        };
-        events.push(noteOnEvent);
-        events.push(noteOffEvent);
-
-        currentChannel++;
-        if (currentChannel > 16) {
-          currentChannel = 1;
-        }
-      });
-    } else {
-      noteNames.forEach(note => {
-        const noteOnEvent = {
-          time: startTime,
-          type: 'noteOn',
-          note: note,
-          velocity: velocity,
-          channel: selectedChannel,
-        };
-        const noteOffEvent = {
-          time: startTime + duration,
-          type: 'noteOff',
-          note: note,
-          channel: selectedChannel,
-        };
-        events.push(noteOnEvent);
-        events.push(noteOffEvent);
-      });
-    }
-  } else if (!isNaN(ccNumber) && !isNaN(ccValue)) {
-    const ccEvent = {
-      time: startTime,
-      type: 'controlChange',
-      controllerNumber: ccNumber,
-      controllerValue: ccValue,
-      channel: selectedChannel,
-    };
-    events.push(ccEvent);
-  } else if (!isNaN(programNumber)) {
-    const pcEvent = {
-      time: startTime,
-      type: 'programChange',
-      programNumber: programNumber,
-      channel: selectedChannel,
-    };
-    events.push(pcEvent);
-  } else {
-    alert('Please enter valid note(s), or CC/PC values.');
-    return;
-  }
-
-  events.sort((a, b) => a.time - b.time);
-
-  populateMemoryEditor();
 }
 
 function transposeSelectedMemoryDown() {
