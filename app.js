@@ -292,14 +292,25 @@ function noteOn(note, velocity = 127, isUserInteraction = false, fingering = nul
 
       pianoKeys.forEach(key => {
         if (key.dataset.note === playableNote) {
+          const isBlackKey = key.classList.contains('black');
           const annotationDiv = document.createElement('div');
           annotationDiv.classList.add('key-annotation');
           annotationDiv.textContent = bracketText;
 
           key.parentElement.style.position = 'relative';
           annotationDiv.style.position = 'absolute';
-          annotationDiv.style.top = key.offsetHeight + 'px';
-          annotationDiv.style.width = '100%';
+
+          // Set a fixed top position for all keys to align annotations vertically
+          annotationDiv.style.top = '160px';
+
+          if (isBlackKey) {
+            annotationDiv.style.left = '70%';
+            annotationDiv.style.width = '60%';
+          } else {
+            annotationDiv.style.left = '0';
+            annotationDiv.style.width = '100%';
+          }
+
           annotationDiv.style.textAlign = 'center';
           annotationDiv.style.color = 'white';
           annotationDiv.style.fontSize = '12px';
@@ -1513,6 +1524,9 @@ function transposeSelectedMemory(semitones) {
 
   transposeAmount += semitones;
   document.getElementById('transpose-amount').textContent = transposeAmount;
+
+  processSequenceNotes(sequence);
+  currentNoteIndex = -1;
 }
 
 function transposeNote(note, semitones) {
@@ -1851,6 +1865,7 @@ function noteOnNavigation(note, fingering = 'N', annotation = null) {
     });
   }
 
+  // Handle special annotation text within brackets
   if (annotation) {
     const bracketTextMatch = annotation.match(/\[(.*?)\]/);
     if (bracketTextMatch) {
@@ -1858,14 +1873,25 @@ function noteOnNavigation(note, fingering = 'N', annotation = null) {
 
       pianoKeys.forEach(key => {
         if (key.dataset.note === playableNote) {
+          const isBlackKey = key.classList.contains('black');
           const annotationDiv = document.createElement('div');
           annotationDiv.classList.add('key-annotation');
           annotationDiv.textContent = bracketText;
 
           key.parentElement.style.position = 'relative';
           annotationDiv.style.position = 'absolute';
-          annotationDiv.style.top = key.offsetHeight + 'px';
-          annotationDiv.style.width = '100%';
+
+          // Set a fixed top position for all keys to align annotations vertically
+          annotationDiv.style.top = '160px';
+
+          if (isBlackKey) {
+            annotationDiv.style.left = '70%';
+            annotationDiv.style.width = '60%';
+          } else {
+            annotationDiv.style.left = '0';
+            annotationDiv.style.width = '100%';
+          }
+
           annotationDiv.style.textAlign = 'center';
           annotationDiv.style.color = 'white';
           annotationDiv.style.fontSize = '12px';
