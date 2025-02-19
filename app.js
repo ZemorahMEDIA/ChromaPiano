@@ -15,6 +15,16 @@ const noteColors = {
   B: '#FF00FF',    // magenta,
 };
 
+const shorthandColorMap = {
+  R: '#FF0000',    // Red
+  O: '#FFA500',    // Orange
+  Y: '#FFFF00',    // Yellow
+  G: '#008000',    // Green
+  B: '#0000FF',    // Blue
+  V: '#6109AB',    // Violet
+  M: '#FF00FF',    // Magenta
+};
+
 const blackKeyAdjacency = {
   'C#': ['C', 'D'],
   'D#': ['D', 'E'],
@@ -289,15 +299,15 @@ function noteOn(note, velocity = 127, isUserInteraction = false, fingering = nul
     for (let i = 0; i < bracketTextMatches.length; i++) {
       const bracketText = bracketTextMatches[i][1];
       const colorCodeMatch = bracketText.match(/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/i);
+      const shorthandColorMatch = bracketText.match(/^#([ROYGBVM])$/i);
+
       if (colorCodeMatch) {
         const colorCode = '#' + colorCodeMatch[1];
         activeNoteColors[note] = colorCode;
         highlightKey(note, true);
 
-        // Check if the next bracketed text exists
         if (i + 1 < bracketTextMatches.length) {
           const displayText = bracketTextMatches[++i][1];
-          // Display the text
           pianoKeys.forEach(key => {
             if (key.dataset.note === playableNote) {
               const isBlackKey = key.classList.contains('black');
@@ -329,9 +339,49 @@ function noteOn(note, velocity = 127, isUserInteraction = false, fingering = nul
           });
         }
         continue;
+      } else if (shorthandColorMatch) {
+        const shorthandCode = shorthandColorMatch[1].toUpperCase();
+        const colorCode = shorthandColorMap[shorthandCode];
+        if (colorCode) {
+          activeNoteColors[note] = colorCode;
+          highlightKey(note, true);
+
+          if (i + 1 < bracketTextMatches.length) {
+            const displayText = bracketTextMatches[++i][1];
+            pianoKeys.forEach(key => {
+              if (key.dataset.note === playableNote) {
+                const isBlackKey = key.classList.contains('black');
+                const annotationDiv = document.createElement('div');
+                annotationDiv.classList.add('key-annotation');
+                annotationDiv.textContent = displayText;
+
+                key.parentElement.style.position = 'relative';
+                annotationDiv.style.position = 'absolute';
+
+                annotationDiv.style.top = '160px';
+
+                if (isBlackKey) {
+                  annotationDiv.style.left = '70%';
+                  annotationDiv.style.width = '60%';
+                } else {
+                  annotationDiv.style.left = '0';
+                  annotationDiv.style.width = '100%';
+                }
+
+                annotationDiv.style.textAlign = 'center';
+                annotationDiv.style.color = 'white';
+                annotationDiv.style.fontSize = '12px';
+
+                key.parentElement.appendChild(annotationDiv);
+                activeKeyAnnotations[note] = activeKeyAnnotations[note] || [];
+                activeKeyAnnotations[note].push(annotationDiv);
+              }
+            });
+          }
+          continue;
+        }
       }
 
-      // Existing code to handle bracketed annotations
       pianoKeys.forEach(key => {
         if (key.dataset.note === playableNote) {
           const isBlackKey = key.classList.contains('black');
@@ -702,8 +752,7 @@ function addEntryToMemory() {
     }
   }
 
-  // Default the duration to 'Q' if notes are entered and duration is empty
-  if (!durationInputValue && notesInputValue) {
+  if (durationInputValue === '' && notesInputValue) {
     durationInputValue = 'Q';
   }
 
@@ -1986,15 +2035,15 @@ function noteOnNavigation(note, fingering = 'N', annotation = null) {
     for (let i = 0; i < bracketTextMatches.length; i++) {
       const bracketText = bracketTextMatches[i][1];
       const colorCodeMatch = bracketText.match(/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/i);
+      const shorthandColorMatch = bracketText.match(/^#([ROYGBVM])$/i);
+
       if (colorCodeMatch) {
         const colorCode = '#' + colorCodeMatch[1];
         activeNoteColors[note] = colorCode;
         highlightKey(note, true);
 
-        // Check if the next bracketed text exists
         if (i + 1 < bracketTextMatches.length) {
           const displayText = bracketTextMatches[++i][1];
-          // Display the text
           pianoKeys.forEach(key => {
             if (key.dataset.note === playableNote) {
               const isBlackKey = key.classList.contains('black');
@@ -2026,9 +2075,49 @@ function noteOnNavigation(note, fingering = 'N', annotation = null) {
           });
         }
         continue;
+      } else if (shorthandColorMatch) {
+        const shorthandCode = shorthandColorMatch[1].toUpperCase();
+        const colorCode = shorthandColorMap[shorthandCode];
+        if (colorCode) {
+          activeNoteColors[note] = colorCode;
+          highlightKey(note, true);
+
+          if (i + 1 < bracketTextMatches.length) {
+            const displayText = bracketTextMatches[++i][1];
+            pianoKeys.forEach(key => {
+              if (key.dataset.note === playableNote) {
+                const isBlackKey = key.classList.contains('black');
+                const annotationDiv = document.createElement('div');
+                annotationDiv.classList.add('key-annotation');
+                annotationDiv.textContent = displayText;
+
+                key.parentElement.style.position = 'relative';
+                annotationDiv.style.position = 'absolute';
+
+                annotationDiv.style.top = '160px';
+
+                if (isBlackKey) {
+                  annotationDiv.style.left = '70%';
+                  annotationDiv.style.width = '60%';
+                } else {
+                  annotationDiv.style.left = '0';
+                  annotationDiv.style.width = '100%';
+                }
+
+                annotationDiv.style.textAlign = 'center';
+                annotationDiv.style.color = 'white';
+                annotationDiv.style.fontSize = '12px';
+
+                key.parentElement.appendChild(annotationDiv);
+                navigationActiveKeyAnnotations[note] = navigationActiveKeyAnnotations[note] || [];
+                navigationActiveKeyAnnotations[note].push(annotationDiv);
+              }
+            });
+          }
+          continue;
+        }
       }
 
-      // Existing code to handle bracketed annotations
       pianoKeys.forEach(key => {
         if (key.dataset.note === playableNote) {
           const isBlackKey = key.classList.contains('black');
