@@ -688,7 +688,7 @@ function addEntryToMemory() {
   const notesInputValue = addNotesInput.value.trim();
   const velocity = parseInt(addVelocityInput.value) || 100;
   let startTime = parseFloat(addStartInput.value);
-  const durationInputValue = addDurationInput.value.trim();
+  let durationInputValue = addDurationInput.value.trim();
   const selectedChannel = addChannelSelect.value || 'Omni';
   const ccNumber = parseInt(addCCNumberInput.value);
   const ccValue = parseInt(addCCValueInput.value);
@@ -700,6 +700,11 @@ function addEntryToMemory() {
     } else {
       startTime = 0;
     }
+  }
+
+  // Default the duration to 'Q' if notes are entered and duration is empty
+  if (!durationInputValue && notesInputValue) {
+    durationInputValue = 'Q';
   }
 
   let duration = parseDurationInput(durationInputValue);
