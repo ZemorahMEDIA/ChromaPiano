@@ -284,12 +284,54 @@ function noteOn(note, velocity = 127, isUserInteraction = false, fingering = nul
     });
   }
 
-  // Handle special annotation text within brackets
   if (annotation) {
-    const bracketTextMatch = annotation.match(/\[(.*?)\]/);
-    if (bracketTextMatch) {
-      const bracketText = bracketTextMatch[1];
+    const bracketTextMatches = [...annotation.matchAll(/\[(.*?)\]/g)];
+    for (let i = 0; i < bracketTextMatches.length; i++) {
+      const bracketText = bracketTextMatches[i][1];
+      const colorCodeMatch = bracketText.match(/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/i);
+      if (colorCodeMatch) {
+        const colorCode = '#' + colorCodeMatch[1];
+        activeNoteColors[note] = colorCode;
+        highlightKey(note, true);
 
+        // Check if the next bracketed text exists
+        if (i + 1 < bracketTextMatches.length) {
+          const displayText = bracketTextMatches[++i][1];
+          // Display the text
+          pianoKeys.forEach(key => {
+            if (key.dataset.note === playableNote) {
+              const isBlackKey = key.classList.contains('black');
+              const annotationDiv = document.createElement('div');
+              annotationDiv.classList.add('key-annotation');
+              annotationDiv.textContent = displayText;
+
+              key.parentElement.style.position = 'relative';
+              annotationDiv.style.position = 'absolute';
+
+              annotationDiv.style.top = '160px';
+
+              if (isBlackKey) {
+                annotationDiv.style.left = '70%';
+                annotationDiv.style.width = '60%';
+              } else {
+                annotationDiv.style.left = '0';
+                annotationDiv.style.width = '100%';
+              }
+
+              annotationDiv.style.textAlign = 'center';
+              annotationDiv.style.color = 'white';
+              annotationDiv.style.fontSize = '12px';
+
+              key.parentElement.appendChild(annotationDiv);
+              activeKeyAnnotations[note] = activeKeyAnnotations[note] || [];
+              activeKeyAnnotations[note].push(annotationDiv);
+            }
+          });
+        }
+        continue;
+      }
+
+      // Existing code to handle bracketed annotations
       pianoKeys.forEach(key => {
         if (key.dataset.note === playableNote) {
           const isBlackKey = key.classList.contains('black');
@@ -300,7 +342,6 @@ function noteOn(note, velocity = 127, isUserInteraction = false, fingering = nul
           key.parentElement.style.position = 'relative';
           annotationDiv.style.position = 'absolute';
 
-          // Set a fixed top position for all keys to align annotations vertically
           annotationDiv.style.top = '160px';
 
           if (isBlackKey) {
@@ -316,7 +357,8 @@ function noteOn(note, velocity = 127, isUserInteraction = false, fingering = nul
           annotationDiv.style.fontSize = '12px';
 
           key.parentElement.appendChild(annotationDiv);
-          activeKeyAnnotations[note] = annotationDiv;
+          activeKeyAnnotations[note] = activeKeyAnnotations[note] || [];
+          activeKeyAnnotations[note].push(annotationDiv);
         }
       });
     }
@@ -346,8 +388,18 @@ function noteOff(note, isUserInteraction = false) {
   }
 
   if (activeKeyAnnotations[note]) {
-    activeKeyAnnotations[note].remove();
+    if (Array.isArray(activeKeyAnnotations[note])) {
+      activeKeyAnnotations[note].forEach(annotationDiv => {
+        annotationDiv.remove();
+      });
+    } else {
+      activeKeyAnnotations[note].remove();
+    }
     delete activeKeyAnnotations[note];
+  }
+
+  if (activeNoteColors[note]) {
+    delete activeNoteColors[note];
   }
 
   if (isRecording && isUserInteraction) {
@@ -365,6 +417,7 @@ function highlightKey(note, isPressed) {
   pianoKeys.forEach(key => {
     if (key.dataset.note === playableNote) {
       if (isPressed) {
+        let color = 'lightblue';
         if (colorfulNotesEnabled) {
           const baseNote = playableNote.replace(/[0-9]/g, '');
           if (baseNote.includes('#')) {
@@ -372,13 +425,15 @@ function highlightKey(note, isPressed) {
             const color1 = noteColors[adjNotes[0]];
             const color2 = noteColors[adjNotes[1]];
             key.style.background = `linear-gradient(to top, ${color2} 50%, ${color1} 50%)`;
+            return;
           } else {
-            const color = noteColors[baseNote];
-            key.style.background = color;
+            color = noteColors[baseNote];
           }
-        } else {
-          key.style.background = 'lightblue';
         }
+        if (activeNoteColors[note]) {
+          color = activeNoteColors[note];
+        }
+        key.style.background = color;
       } else {
         key.style.background = '';
       }
@@ -574,15 +629,13 @@ function parseDurationInput(input) {
 
   let totalDuration = 0;
 
-  // Split on underscores to handle additions
   const parts = input.split('_');
 
   for (let part of parts) {
     let duration = 0;
-    let originalPart = part; // Keep the original part for error messages
+    let originalPart = part; 
     let division = 1;
 
-    // Check for division
     if (part.includes('/')) {
       const divisionParts = part.split('/');
       part = divisionParts[0];
@@ -593,16 +646,14 @@ function parseDurationInput(input) {
       }
     }
 
-    // Match abbreviation with optional dot
     const match = part.match(/^([WHQEST])(\.?)$/);
     if (match) {
       let [, abbrev, dot] = match;
       duration = abbreviationMap[abbrev];
       if (dot) {
-        duration += duration / 2; // Add half of its value
+        duration += duration / 2; 
       }
     } else {
-      // Try to parse as a number
       duration = parseFloat(part);
       if (isNaN(duration)) {
         alert(`Invalid duration part: ${originalPart}`);
@@ -610,7 +661,6 @@ function parseDurationInput(input) {
       }
     }
 
-    // Apply division
     duration = duration / division;
 
     totalDuration += duration;
@@ -938,7 +988,6 @@ function stopAction() {
   }
   activeFingerings = {};
 
-  // Clear annotations when stopping playback
   const activeAnnotations = {};
   const annotationDisplay = document.getElementById('annotation-display');
   annotationDisplay.textContent = '';
@@ -1154,9 +1203,9 @@ function populateMemoryEditor() {
 
   events.forEach((event, index) => {
     html += `<tr class="event-row ${event.type === 'noteOn' ? 'note-on' :
-                                     event.type === 'noteOff' ? 'note-off' :
-                                     event.type === 'controlChange' ? 'control-change' :
-                                     event.type === 'programChange' ? 'program-change' : ''}" data-index="${index}">
+                                       event.type === 'noteOff' ? 'note-off' :
+                                       event.type === 'controlChange' ? 'control-change' :
+                                       event.type === 'programChange' ? 'program-change' : ''}" data-index="${index}">
       <td><input type="number" step="0.001" class="event-time" value="${event.time.toFixed(3)}"></td>
       <td>
         <select class="event-type">
@@ -1280,15 +1329,13 @@ function populateMemoryEditor() {
   const actionCells = memoryEditorContainer.querySelectorAll('.action-cell');
   actionCells.forEach(cell => {
     cell.addEventListener('click', function(e) {
-      e.stopPropagation(); // Prevent the event from triggering other handlers
+      e.stopPropagation(); 
       const row = this.closest('tr');
       const eventIndex = parseInt(row.dataset.index, 10);
       if (selectedEventIndices.includes(eventIndex)) {
-        // Deselect
         selectedEventIndices = selectedEventIndices.filter(index => index !== eventIndex);
         row.classList.remove('selected');
       } else {
-        // Select
         selectedEventIndices.push(eventIndex);
         row.classList.add('selected');
       }
@@ -1303,7 +1350,6 @@ function populateMemoryEditor() {
       const eventTypeSelect = row.querySelector('.event-type');
       const eventType = eventTypeSelect.value;
       if (selectedEventIndices.length > 1 && selectedEventIndices.includes(eventIndex)) {
-        // Copy changes to other selected events of the same type
         const inputField = this;
         const valueToCopy = inputField.value;
         const fieldClassList = Array.from(inputField.classList);
@@ -1317,7 +1363,6 @@ function populateMemoryEditor() {
               if (targetEventType === eventType) {
                 let targetInput;
 
-                // Find corresponding input in targetRow
                 if (fieldClassList.includes('event-time')) {
                   targetInput = targetRow.querySelector('.event-time');
                 } else if (fieldClassList.includes('event-type')) {
@@ -1631,7 +1676,6 @@ function transposeNote(note, semitones) {
   }
 
   if (newOctave < 0 || newOctave > 9) {
-    // Octave out of range, return the original note
     return note;
   }
 
@@ -1676,7 +1720,6 @@ function startPlayback() {
           noteEvent.annotation
         );
 
-        // Display annotation text outside brackets
         if (noteEvent.annotation) {
           const annotationText = noteEvent.annotation.replace(/\[.*?\]/g, '').trim();
           if (annotationText) {
@@ -1693,7 +1736,6 @@ function startPlayback() {
       const timerId = setTimeout(() => {
         noteOff(noteEvent.note, false);
 
-        // Remove annotation if exists
         if (activeAnnotations[noteEvent.note]) {
           delete activeAnnotations[noteEvent.note];
           updateAnnotationDisplay();
@@ -1934,12 +1976,54 @@ function noteOnNavigation(note, fingering = 'N', annotation = null) {
     });
   }
 
-  // Handle special annotation text within brackets
   if (annotation) {
-    const bracketTextMatch = annotation.match(/\[(.*?)\]/);
-    if (bracketTextMatch) {
-      const bracketText = bracketTextMatch[1];
+    const bracketTextMatches = [...annotation.matchAll(/\[(.*?)\]/g)];
+    for (let i = 0; i < bracketTextMatches.length; i++) {
+      const bracketText = bracketTextMatches[i][1];
+      const colorCodeMatch = bracketText.match(/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/i);
+      if (colorCodeMatch) {
+        const colorCode = '#' + colorCodeMatch[1];
+        activeNoteColors[note] = colorCode;
+        highlightKey(note, true);
 
+        // Check if the next bracketed text exists
+        if (i + 1 < bracketTextMatches.length) {
+          const displayText = bracketTextMatches[++i][1];
+          // Display the text
+          pianoKeys.forEach(key => {
+            if (key.dataset.note === playableNote) {
+              const isBlackKey = key.classList.contains('black');
+              const annotationDiv = document.createElement('div');
+              annotationDiv.classList.add('key-annotation');
+              annotationDiv.textContent = displayText;
+
+              key.parentElement.style.position = 'relative';
+              annotationDiv.style.position = 'absolute';
+
+              annotationDiv.style.top = '160px';
+
+              if (isBlackKey) {
+                annotationDiv.style.left = '70%';
+                annotationDiv.style.width = '60%';
+              } else {
+                annotationDiv.style.left = '0';
+                annotationDiv.style.width = '100%';
+              }
+
+              annotationDiv.style.textAlign = 'center';
+              annotationDiv.style.color = 'white';
+              annotationDiv.style.fontSize = '12px';
+
+              key.parentElement.appendChild(annotationDiv);
+              navigationActiveKeyAnnotations[note] = navigationActiveKeyAnnotations[note] || [];
+              navigationActiveKeyAnnotations[note].push(annotationDiv);
+            }
+          });
+        }
+        continue;
+      }
+
+      // Existing code to handle bracketed annotations
       pianoKeys.forEach(key => {
         if (key.dataset.note === playableNote) {
           const isBlackKey = key.classList.contains('black');
@@ -1950,7 +2034,6 @@ function noteOnNavigation(note, fingering = 'N', annotation = null) {
           key.parentElement.style.position = 'relative';
           annotationDiv.style.position = 'absolute';
 
-          // Set a fixed top position for all keys to align annotations vertically
           annotationDiv.style.top = '160px';
 
           if (isBlackKey) {
@@ -1966,11 +2049,14 @@ function noteOnNavigation(note, fingering = 'N', annotation = null) {
           annotationDiv.style.fontSize = '12px';
 
           key.parentElement.appendChild(annotationDiv);
-          navigationActiveKeyAnnotations[note] = annotationDiv;
+          navigationActiveKeyAnnotations[note] = navigationActiveKeyAnnotations[note] || [];
+          navigationActiveKeyAnnotations[note].push(annotationDiv);
         }
       });
     }
   }
+
+  // Rest of the noteOnNavigation function
 }
 
 function noteOffNavigation(note) {
@@ -1988,6 +2074,10 @@ function noteOffNavigation(note) {
   if (navigationActiveKeyAnnotations[note]) {
     navigationActiveKeyAnnotations[note].remove();
     delete navigationActiveKeyAnnotations[note];
+  }
+
+  if (activeNoteColors[note]) {
+    delete activeNoteColors[note];
   }
 }
 
@@ -2009,7 +2099,13 @@ function stopNavigationActiveNotes() {
 
   for (const note in navigationActiveKeyAnnotations) {
     if (navigationActiveKeyAnnotations.hasOwnProperty(note)) {
-      navigationActiveKeyAnnotations[note].remove();
+      if (Array.isArray(navigationActiveKeyAnnotations[note])) {
+        navigationActiveKeyAnnotations[note].forEach(annotationDiv => {
+          annotationDiv.remove();
+        });
+      } else {
+        navigationActiveKeyAnnotations[note].remove();
+      }
     }
   }
   navigationActiveKeyAnnotations = {};
@@ -2445,3 +2541,5 @@ function goToNextNoteOrChord() {
   currentNoteIndex = (currentNoteIndex + 1) % noteChordEvents.length;
   playChordAtIndex(currentNoteIndex);
 }
+
+let activeNoteColors = {};
