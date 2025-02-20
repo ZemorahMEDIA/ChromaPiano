@@ -115,6 +115,16 @@ let currentNoteIndex = -1;
 
 let selectedMidiChannels = ['Omni']; // Default selected channels
 
+// Add global variables for filters
+let eventTypeFilters = {
+  'noteOn': true,
+  'noteOff': true,
+  'controlChange': true,
+  'programChange': true
+};
+
+let activeChannelFilters = new Set(['1','2','3','4','5','6','7','8','9','10','11','12','13','14','15','16']);
+
 function createPiano() {
   const piano = document.getElementById('piano');
   piano.innerHTML = '';
@@ -1215,6 +1225,7 @@ function resetMidiAndFingerings() {
 function populateMemoryEditor() {
   const memoryEditorContainer = document.getElementById('memory-editor-container');
   let selectedEventIndices = [];
+  let selectedChannelFilter = null; // Initialize selectedChannelFilter
 
   if (selectedMemoryIndex === null) {
     memoryEditorContainer.innerHTML = '<p>No memory selected.</p>';
@@ -1262,6 +1273,25 @@ function populateMemoryEditor() {
         <input type="number" id="add-pc-input" placeholder="PC">
       </div>
       <button id="add-entry-btn">Add</button>
+      <div id="event-filters">
+        <div class="filter-group">
+          <div class="group-label"><span>Hide</span></div>
+          <div id="event-type-filters" class="group-buttons">
+            <button id="filter-note-on-btn" class="filter-button">On</button>
+            <button id="filter-note-off-btn" class="filter-button">Off</button>
+            <button id="filter-cc-btn" class="filter-button">CC</button>
+            <button id="filter-pc-btn" class="filter-button">PC</button>
+          </div>
+        </div>
+        <div class="separator"></div>
+        <div class="filter-group">
+          <div class="group-label"><span>Show</span></div>
+          <div id="channel-filters" class="group-buttons">
+            <button class="channel-filter-button" data-channel="All">All</button>
+            ${[...Array(16)].map((_, i) => `<button class="channel-filter-button" data-channel="${i+1}">${i+1}</button>`).join('')}
+          </div>
+        </div>
+      </div>
     </div>
   </div>
   <table id="memory-editor-table">
@@ -1269,19 +1299,22 @@ function populateMemoryEditor() {
 
   events.forEach((event, index) => {
     html += `<tr class="event-row ${event.type === 'noteOn' ? 'note-on' :
-                                       event.type === 'noteOff' ? 'note-off' :
-                                       event.type === 'controlChange' ? 'control-change' :
-                                       event.type === 'programChange' ? 'program-change' : ''}" data-index="${index}">
-      <td><input type="number" step="0.001" class="event-time" value="${event.time.toFixed(3)}"></td>
-      <td>
-        <select class="event-type">
-          <option value="noteOn"${event.type === 'noteOn' ? ' selected' : ''}>noteOn</option>
-          <option value="noteOff"${event.type === 'noteOff' ? ' selected' : ''}>noteOff</option>
-          <option value="controlChange"${event.type === 'controlChange' ? ' selected' : ''}>controlChange</option>
-          <option value="programChange"${event.type === 'programChange' ? ' selected' : ''}>programChange</option>
-        </select>
-      </td>
-      <td class="event-params">`;
+                                   event.type === 'noteOff' ? 'note-off' :
+                                   event.type === 'controlChange' ? 'control-change' :
+                                   event.type === 'programChange' ? 'program-change' : ''}"
+             data-index="${index}"
+             data-event-type="${event.type}"
+             data-channel="${event.channel || 'Omni'}">
+             <td><input type="number" step="0.001" class="event-time" value="${event.time.toFixed(3)}"></td>
+             <td>
+               <select class="event-type">
+                 <option value="noteOn"${event.type === 'noteOn' ? ' selected' : ''}>noteOn</option>
+                 <option value="noteOff"${event.type === 'noteOff' ? ' selected' : ''}>noteOff</option>
+                 <option value="controlChange"${event.type === 'controlChange' ? ' selected' : ''}>controlChange</option>
+                 <option value="programChange"${event.type === 'programChange' ? ' selected' : ''}>programChange</option>
+               </select>
+             </td>
+             <td class="event-params">`;
 
     if (event.type === 'noteOn' || event.type === 'noteOff') {
       let formattedNote = formatNoteForDisplay(event.note);
@@ -1461,6 +1494,59 @@ function populateMemoryEditor() {
   if (addEntryBtn) {
     addEntryBtn.addEventListener('click', addEntryToMemory);
   }
+
+  // Add event listeners for filter buttons
+  const filterButtons = memoryEditorContainer.querySelectorAll('.filter-button');
+  filterButtons.forEach(button => {
+    button.addEventListener('click', function() {
+      this.classList.toggle('pressed');
+      updateEventRowVisibility();
+    });
+  });
+
+  const channelFilterButtons = memoryEditorContainer.querySelectorAll('.channel-filter-button');
+  channelFilterButtons.forEach(button => {
+    button.addEventListener('click', function() {
+      channelFilterButtons.forEach(btn => btn.classList.remove('pressed'));
+      this.classList.add('pressed');
+      selectedChannelFilter = this.dataset.channel === 'All' ? null : this.dataset.channel;
+      updateEventRowVisibility();
+    });
+  });
+
+  function updateEventRowVisibility() {
+    const eventRows = memoryEditorContainer.querySelectorAll('.event-row');
+    eventRows.forEach(row => {
+      const eventType = row.dataset.eventType;
+      const eventChannel = row.dataset.channel || 'Omni';
+
+      const hideOn = memoryEditorContainer.querySelector('#filter-note-on-btn').classList.contains('pressed');
+      const hideOff = memoryEditorContainer.querySelector('#filter-note-off-btn').classList.contains('pressed');
+      const hideCC = memoryEditorContainer.querySelector('#filter-cc-btn').classList.contains('pressed');
+      const hidePC = memoryEditorContainer.querySelector('#filter-pc-btn').classList.contains('pressed');
+
+      const shouldHideType = 
+        (hideOn && eventType === 'noteOn') ||
+        (hideOff && eventType === 'noteOff') ||
+        (hideCC && eventType === 'controlChange') ||
+        (hidePC && eventType === 'programChange');
+
+      const shouldShowChannel = selectedChannelFilter === null || selectedChannelFilter === eventChannel;
+
+      const shouldShow = !shouldHideType && shouldShowChannel;
+
+      row.style.display = shouldShow ? '' : 'none';
+
+      const annotationRow = memoryEditorContainer.querySelector(`.annotation-row[data-index="${row.dataset.index}"]`);
+      if (annotationRow) {
+        if (!shouldShow) {
+          annotationRow.style.display = 'none';
+        }
+      }
+    });
+  }
+
+  // ...existing code to populate eventRows and attach event listeners
 }
 
 function updateEventParamsCell(row) {
@@ -2581,7 +2667,69 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
   updateChannelButtonStyles();
+
+  const duplicateMemoryBtn = document.getElementById('duplicate-memory-btn');
+  duplicateMemoryBtn.addEventListener('click', duplicateSelectedMemory);
 });
+
+function duplicateSelectedMemory() {
+  if (selectedMemoryIndex === null) return;
+
+  const originalSequence = memoryList[selectedMemoryIndex];
+
+  // Determine the base name (original name without duplication number suffix)
+  const baseNameMatch = originalSequence.name.match(/^(.*?)(\(\d+\))?$/);
+  const baseName = baseNameMatch ? baseNameMatch[1].trim() : originalSequence.name;
+
+  // Count existing duplicates
+  let maxDuplicationCount = 0;
+  memoryList.forEach(seq => {
+    const seqNameMatch = seq.name.match(new RegExp('^' + baseName.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&') + '\\((\\d+)\\)$'));
+    if (seqNameMatch) {
+      const count = parseInt(seqNameMatch[1], 10);
+      if (count > maxDuplicationCount) {
+        maxDuplicationCount = count;
+      }
+    }
+  });
+
+  const newDuplicationCount = maxDuplicationCount + 1;
+
+  const duplicateSequence = JSON.parse(JSON.stringify(originalSequence));
+  duplicateSequence.name = `${baseName} (${newDuplicationCount})`;
+  duplicateSequence.selected = false;
+  duplicateSequence.rank = (originalSequence.rank || memoryList.length) + 0.1;
+
+  // Insert duplicate under the original
+  memoryList.splice(selectedMemoryIndex + 1, 0, duplicateSequence);
+
+  // Update the memory list display
+  updateMemoryList();
+
+  // Re-select the original memory
+  selectMemorySequence(selectedMemoryIndex);
+}
+
+function rearrangeMemories() {
+  // Store current selected memory name
+  let selectedMemoryName = selectedMemoryIndex !== null && memoryList[selectedMemoryIndex] ? memoryList[selectedMemoryIndex].name : null;
+
+  // Sort the memoryList according to ranks
+  memoryList.sort((a, b) => {
+    let rankA = parseFloat(a.rank);
+    let rankB = parseFloat(b.rank);
+    if (isNaN(rankA)) rankA = memoryList.length;
+    if (isNaN(rankB)) rankB = memoryList.length;
+    return rankA - rankB;
+  });
+
+  // Update selectedMemoryIndex
+  if (selectedMemoryName !== null) {
+    selectedMemoryIndex = memoryList.findIndex(sequence => sequence.name === selectedMemoryName);
+  }
+
+  updateMemoryList();
+}
 
 function toggleMemoryEditor() {
   memoryEditorVisible = !memoryEditorVisible;
@@ -2650,23 +2798,40 @@ function goToNextNoteOrChord() {
 
 let activeNoteColors = {};
 
-function rearrangeMemories() {
-  // Store current selected memory name
-  let selectedMemoryName = selectedMemoryIndex !== null && memoryList[selectedMemoryIndex] ? memoryList[selectedMemoryIndex].name : null;
+function duplicateSelectedMemory() {
+  if (selectedMemoryIndex === null) return;
 
-  // Sort the memoryList according to ranks
-  memoryList.sort((a, b) => {
-    let rankA = parseInt(a.rank, 10);
-    let rankB = parseInt(b.rank, 10);
-    if (isNaN(rankA)) rankA = memoryList.length;
-    if (isNaN(rankB)) rankB = memoryList.length;
-    return rankA - rankB;
+  const originalSequence = memoryList[selectedMemoryIndex];
+
+  // Determine the base name (original name without duplication number suffix)
+  const baseNameMatch = originalSequence.name.match(/^(.*?)(\(\d+\))?$/);
+  const baseName = baseNameMatch ? baseNameMatch[1].trim() : originalSequence.name;
+
+  // Count existing duplicates
+  let maxDuplicationCount = 0;
+  memoryList.forEach(seq => {
+    const seqNameMatch = seq.name.match(new RegExp('^' + baseName.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&') + '\\((\\d+)\\)$'));
+    if (seqNameMatch) {
+      const count = parseInt(seqNameMatch[1], 10);
+      if (count > maxDuplicationCount) {
+        maxDuplicationCount = count;
+      }
+    }
   });
 
-  // Update selectedMemoryIndex
-  if (selectedMemoryName !== null) {
-    selectedMemoryIndex = memoryList.findIndex(sequence => sequence.name === selectedMemoryName);
-  }
+  const newDuplicationCount = maxDuplicationCount + 1;
 
+  const duplicateSequence = JSON.parse(JSON.stringify(originalSequence));
+  duplicateSequence.name = `${baseName} (${newDuplicationCount})`;
+  duplicateSequence.selected = false;
+  duplicateSequence.rank = (originalSequence.rank || memoryList.length) + 0.1;
+
+  // Insert duplicate under the original
+  memoryList.splice(selectedMemoryIndex + 1, 0, duplicateSequence);
+
+  // Update the memory list display
   updateMemoryList();
+
+  // Re-select the original memory
+  selectMemorySequence(selectedMemoryIndex);
 }
