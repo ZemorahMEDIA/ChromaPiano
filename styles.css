@@ -763,7 +763,11 @@ body {
   margin-bottom: 10px;
 }
 
-#memory-add-controls .group-label {
+#memory-add-controls #memory-add-fields {
+  flex-wrap: wrap;
+}
+
+#memory-addcontrols .group-label {
   text-align: center;
   font-size: 16px;
   color: white;
@@ -1010,4 +1014,80 @@ body {
   border-radius: 4px;
   padding: 4px;
   text-align: center;
+}
+
+#duplicate-memory-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  margin-left: 5px;
+  cursor: pointer;
+}
+
+#duplicate-memory-btn svg {
+  width: 16px;
+  height: 16px;
+  fill: #000;
+}
+
+#duplicate-memory-btn:hover {
+  background-color: #555;
+}
+
+#duplicate-memory-btn:active {
+  background-color: #333;
+}
+
+.filter-button,
+.channel-filter-button {
+  margin: 2px;
+  padding: 2px 4px;
+  background-color: #444;
+  border: 1px solid #000;
+  box-shadow: inset -1px -1px 2px rgba(0, 0, 0, 0.7), inset 1px 1px 2px rgba(255, 255, 255, 0.1);
+  color: white;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.filter-button.pressed,
+.channel-filter-button.pressed {
+  background-color: #555;
+}
+
+.filter-button:active,
+.channel-filter-button:active {
+  box-shadow: inset 1px 1px 2px rgba(0, 0, 0, 0.7), inset -1px -1px 2px rgba(255, 255, 255, 0.1);
+}
+
+#event-filters {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-top: 10px;
+}
+
+#event-filters .filter-group {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+#event-filters .group-label {
+  margin-bottom: 5px;
+  color: white;
+}
+
+#event-filters .group-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.separator {
+  width: 1px;
+  height: 40px;
+  background-color: white;
+  margin: 0 10px;
 }
