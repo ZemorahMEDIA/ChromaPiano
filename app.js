@@ -1066,6 +1066,7 @@ function toggleMemoryList() {
     memoryListContainer.style.display = 'block';
   } else {
     memoryListContainer.style.display = 'none';
+    rearrangeMemories();
   }
 }
 
@@ -1087,11 +1088,21 @@ function updateMemoryList() {
     const label = document.createElement('span');
     label.textContent = sequence.name;
 
+    const rankInput = document.createElement('input');
+    rankInput.type = 'number';
+    rankInput.value = sequence.rank || '';
+    rankInput.min = 1;
+    rankInput.style.width = '40px';
+    rankInput.addEventListener('change', function(e) {
+      sequence.rank = parseInt(rankInput.value, 10) || memoryList.length;
+    });
+
     li.appendChild(checkbox);
     li.appendChild(label);
+    li.appendChild(rankInput);
 
     li.addEventListener('click', function(e) {
-      if (e.target.nodeName !== 'INPUT') {
+      if (e.target.nodeName !== 'INPUT' && e.target.nodeName !== 'INPUT') {
         selectMemorySequence(index);
         toggleMemoryList();
       }
@@ -1147,7 +1158,8 @@ function addToMemory() {
     editorContent: quill.getContents(),
     selected: false,
     duration: totalDuration,
-    tempo: 100
+    tempo: 100,
+    rank: memoryList.length + 1 // Added rank property
   };
   memoryList.push(sequenceData);
   sequenceCounter++;
@@ -2637,3 +2649,24 @@ function goToNextNoteOrChord() {
 }
 
 let activeNoteColors = {};
+
+function rearrangeMemories() {
+  // Store current selected memory name
+  let selectedMemoryName = selectedMemoryIndex !== null && memoryList[selectedMemoryIndex] ? memoryList[selectedMemoryIndex].name : null;
+
+  // Sort the memoryList according to ranks
+  memoryList.sort((a, b) => {
+    let rankA = parseInt(a.rank, 10);
+    let rankB = parseInt(b.rank, 10);
+    if (isNaN(rankA)) rankA = memoryList.length;
+    if (isNaN(rankB)) rankB = memoryList.length;
+    return rankA - rankB;
+  });
+
+  // Update selectedMemoryIndex
+  if (selectedMemoryName !== null) {
+    selectedMemoryIndex = memoryList.findIndex(sequence => sequence.name === selectedMemoryName);
+  }
+
+  updateMemoryList();
+}
