@@ -55,7 +55,7 @@ for (let octave = startOctave; octave < startOctave + totalOctaves; octave++) {
 const audioContext = new (window.AudioContext || window.webkitAudioContext)();
 let pianoInstrument;
 
-Soundfont.instrument(audioContext, 'acoustic_grand_piano').then(piano => {
+Soundfont.instrument(audioContext, 'acoustic_grand_piano', { soundfont: 'MusyngKite' }).then(piano => {
   pianoInstrument = piano;
 });
 
@@ -120,7 +120,7 @@ let eventTypeFilters = {
   'noteOn': true,
   'noteOff': true,
   'controlChange': true,
-  'programChange': true
+  'programChange': true,
 };
 
 let activeChannelFilters = new Set(['1','2','3','4','5','6','7','8','9','10','11','12','13','14','15','16']);
@@ -1225,7 +1225,7 @@ function resetMidiAndFingerings() {
 function populateMemoryEditor() {
   const memoryEditorContainer = document.getElementById('memory-editor-container');
   let selectedEventIndices = [];
-  let selectedChannelFilter = null; // Initialize selectedChannelFilter
+  let selectedChannelFilter = 'All';
 
   if (selectedMemoryIndex === null) {
     memoryEditorContainer.innerHTML = '<p>No memory selected.</p>';
@@ -1251,22 +1251,7 @@ function populateMemoryEditor() {
         <select id="add-channel-select">
           <option value="Omni">Omni</option>
           <option value="Split">Split</option>
-          <option value="1">1</option>
-          <option value="2">2</option>
-          <option value="3">3</option>
-          <option value="4">4</option>
-          <option value="5">5</option>
-          <option value="6">6</option>
-          <option value="7">7</option>
-          <option value="8">8</option>
-          <option value="9">9</option>
-          <option value="10">10</option>
-          <option value="11">11</option>
-          <option value="12">12</option>
-          <option value="13">13</option>
-          <option value="14">14</option>
-          <option value="15">15</option>
-          <option value="16">16</option>
+          ${[...Array(16)].map((_, i) => `<option value="${i + 1}">${i + 1}</option>`).join('')}
         </select>
         <input type="number" id="add-cc-number-input" placeholder="CC#" min="0" max="127">
         <input type="number" id="add-cc-value-input" placeholder="CCV" min="0" max="127">
@@ -1288,7 +1273,7 @@ function populateMemoryEditor() {
           <div class="group-label"><span>Show</span></div>
           <div id="channel-filters" class="group-buttons">
             <button class="channel-filter-button" data-channel="All">All</button>
-            ${[...Array(16)].map((_, i) => `<button class="channel-filter-button" data-channel="${i+1}">${i+1}</button>`).join('')}
+            ${[...Array(16)].map((_, i) => `<button class="channel-filter-button" data-channel="${i + 1}">${i + 1}</button>`).join('')}
           </div>
         </div>
       </div>
@@ -1298,80 +1283,92 @@ function populateMemoryEditor() {
     <tr><th>Time (s)</th><th>Type</th><th>Parameters</th><th>Action</th></tr>`;
 
   events.forEach((event, index) => {
-    html += `<tr class="event-row ${event.type === 'noteOn' ? 'note-on' :
-                                   event.type === 'noteOff' ? 'note-off' :
-                                   event.type === 'controlChange' ? 'control-change' :
-                                   event.type === 'programChange' ? 'program-change' : ''}"
-             data-index="${index}"
-             data-event-type="${event.type}"
-             data-channel="${event.channel || 'Omni'}">
-             <td><input type="number" step="0.001" class="event-time" value="${event.time.toFixed(3)}"></td>
-             <td>
-               <select class="event-type">
-                 <option value="noteOn"${event.type === 'noteOn' ? ' selected' : ''}>noteOn</option>
-                 <option value="noteOff"${event.type === 'noteOff' ? ' selected' : ''}>noteOff</option>
-                 <option value="controlChange"${event.type === 'controlChange' ? ' selected' : ''}>controlChange</option>
-                 <option value="programChange"${event.type === 'programChange' ? ' selected' : ''}>programChange</option>
-               </select>
-             </td>
-             <td class="event-params">`;
+    if (!eventTypeFilters[event.type]) return;
+    if (selectedChannelFilter !== 'All' && event.channel !== selectedChannelFilter) return;
 
+    let paramsHtml = '';
     if (event.type === 'noteOn' || event.type === 'noteOff') {
-      let formattedNote = formatNoteForDisplay(event.note);
-      html += `
-        <input type="text" class="event-note event-note-font" value="${formattedNote}" style="width:50px;">
-        <select class="event-channel" style="width:50px;">
+      paramsHtml = `
+        <input type="text" class="event-note" value="${formatNoteForDisplay(event.note)}">
+        <select class="event-channel">
           <option value="Omni"${event.channel === 'Omni' ? ' selected' : ''}>Omni</option>
-          <option value="Split"${event.channel === 'Split' ? ' selected' : ''}>Split</option>
-          <option value="1"${event.channel === '1' ? ' selected' : ''}>1</option>
-          <option value="2"${event.channel === '2' ? ' selected' : ''}>2</option>
-          <option value="3"${event.channel === '3' ? ' selected' : ''}>3</option>
-          <option value="4"${event.channel === '4' ? ' selected' : ''}>4</option>
-          <option value="5"${event.channel === '5' ? ' selected' : ''}>5</option>
-          <option value="6"${event.channel === '6' ? ' selected' : ''}>6</option>
-          <option value="7"${event.channel === '7' ? ' selected' : ''}>7</option>
-          <option value="8"${event.channel === '8' ? ' selected' : ''}>8</option>
-          <option value="9"${event.channel === '9' ? ' selected' : ''}>9</option>
-          <option value="10"${event.channel === '10' ? ' selected' : ''}>10</option>
-          <option value="11"${event.channel === '11' ? ' selected' : ''}>11</option>
-          <option value="12"${event.channel === '12' ? ' selected' : ''}>12</option>
-          <option value="13"${event.channel === '13' ? ' selected' : ''}>13</option>
-          <option value="14"${event.channel === '14' ? ' selected' : ''}>14</option>
-          <option value="15"${event.channel === '15' ? ' selected' : ''}>15</option>
-          <option value="16"${event.channel === '16' ? ' selected' : ''}>16</option>
-        </select>
-        <!-- Existing parameters like velocity and fingering -->
-      `;
+          ${[...Array(16)].map((_, i) => `<option value="${i + 1}"${event.channel === (i + 1).toString() ? ' selected' : ''}>${i + 1}</option>`).join('')}
+        </select>`;
+      if (event.type === 'noteOn') {
+        paramsHtml += `
+          <input type="number" class="event-velocity" value="${event.velocity}" min="1" max="127" placeholder="Velocity">
+          <select class="event-fingering">
+            <option value="N"${event.fingering === 'N' ? ' selected' : ''}>N</option>
+            <option value="1"${event.fingering === '1' ? ' selected' : ''}>1</option>
+            <option value="2"${event.fingering === '2' ? ' selected' : ''}>2</option>
+            <option value="3"${event.fingering === '3' ? ' selected' : ''}>3</option>
+            <option value="4"${event.fingering === '4' ? ' selected' : ''}>4</option>
+            <option value="5"${event.fingering === '5' ? ' selected' : ''}>5</option>
+          </select>`;
+      }
     } else if (event.type === 'controlChange') {
-      html += `CC#: <input type="number" class="event-controller-number" value="${event.controllerNumber}" min="0" max="127">
-               CCV: <input type="number" class="event-controller-value" value="${event.controllerValue}" min="0" max="127">`;
+      paramsHtml = `
+        <input type="number" class="event-controller-number" value="${event.controllerNumber}" min="0" max="127">
+        <input type="number" class="event-controller-value" value="${event.controllerValue}" min="0" max="127">
+        <select class="event-channel">
+          <option value="Omni"${event.channel === 'Omni' ? ' selected' : ''}>Omni</option>
+          ${[...Array(16)].map((_, i) => `<option value="${i + 1}"${event.channel === (i + 1).toString() ? ' selected' : ''}>${i + 1}</option>`).join('')}
+        </select>`;
     } else if (event.type === 'programChange') {
-      html += `Program Number: <input type="number" class="event-program-number" value="${event.programNumber}" min="0" max="127">`;
+      paramsHtml = `
+        <input type="number" class="event-program-number" value="${event.programNumber}" min="0" max="127">
+        <select class="event-channel">
+          <option value="Omni"${event.channel === 'Omni' ? ' selected' : ''}>Omni</option>
+          ${[...Array(16)].map((_, i) => `<option value="${i + 1}"${event.channel === (i + 1).toString() ? ' selected' : ''}>${i + 1}</option>`).join('')}
+        </select>`;
     }
 
-    html += `</td>
-      <td class="action-cell">
-        <button class="annotation-toggle-btn">+</button>
-        <button class="delete-entry-btn">X</button>
-      </td>
-    </tr>`;
+    html += `<tr class="event-row ${event.type === 'noteOn' ? 'note-on' :
+                                       event.type === 'noteOff' ? 'note-off' :
+                                       event.type === 'controlChange' ? 'control-change' :
+                                       event.type === 'programChange' ? 'program-change' : ''}"
+                   data-index="${index}"
+                   data-event-type="${event.type}"
+                   data-channel="${event.channel || 'Omni'}">
+                 <td><input type="number" step="0.001" class="event-time" value="${event.time.toFixed(3)}"></td>
+                 <td>
+                   <select class="event-type">
+                     <option value="noteOn"${event.type === 'noteOn' ? ' selected' : ''}>noteOn</option>
+                     <option value="noteOff"${event.type === 'noteOff' ? ' selected' : ''}>noteOff</option>
+                     <option value="controlChange"${event.type === 'controlChange' ? ' selected' : ''}>controlChange</option>
+                     <option value="programChange"${event.type === 'programChange' ? ' selected' : ''}>programChange</option>
+                   </select>
+                 </td>
+                 <td class="event-params">
+                   ${paramsHtml}
+                 </td>
+                 <td class="action-cell">
+                   <button class="annotation-toggle-btn">+</button>
+                   <button class="delete-entry-btn">X</button>
+                   <div class="touch-zone"></div>
+                 </td>
+               </tr>`;
 
     if (event.type === 'noteOn') {
       html += `<tr class="annotation-row" data-index="${index}" style="display: none;">
-        <td colspan="4">
-          <textarea class="event-annotation">${event.annotation || ''}</textarea>
-        </td>
-      </tr>`;
+                 <td colspan="4">
+                   <textarea class="event-annotation" placeholder="Annotation">${event.annotation || ''}</textarea>
+                 </td>
+               </tr>`;
     }
   });
 
-  html += '</table>';
+  html += `</table>`;
+
   memoryEditorContainer.innerHTML = html;
 
+  // Add event listeners
   const deleteButtons = memoryEditorContainer.querySelectorAll('.delete-entry-btn');
-  deleteButtons.forEach((button, index) => {
+  deleteButtons.forEach((button) => {
     button.addEventListener('click', function () {
-      events.splice(index, 1);
+      const row = this.closest('tr');
+      const eventIndex = parseInt(row.dataset.index, 10);
+      events.splice(eventIndex, 1);
       populateMemoryEditor();
     });
   });
@@ -1382,53 +1379,16 @@ function populateMemoryEditor() {
       const row = this.closest('tr');
       const eventIndex = parseInt(row.dataset.index, 10);
       const annotationRow = memoryEditorContainer.querySelector(`.annotation-row[data-index="${eventIndex}"]`);
-      if (annotationRow.style.display === 'none') {
-        annotationRow.style.display = 'table-row';
-      } else {
-        annotationRow.style.display = 'none';
+      if (annotationRow) {
+        annotationRow.style.display = annotationRow.style.display === 'none' ? 'table-row' : 'none';
       }
     });
   });
 
-  const eventTypeSelects = memoryEditorContainer.querySelectorAll('.event-type');
-  eventTypeSelects.forEach(select => {
-    select.addEventListener('change', function () {
-      const row = this.closest('tr');
-      updateEventParamsCell(row);
-      updateRowClass(row);
-    });
-  });
-
-  const eventParamsFields = memoryEditorContainer.querySelectorAll('.event-params input');
-  eventParamsFields.forEach(inputField => {
-    inputField.addEventListener('input', function () {
-      const row = this.closest('tr');
-      updateRowClass(row);
-    });
-  });
-
-  const noteInputs = memoryEditorContainer.querySelectorAll('.event-note');
-  noteInputs.forEach(noteInput => {
-    noteInput.addEventListener('focus', function () {
-      currentNoteInputField = noteInput;
-    });
-    noteInput.addEventListener('blur', function () {
-      if (currentNoteInputField === noteInput) {
-        currentNoteInputField = null;
-      }
-    });
-  });
-
-  const eventChannelSelects = memoryEditorContainer.querySelectorAll('.event-channel');
-  eventChannelSelects.forEach(select => {
-    select.addEventListener('change', function () {
-    });
-  });
-
-  const actionCells = memoryEditorContainer.querySelectorAll('.action-cell');
-  actionCells.forEach(cell => {
-    cell.addEventListener('click', function(e) {
-      e.stopPropagation(); 
+  const touchZones = memoryEditorContainer.querySelectorAll('.touch-zone');
+  touchZones.forEach(touchZone => {
+    touchZone.addEventListener('click', function(e) {
+      e.stopPropagation(); // Prevent event from bubbling up
       const row = this.closest('tr');
       const eventIndex = parseInt(row.dataset.index, 10);
       if (selectedEventIndices.includes(eventIndex)) {
@@ -1441,217 +1401,217 @@ function populateMemoryEditor() {
     });
   });
 
-  const eventInputs = memoryEditorContainer.querySelectorAll('.event-time, .event-type, .event-params input, .event-params select, .event-channel');
-  eventInputs.forEach(input => {
-    input.addEventListener('input', function() {
+  const addEntryBtn = document.getElementById('add-entry-btn');
+  addEntryBtn.addEventListener('click', addEntryToMemory);
+
+  const memoryNameInput = document.getElementById('memory-name-input');
+  memoryNameInput.addEventListener('change', updateMemoryFromEditor);
+
+  const eventTypeSelects = memoryEditorContainer.querySelectorAll('.event-type');
+  eventTypeSelects.forEach(select => {
+    select.addEventListener('change', function() {
       const row = this.closest('tr');
       const eventIndex = parseInt(row.dataset.index, 10);
-      const eventTypeSelect = row.querySelector('.event-type');
-      const eventType = eventTypeSelect.value;
-      if (selectedEventIndices.length > 1 && selectedEventIndices.includes(eventIndex)) {
-        const inputField = this;
-        const valueToCopy = inputField.value;
-        const fieldClassList = Array.from(inputField.classList);
+      const newType = this.value;
 
-        selectedEventIndices.forEach(index => {
-          if (index !== eventIndex) {
-            const targetRow = memoryEditorContainer.querySelector(`tr[data-index="${index}"]`);
-            if (targetRow) {
-              const targetEventTypeSelect = targetRow.querySelector('.event-type');
-              const targetEventType = targetEventTypeSelect.value;
-              if (targetEventType === eventType) {
-                let targetInput;
+      if (selectedEventIndices.includes(eventIndex)) {
+        selectedEventIndices.forEach(idx => {
+          events[idx].type = newType;
 
-                if (fieldClassList.includes('event-time')) {
-                  targetInput = targetRow.querySelector('.event-time');
-                } else if (fieldClassList.includes('event-type')) {
-                  targetInput = targetRow.querySelector('.event-type');
-                  if (targetInput.value !== valueToCopy) {
-                    targetInput.value = valueToCopy;
-                    updateEventParamsCell(targetRow);
-                  }
-                } else if (fieldClassList.includes('event-channel')) {
-                  targetInput = targetRow.querySelector('.event-channel');
-                } else if (inputField.closest('.event-params')) {
-                  const paramClass = fieldClassList.find(cls => cls.startsWith('event-'));
-                  if (paramClass) {
-                    targetInput = targetRow.querySelector(`.event-params .${paramClass}`);
-                  }
-                }
-                if (targetInput) {
-                  targetInput.value = valueToCopy;
-                }
+          if (idx !== eventIndex) {
+            const otherRow = memoryEditorContainer.querySelector(`.event-row[data-index="${idx}"]`);
+            if (otherRow) {
+              const typeSelect = otherRow.querySelector('.event-type');
+              if (typeSelect) {
+                typeSelect.value = newType;
               }
             }
           }
         });
+      } else {
+        events[eventIndex].type = newType;
       }
-      updateRowClass(row);
+
+      updateMemoryFromEditor();
     });
   });
 
-  const addEntryBtn = memoryEditorContainer.querySelector('#add-entry-btn');
-  if (addEntryBtn) {
-    addEntryBtn.addEventListener('click', addEntryToMemory);
-  }
+  const eventTimeInputs = memoryEditorContainer.querySelectorAll('.event-time');
+  eventTimeInputs.forEach(input => {
+    input.addEventListener('change', function() {
+      const row = this.closest('tr');
+      const eventIndex = parseInt(row.dataset.index, 10);
+      const newTime = parseFloat(this.value);
 
-  // Add event listeners for filter buttons
-  const filterButtons = memoryEditorContainer.querySelectorAll('.filter-button');
-  filterButtons.forEach(button => {
-    button.addEventListener('click', function() {
-      this.classList.toggle('pressed');
-      updateEventRowVisibility();
+      if (selectedEventIndices.includes(eventIndex)) {
+        selectedEventIndices.forEach(idx => {
+          events[idx].time = newTime;
+
+          if (idx !== eventIndex) {
+            const otherRow = memoryEditorContainer.querySelector(`.event-row[data-index="${idx}"]`);
+            if (otherRow) {
+              const timeInput = otherRow.querySelector('.event-time');
+              if (timeInput) {
+                timeInput.value = newTime;
+              }
+            }
+          }
+        });
+      } else {
+        events[eventIndex].time = newTime;
+      }
+
+      updateMemoryFromEditor();
     });
+  });
+
+  const eventParamInputs = memoryEditorContainer.querySelectorAll('.event-params input, .event-params select');
+  eventParamInputs.forEach(input => {
+    input.addEventListener('change', function() {
+      const row = this.closest('tr');
+      const eventIndex = parseInt(row.dataset.index, 10);
+      const inputClass = this.classList[0]; // e.g., 'event-note', 'event-velocity', etc.
+      let newValue = this.value;
+
+      if (selectedEventIndices.includes(eventIndex)) {
+        selectedEventIndices.forEach(idx => {
+          const event = events[idx];
+          switch (inputClass) {
+            case 'event-note':
+              event.note = normalizeNoteFromInput(newValue);
+              break;
+            case 'event-velocity':
+              event.velocity = parseInt(newValue, 10);
+              break;
+            case 'event-channel':
+              event.channel = newValue;
+              break;
+            case 'event-controller-number':
+              event.controllerNumber = parseInt(newValue, 10);
+              break;
+            case 'event-controller-value':
+              event.controllerValue = parseInt(newValue, 10);
+              break;
+            case 'event-program-number':
+              event.programNumber = parseInt(newValue, 10);
+              break;
+            case 'event-fingering':
+              event.fingering = newValue;
+              break;
+            default:
+              break;
+          }
+
+          if (idx !== eventIndex) {
+            const otherRow = memoryEditorContainer.querySelector(`.event-row[data-index="${idx}"]`);
+            if (otherRow) {
+              const otherInput = otherRow.querySelector(`.${inputClass}`);
+              if (otherInput) {
+                otherInput.value = newValue;
+              }
+            }
+          }
+        });
+      } else {
+        const event = events[eventIndex];
+        switch (inputClass) {
+          case 'event-note':
+            event.note = normalizeNoteFromInput(newValue);
+            break;
+          case 'event-velocity':
+            event.velocity = parseInt(newValue, 10);
+            break;
+          case 'event-channel':
+            event.channel = newValue;
+            break;
+          case 'event-controller-number':
+            event.controllerNumber = parseInt(newValue, 10);
+            break;
+          case 'event-controller-value':
+            event.controllerValue = parseInt(newValue, 10);
+            break;
+          case 'event-program-number':
+            event.programNumber = parseInt(newValue, 10);
+            break;
+          case 'event-fingering':
+            event.fingering = newValue;
+            break;
+          default:
+            break;
+        }
+      }
+
+      updateMemoryFromEditor();
+    });
+  });
+
+  const annotationTextareas = memoryEditorContainer.querySelectorAll('.event-annotation');
+  annotationTextareas.forEach(textarea => {
+    textarea.addEventListener('change', function() {
+      const row = this.closest('tr');
+      const eventIndex = parseInt(row.dataset.index, 10);
+      const newValue = this.value;
+
+      if (selectedEventIndices.includes(eventIndex)) {
+        selectedEventIndices.forEach(idx => {
+          events[idx].annotation = newValue;
+
+          if (idx !== eventIndex) {
+            const annotationRow = memoryEditorContainer.querySelector(`.annotation-row[data-index="${idx}"]`);
+            if (annotationRow) {
+              const otherTextarea = annotationRow.querySelector('.event-annotation');
+              if (otherTextarea) {
+                otherTextarea.value = newValue;
+              }
+            }
+          }
+        });
+      } else {
+        events[eventIndex].annotation = newValue;
+      }
+
+      updateMemoryFromEditor();
+    });
+  });
+
+  const filterNoteOnBtn = document.getElementById('filter-note-on-btn');
+  const filterNoteOffBtn = document.getElementById('filter-note-off-btn');
+  const filterCCBtn = document.getElementById('filter-cc-btn');
+  const filterPCBtn = document.getElementById('filter-pc-btn');
+
+  filterNoteOnBtn.addEventListener('click', function() {
+    eventTypeFilters['noteOn'] = !eventTypeFilters['noteOn'];
+    this.classList.toggle('pressed', !eventTypeFilters['noteOn']);
+    populateMemoryEditor();
+  });
+
+  filterNoteOffBtn.addEventListener('click', function() {
+    eventTypeFilters['noteOff'] = !eventTypeFilters['noteOff'];
+    this.classList.toggle('pressed', !eventTypeFilters['noteOff']);
+    populateMemoryEditor();
+  });
+
+  filterCCBtn.addEventListener('click', function() {
+    eventTypeFilters['controlChange'] = !eventTypeFilters['controlChange'];
+    this.classList.toggle('pressed', !eventTypeFilters['controlChange']);
+    populateMemoryEditor();
+  });
+
+  filterPCBtn.addEventListener('click', function() {
+    eventTypeFilters['programChange'] = !eventTypeFilters['programChange'];
+    this.classList.toggle('pressed', !eventTypeFilters['programChange']);
+    populateMemoryEditor();
   });
 
   const channelFilterButtons = memoryEditorContainer.querySelectorAll('.channel-filter-button');
   channelFilterButtons.forEach(button => {
     button.addEventListener('click', function() {
+      selectedChannelFilter = this.dataset.channel;
       channelFilterButtons.forEach(btn => btn.classList.remove('pressed'));
       this.classList.add('pressed');
-      selectedChannelFilter = this.dataset.channel === 'All' ? null : this.dataset.channel;
-      updateEventRowVisibility();
+      populateMemoryEditor();
     });
   });
-
-  function updateEventRowVisibility() {
-    const eventRows = memoryEditorContainer.querySelectorAll('.event-row');
-    eventRows.forEach(row => {
-      const eventType = row.dataset.eventType;
-      const eventChannel = row.dataset.channel || 'Omni';
-
-      const hideOn = memoryEditorContainer.querySelector('#filter-note-on-btn').classList.contains('pressed');
-      const hideOff = memoryEditorContainer.querySelector('#filter-note-off-btn').classList.contains('pressed');
-      const hideCC = memoryEditorContainer.querySelector('#filter-cc-btn').classList.contains('pressed');
-      const hidePC = memoryEditorContainer.querySelector('#filter-pc-btn').classList.contains('pressed');
-
-      const shouldHideType = 
-        (hideOn && eventType === 'noteOn') ||
-        (hideOff && eventType === 'noteOff') ||
-        (hideCC && eventType === 'controlChange') ||
-        (hidePC && eventType === 'programChange');
-
-      const shouldShowChannel = selectedChannelFilter === null || selectedChannelFilter === eventChannel;
-
-      const shouldShow = !shouldHideType && shouldShowChannel;
-
-      row.style.display = shouldShow ? '' : 'none';
-
-      const annotationRow = memoryEditorContainer.querySelector(`.annotation-row[data-index="${row.dataset.index}"]`);
-      if (annotationRow) {
-        if (!shouldShow) {
-          annotationRow.style.display = 'none';
-        }
-      }
-    });
-  }
-
-  // ...existing code to populate eventRows and attach event listeners
-}
-
-function updateEventParamsCell(row) {
-  const eventType = row.querySelector('.event-type').value;
-  const eventParamsCell = row.querySelector('.event-params');
-  eventParamsCell.innerHTML = '';
-
-  if (eventType === 'noteOn') {
-    eventParamsCell.innerHTML = `<input type="text" class="event-note event-note-font" value="">
-                                 <select class="event-channel">
-                                   <option value="Omni">Omni</option>
-                                   <option value="Split">Split</option>
-                                   <option value="1">1</option>
-                                   <option value="2">2</option>
-                                   <option value="3">3</option>
-                                   <option value="4">4</option>
-                                   <option value="5">5</option>
-                                   <option value="6">6</option>
-                                   <option value="7">7</option>
-                                   <option value="8">8</option>
-                                   <option value="9">9</option>
-                                   <option value="10">10</option>
-                                   <option value="11">11</option>
-                                   <option value="12">12</option>
-                                   <option value="13">13</option>
-                                   <option value="14">14</option>
-                                   <option value="15">15</option>
-                                   <option value="16">16</option>
-                                 </select>
-                                 <span class="icon volume-icon"></span><input type="number" class="event-velocity" value="100" min="1" max="127">
-                                 <span class="icon hand-icon"></span><select class="event-fingering">
-                                   <option value="N">N</option>
-                                   <option value="L1">L1</option>
-                                   <option value="L2">L2</option>
-                                   <option value="L3">L3</option>
-                                   <option value="L4">L4</option>
-                                   <option value="L5">L5</option>
-                                   <option value="R1">R1</option>
-                                   <option value="R2">R2</option>
-                                   <option value="R3">R3</option>
-                                   <option value="R4">R4</option>
-                                   <option value="R5">R5</option>
-                                </select>`;
-  } else if (eventType === 'noteOff') {
-    eventParamsCell.innerHTML = `<input type="text" class="event-note event-note-font" value="">
-                                 <select class="event-channel">
-                                   <option value="Omni">Omni</option>
-                                   <option value="Split">Split</option>
-                                   <option value="1">1</option>
-                                   <option value="2">2</option>
-                                   <option value="3">3</option>
-                                   <option value="4">4</option>
-                                   <option value="5">5</option>
-                                   <option value="6">6</option>
-                                   <option value="7">7</option>
-                                   <option value="8">8</option>
-                                   <option value="9">9</option>
-                                   <option value="10">10</option>
-                                   <option value="11">11</option>
-                                   <option value="12">12</option>
-                                   <option value="13">13</option>
-                                   <option value="14">14</option>
-                                   <option value="15">15</option>
-                                   <option value="16">16</option>
-                                 </select>`;
-  } else if (eventType === 'controlChange') {
-    eventParamsCell.innerHTML = `CC#: <input type="number" class="event-controller-number" value="0" min="0" max="127">
-                                 CCV: <input type="number" class="event-controller-value" value="0" min="0" max="127">`;
-  } else if (eventType === 'programChange') {
-    eventParamsCell.innerHTML = `Program Number: <input type="number" class="event-program-number" value="0" min="0" max="127">`;
-  }
-
-  const noteInput = eventParamsCell.querySelector('.event-note');
-  if (noteInput) {
-    noteInput.addEventListener('focus', function () {
-      currentNoteInputField = noteInput;
-    });
-    noteInput.addEventListener('blur', function () {
-      if (currentNoteInputField === noteInput) {
-        currentNoteInputField = null;
-      }
-    });
-  }
-
-  const paramsFields = eventParamsCell.querySelectorAll('input, select');
-  paramsFields.forEach(inputField => {
-    inputField.addEventListener('input', function () {
-      const row = this.closest('tr');
-      updateRowClass(row);
-    });
-  });
-}
-
-function updateRowClass(row) {
-  const eventType = row.querySelector('.event-type').value;
-  row.classList.remove('note-on', 'note-off', 'control-change', 'program-change');
-  if (eventType === 'noteOn') {
-    row.classList.add('note-on');
-  } else if (eventType === 'noteOff') {
-    row.classList.add('note-off');
-  } else if (eventType === 'controlChange') {
-    row.classList.add('control-change');
-  } else if (eventType === 'programChange') {
-    row.classList.add('program-change');
-  }
 }
 
 function selectMemoryByName(name) {
@@ -1733,14 +1693,18 @@ function updateMemoryFromEditor() {
     } else if (event.type === 'controlChange') {
       const controllerNumberInput = eventParamsCell.querySelector('.event-controller-number');
       const controllerValueInput = eventParamsCell.querySelector('.event-controller-value');
-      if (controllerNumberInput && controllerValueInput) {
+      const channelSelect = eventParamsCell.querySelector('.event-channel');
+      if (controllerNumberInput && controllerValueInput && channelSelect) {
         event.controllerNumber = parseInt(controllerNumberInput.value, 10);
         event.controllerValue = parseInt(controllerValueInput.value, 10);
+        event.channel = channelSelect.value;
       }
     } else if (event.type === 'programChange') {
       const programNumberInput = eventParamsCell.querySelector('.event-program-number');
-      if (programNumberInput) {
+      const channelSelect = eventParamsCell.querySelector('.event-channel');
+      if (programNumberInput && channelSelect) {
         event.programNumber = parseInt(programNumberInput.value, 10);
+        event.channel = channelSelect.value;
       }
     }
 
@@ -2247,8 +2211,6 @@ function noteOnNavigation(note, fingering = 'N', annotation = null) {
       });
     }
   }
-
-  // Rest of the noteOnNavigation function
 }
 
 function noteOffNavigation(note) {
@@ -2264,7 +2226,13 @@ function noteOffNavigation(note) {
   }
 
   if (navigationActiveKeyAnnotations[note]) {
-    navigationActiveKeyAnnotations[note].remove();
+    if (Array.isArray(navigationActiveKeyAnnotations[note])) {
+      navigationActiveKeyAnnotations[note].forEach(annotationDiv => {
+        annotationDiv.remove();
+      });
+    } else {
+      navigationActiveKeyAnnotations[note].remove();
+    }
     delete navigationActiveKeyAnnotations[note];
   }
 
@@ -2298,6 +2266,7 @@ function stopNavigationActiveNotes() {
       } else {
         navigationActiveKeyAnnotations[note].remove();
       }
+      delete navigationActiveKeyAnnotations[note];
     }
   }
   navigationActiveKeyAnnotations = {};
@@ -2367,14 +2336,18 @@ function updateMemoryFromEditor() {
     } else if (event.type === 'controlChange') {
       const controllerNumberInput = eventParamsCell.querySelector('.event-controller-number');
       const controllerValueInput = eventParamsCell.querySelector('.event-controller-value');
-      if (controllerNumberInput && controllerValueInput) {
+      const channelSelect = eventParamsCell.querySelector('.event-channel');
+      if (controllerNumberInput && controllerValueInput && channelSelect) {
         event.controllerNumber = parseInt(controllerNumberInput.value, 10);
         event.controllerValue = parseInt(controllerValueInput.value, 10);
+        event.channel = channelSelect.value;
       }
     } else if (event.type === 'programChange') {
       const programNumberInput = eventParamsCell.querySelector('.event-program-number');
-      if (programNumberInput) {
+      const channelSelect = eventParamsCell.querySelector('.event-channel');
+      if (programNumberInput && channelSelect) {
         event.programNumber = parseInt(programNumberInput.value, 10);
+        event.channel = channelSelect.value;
       }
     }
 
@@ -2392,10 +2365,6 @@ function updateMemoryFromEditor() {
 
   updateMemoryList();
   selectMemorySequence(selectedMemoryIndex);
-}
-
-function normalizeNoteFromInput(note) {
-  return note.replace(/\u266F/g, '#').replace(/\u266D/g, 'b');
 }
 
 function updateChannelButtonStyles() {
@@ -2421,20 +2390,6 @@ function updateChannelButtonStyles() {
       }
     }
   });
-}
-
-function clearApp() {
-  stopAction();
-  memoryList = [];
-  sequenceCounter = 1;
-  selectedMemoryIndex = null;
-  recordedNotes = [];
-  quill.setContents([]);
-  document.getElementById('selected-memory').textContent = 'No Memory Selected';
-  updateMemoryList();
-  updateChannelButtonStyles();
-  transposeAmount = 0;
-  document.getElementById('transpose-amount').textContent = transposeAmount;
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -2731,20 +2686,6 @@ function rearrangeMemories() {
   updateMemoryList();
 }
 
-function toggleMemoryEditor() {
-  memoryEditorVisible = !memoryEditorVisible;
-  const memoryEditorContainer = document.getElementById('memory-editor-container');
-  if (memoryEditorVisible) {
-    memoryEditorContainer.style.display = 'block';
-    populateMemoryEditor();
-  } else {
-    updateMemoryFromEditor();
-    updateMemoryList();
-    selectMemorySequence(selectedMemoryIndex);
-    memoryEditorContainer.style.display = 'none';
-  }
-}
-
 function updateEditorAssociationButton() {
   const addEditorContentBtn = document.getElementById('add-editor-content-btn');
   if (
@@ -2769,6 +2710,20 @@ function isContentEmpty(content) {
 }
 
 let memoryEditorVisible = false;
+
+function toggleMemoryEditor() {
+  memoryEditorVisible = !memoryEditorVisible;
+  const memoryEditorContainer = document.getElementById('memory-editor-container');
+  if (memoryEditorVisible) {
+    memoryEditorContainer.style.display = 'block';
+    populateMemoryEditor();
+  } else {
+    updateMemoryFromEditor();
+    updateMemoryList();
+    selectMemorySequence(selectedMemoryIndex);
+    memoryEditorContainer.style.display = 'none';
+  }
+}
 
 function clearActiveNotes() {
   for (const note in activeNotes) {
@@ -2798,40 +2753,17 @@ function goToNextNoteOrChord() {
 
 let activeNoteColors = {};
 
-function duplicateSelectedMemory() {
-  if (selectedMemoryIndex === null) return;
+function clearApp() {
+  stopAction();
+  memoryList = [];
+  sequenceCounter = 1;
+  selectedMemoryIndex = null;
+  recordedNotes = [];
+  quill.setContents([]);
+  document.getElementById('selected-memory').textContent = 'No Memory Selected';
 
-  const originalSequence = memoryList[selectedMemoryIndex];
-
-  // Determine the base name (original name without duplication number suffix)
-  const baseNameMatch = originalSequence.name.match(/^(.*?)(\(\d+\))?$/);
-  const baseName = baseNameMatch ? baseNameMatch[1].trim() : originalSequence.name;
-
-  // Count existing duplicates
-  let maxDuplicationCount = 0;
-  memoryList.forEach(seq => {
-    const seqNameMatch = seq.name.match(new RegExp('^' + baseName.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&') + '\\((\\d+)\\)$'));
-    if (seqNameMatch) {
-      const count = parseInt(seqNameMatch[1], 10);
-      if (count > maxDuplicationCount) {
-        maxDuplicationCount = count;
-      }
-    }
-  });
-
-  const newDuplicationCount = maxDuplicationCount + 1;
-
-  const duplicateSequence = JSON.parse(JSON.stringify(originalSequence));
-  duplicateSequence.name = `${baseName} (${newDuplicationCount})`;
-  duplicateSequence.selected = false;
-  duplicateSequence.rank = (originalSequence.rank || memoryList.length) + 0.1;
-
-  // Insert duplicate under the original
-  memoryList.splice(selectedMemoryIndex + 1, 0, duplicateSequence);
-
-  // Update the memory list display
   updateMemoryList();
+  updateChannelButtonStyles();
 
-  // Re-select the original memory
-  selectMemorySequence(selectedMemoryIndex);
+  document.getElementById('play-btn').disabled = memoryList.length === 0;
 }
