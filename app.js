@@ -128,6 +128,8 @@ let activeChannelFilters = new Set(['1','2','3','4','5','6','7','8','9','10','11
 let selectedChannelFilter = 'All';
 let selectedEventIndices = [];
 
+let selectedNoteFilter = 'All';
+
 function createPiano() {
   const piano = document.getElementById('piano');
   piano.innerHTML = '';
@@ -1276,6 +1278,17 @@ function populateMemoryEditor() {
             ${[...Array(16)].map((_, i) => `<button class="channel-filter-button ${selectedChannelFilter === (i + 1).toString() ? 'pressed' : ''}" data-channel="${i + 1}">${i + 1}</button>`).join('')}
           </div>
         </div>
+        <div class="separator"></div>
+        <div class="filter-group">
+          <div class="group-label"><span>Show</span></div>
+          <div id="note-filters" class="group-buttons">
+            <button class="note-filter-button ${selectedNoteFilter === 'All' ? 'pressed' : ''}" data-note="All">All</button>
+            ${['A', 'B', 'C', 'D', 'E', 'F', 'G'].map(note => `
+              <button class="note-filter-button ${selectedNoteFilter === note ? 'pressed' : ''}" data-note="${note}">${note}</button>
+            `).join('')}
+          </div>
+        </div>
+      </div>
     </div>
   </div>
   <table id="memory-editor-table">
@@ -1285,7 +1298,12 @@ function populateMemoryEditor() {
     let isVisible = true;
     if (!eventTypeFilters[event.type]) isVisible = false;
     if (selectedChannelFilter !== 'All' && event.channel !== selectedChannelFilter) isVisible = false;
-
+    if ((event.type === 'noteOn' || event.type === 'noteOff') && selectedNoteFilter !== 'All') {
+      const noteName = event.note.replace(/[0-9]/g, '').replace('#', '');
+      if (!noteName.includes(selectedNoteFilter)) {
+        isVisible = false;
+      }
+    }
     let paramsHtml = '';
     if (event.type === 'noteOn' || event.type === 'noteOff') {
       paramsHtml = `
@@ -1611,6 +1629,16 @@ function populateMemoryEditor() {
     button.addEventListener('click', function() {
       selectedChannelFilter = this.dataset.channel;
       channelFilterButtons.forEach(btn => btn.classList.remove('pressed'));
+      this.classList.add('pressed');
+      populateMemoryEditor();
+    });
+  });
+
+  const noteFilterButtons = memoryEditorContainer.querySelectorAll('.note-filter-button');
+  noteFilterButtons.forEach(button => {
+    button.addEventListener('click', function() {
+      selectedNoteFilter = this.dataset.note;
+      noteFilterButtons.forEach(btn => btn.classList.remove('pressed'));
       this.classList.add('pressed');
       populateMemoryEditor();
     });
