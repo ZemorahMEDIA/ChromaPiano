@@ -1262,29 +1262,29 @@ function populateMemoryEditor() {
         <div class="filter-group">
           <div class="group-label"><span>Hide</span></div>
           <div id="event-type-filters" class="group-buttons">
-            <button id="filter-note-on-btn" class="filter-button">On</button>
-            <button id="filter-note-off-btn" class="filter-button">Off</button>
-            <button id="filter-cc-btn" class="filter-button">CC</button>
-            <button id="filter-pc-btn" class="filter-button">PC</button>
+            <button id="filter-note-on-btn" class="filter-button ${!eventTypeFilters['noteOn'] ? 'pressed' : ''}">On</button>
+            <button id="filter-note-off-btn" class="filter-button ${!eventTypeFilters['noteOff'] ? 'pressed' : ''}">Off</button>
+            <button id="filter-cc-btn" class="filter-button ${!eventTypeFilters['controlChange'] ? 'pressed' : ''}">CC</button>
+            <button id="filter-pc-btn" class="filter-button ${!eventTypeFilters['programChange'] ? 'pressed' : ''}">PC</button>
           </div>
         </div>
         <div class="separator"></div>
         <div class="filter-group">
           <div class="group-label"><span>Show</span></div>
           <div id="channel-filters" class="group-buttons">
-            <button class="channel-filter-button" data-channel="All">All</button>
-            ${[...Array(16)].map((_, i) => `<button class="channel-filter-button" data-channel="${i + 1}">${i + 1}</button>`).join('')}
+            <button class="channel-filter-button ${selectedChannelFilter === 'All' ? 'pressed' : ''}" data-channel="All">All</button>
+            ${[...Array(16)].map((_, i) => `<button class="channel-filter-button ${selectedChannelFilter === (i + 1).toString() ? 'pressed' : ''}" data-channel="${i + 1}">${i + 1}</button>`).join('')}
           </div>
         </div>
-      </div>
     </div>
   </div>
   <table id="memory-editor-table">
     <tr><th>Time (s)</th><th>Type</th><th>Parameters</th><th>Action</th></tr>`;
 
   events.forEach((event, index) => {
-    if (!eventTypeFilters[event.type]) return;
-    if (selectedChannelFilter !== 'All' && event.channel !== selectedChannelFilter) return;
+    let isVisible = true;
+    if (!eventTypeFilters[event.type]) isVisible = false;
+    if (selectedChannelFilter !== 'All' && event.channel !== selectedChannelFilter) isVisible = false;
 
     let paramsHtml = '';
     if (event.type === 'noteOn' || event.type === 'noteOff') {
@@ -1323,13 +1323,18 @@ function populateMemoryEditor() {
         </select>`;
     }
 
-    html += `<tr class="event-row ${event.type === 'noteOn' ? 'note-on' :
-                                       event.type === 'noteOff' ? 'note-off' :
-                                       event.type === 'controlChange' ? 'control-change' :
-                                       event.type === 'programChange' ? 'program-change' : ''}"
+    const eventClass = `${event.type === 'noteOn' ? 'note-on' :
+                                   event.type === 'noteOff' ? 'note-off' :
+                                   event.type === 'controlChange' ? 'control-change' :
+                                   event.type === 'programChange' ? 'program-change' : ''}`;
+
+    const rowStyle = isVisible ? '' : ' style="display: none;"';
+
+    html += `<tr class="event-row ${eventClass}"
                    data-index="${index}"
                    data-event-type="${event.type}"
-                   data-channel="${event.channel || 'Omni'}">
+                   data-channel="${event.channel || 'Omni'}"
+                   ${rowStyle}>
                  <td><input type="number" step="0.001" class="event-time" value="${event.time.toFixed(3)}"></td>
                  <td>
                    <select class="event-type">
@@ -1349,13 +1354,11 @@ function populateMemoryEditor() {
                  </td>
                </tr>`;
 
-    if (event.type === 'noteOn') {
-      html += `<tr class="annotation-row" data-index="${index}" style="display: none;">
-                 <td colspan="4">
-                   <textarea class="event-annotation" placeholder="Annotation">${event.annotation || ''}</textarea>
-                 </td>
-               </tr>`;
-    }
+    html += `<tr class="annotation-row" data-index="${index}" style="display: none;">
+               <td colspan="4">
+                 <textarea class="event-annotation" placeholder="Annotation">${event.annotation || ''}</textarea>
+               </td>
+             </tr>`;
   });
 
   html += `</table>`;
@@ -1368,7 +1371,7 @@ function populateMemoryEditor() {
     button.addEventListener('click', function () {
       const row = this.closest('tr');
       const eventIndex = parseInt(row.dataset.index, 10);
-      events.splice(eventIndex, 1);
+      selectedSequence.notes.splice(eventIndex, 1);
       populateMemoryEditor();
     });
   });
@@ -1416,7 +1419,7 @@ function populateMemoryEditor() {
 
       if (selectedEventIndices.includes(eventIndex)) {
         selectedEventIndices.forEach(idx => {
-          events[idx].type = newType;
+          selectedSequence.notes[idx].type = newType;
 
           if (idx !== eventIndex) {
             const otherRow = memoryEditorContainer.querySelector(`.event-row[data-index="${idx}"]`);
@@ -1429,7 +1432,7 @@ function populateMemoryEditor() {
           }
         });
       } else {
-        events[eventIndex].type = newType;
+        selectedSequence.notes[eventIndex].type = newType;
       }
 
       updateMemoryFromEditor();
@@ -1445,7 +1448,7 @@ function populateMemoryEditor() {
 
       if (selectedEventIndices.includes(eventIndex)) {
         selectedEventIndices.forEach(idx => {
-          events[idx].time = newTime;
+          selectedSequence.notes[idx].time = newTime;
 
           if (idx !== eventIndex) {
             const otherRow = memoryEditorContainer.querySelector(`.event-row[data-index="${idx}"]`);
@@ -1458,7 +1461,7 @@ function populateMemoryEditor() {
           }
         });
       } else {
-        events[eventIndex].time = newTime;
+        selectedSequence.notes[eventIndex].time = newTime;
       }
 
       updateMemoryFromEditor();
@@ -1475,7 +1478,7 @@ function populateMemoryEditor() {
 
       if (selectedEventIndices.includes(eventIndex)) {
         selectedEventIndices.forEach(idx => {
-          const event = events[idx];
+          const event = selectedSequence.notes[idx];
           switch (inputClass) {
             case 'event-note':
               event.note = normalizeNoteFromInput(newValue);
@@ -1513,7 +1516,7 @@ function populateMemoryEditor() {
           }
         });
       } else {
-        const event = events[eventIndex];
+        const event = selectedSequence.notes[eventIndex];
         switch (inputClass) {
           case 'event-note':
             event.note = normalizeNoteFromInput(newValue);
@@ -1554,7 +1557,7 @@ function populateMemoryEditor() {
 
       if (selectedEventIndices.includes(eventIndex)) {
         selectedEventIndices.forEach(idx => {
-          events[idx].annotation = newValue;
+          selectedSequence.notes[idx].annotation = newValue;
 
           if (idx !== eventIndex) {
             const annotationRow = memoryEditorContainer.querySelector(`.annotation-row[data-index="${idx}"]`);
@@ -1567,7 +1570,7 @@ function populateMemoryEditor() {
           }
         });
       } else {
-        events[eventIndex].annotation = newValue;
+        selectedSequence.notes[eventIndex].annotation = newValue;
       }
 
       updateMemoryFromEditor();
@@ -1612,6 +1615,13 @@ function populateMemoryEditor() {
       populateMemoryEditor();
     });
   });
+
+  const allEditableElements = memoryEditorContainer.querySelectorAll('input, select, textarea');
+  allEditableElements.forEach(element => {
+    element.addEventListener('change', function() {
+      updateMemoryFromEditor();
+    });
+  });
 }
 
 function selectMemoryByName(name) {
@@ -1652,66 +1662,6 @@ function updateMemoryFromEditor() {
     });
   }
 
-  const events = [];
-  const eventRows = document.querySelectorAll('#memory-editor-table .event-row');
-  eventRows.forEach((row) => {
-    const eventIndex = parseInt(row.dataset.index, 10);
-    const timeInput = row.querySelector('.event-time');
-    const eventTypeSelect = row.querySelector('.event-type');
-    const eventParamsCell = row.querySelector('.event-params');
-
-    if (!timeInput || !eventTypeSelect || !eventParamsCell) return;
-
-    const event = {
-      time: parseFloat(timeInput.value),
-      type: eventTypeSelect.value
-    };
-
-    if (event.type === 'noteOn' || event.type === 'noteOff') {
-      const noteInput = eventParamsCell.querySelector('.event-note');
-      const channelSelect = eventParamsCell.querySelector('.event-channel');
-      if (noteInput && channelSelect) {
-        event.note = normalizeNoteFromInput(noteInput.value);
-        event.channel = channelSelect.value;
-      }
-
-      if (event.type === 'noteOn') {
-        const velocityInput = eventParamsCell.querySelector('.event-velocity');
-        const fingeringSelect = eventParamsCell.querySelector('.event-fingering');
-
-        if (velocityInput && fingeringSelect) {
-          event.velocity = parseInt(velocityInput.value, 10);
-          event.fingering = fingeringSelect.value;
-        }
-
-        const annotationRow = document.querySelector(`.annotation-row[data-index="${eventIndex}"]`);
-        if (annotationRow) {
-          const annotationTextarea = annotationRow.querySelector('.event-annotation');
-          event.annotation = annotationTextarea.value;
-        }
-      }
-    } else if (event.type === 'controlChange') {
-      const controllerNumberInput = eventParamsCell.querySelector('.event-controller-number');
-      const controllerValueInput = eventParamsCell.querySelector('.event-controller-value');
-      const channelSelect = eventParamsCell.querySelector('.event-channel');
-      if (controllerNumberInput && controllerValueInput && channelSelect) {
-        event.controllerNumber = parseInt(controllerNumberInput.value, 10);
-        event.controllerValue = parseInt(controllerValueInput.value, 10);
-        event.channel = channelSelect.value;
-      }
-    } else if (event.type === 'programChange') {
-      const programNumberInput = eventParamsCell.querySelector('.event-program-number');
-      const channelSelect = eventParamsCell.querySelector('.event-channel');
-      if (programNumberInput && channelSelect) {
-        event.programNumber = parseInt(programNumberInput.value, 10);
-        event.channel = channelSelect.value;
-      }
-    }
-
-    events.push(event);
-  });
-
-  selectedSequence.notes = events;
   let totalDuration = 0;
   selectedSequence.notes.forEach((noteEvent) => {
     if (noteEvent.time > totalDuration) {
@@ -2276,97 +2226,6 @@ function stopNavigationActiveNotes() {
   annotationDisplay.textContent = '';
 }
 
-function updateMemoryFromEditor() {
-  if (selectedMemoryIndex === null) return;
-
-  const selectedSequence = memoryList[selectedMemoryIndex];
-
-  const memoryNameInput = document.getElementById('memory-name-input');
-  if (memoryNameInput) {
-    selectedSequence.name = memoryNameInput.value;
-
-    const memoryListItems = document.querySelectorAll('#memory-list li');
-    memoryListItems.forEach((li) => {
-      const index = parseInt(li.dataset.index, 10);
-      if (index === selectedMemoryIndex) {
-        const label = li.querySelector('span');
-        label.textContent = selectedSequence.name;
-      }
-    });
-  }
-
-  const events = [];
-  const eventRows = document.querySelectorAll('#memory-editor-table .event-row');
-  eventRows.forEach((row) => {
-    const eventIndex = parseInt(row.dataset.index, 10);
-    const timeInput = row.querySelector('.event-time');
-    const eventTypeSelect = row.querySelector('.event-type');
-    const eventParamsCell = row.querySelector('.event-params');
-
-    if (!timeInput || !eventTypeSelect || !eventParamsCell) return;
-
-    const event = {
-      time: parseFloat(timeInput.value),
-      type: eventTypeSelect.value
-    };
-
-    if (event.type === 'noteOn' || event.type === 'noteOff') {
-      const noteInput = eventParamsCell.querySelector('.event-note');
-      const channelSelect = eventParamsCell.querySelector('.event-channel');
-      if (noteInput && channelSelect) {
-        event.note = normalizeNoteFromInput(noteInput.value);
-        event.channel = channelSelect.value;
-      }
-
-      if (event.type === 'noteOn') {
-        const velocityInput = eventParamsCell.querySelector('.event-velocity');
-        const fingeringSelect = eventParamsCell.querySelector('.event-fingering');
-
-        if (velocityInput && fingeringSelect) {
-          event.velocity = parseInt(velocityInput.value, 10);
-          event.fingering = fingeringSelect.value;
-        }
-
-        const annotationRow = document.querySelector(`.annotation-row[data-index="${eventIndex}"]`);
-        if (annotationRow) {
-          const annotationTextarea = annotationRow.querySelector('.event-annotation');
-          event.annotation = annotationTextarea.value;
-        }
-      }
-    } else if (event.type === 'controlChange') {
-      const controllerNumberInput = eventParamsCell.querySelector('.event-controller-number');
-      const controllerValueInput = eventParamsCell.querySelector('.event-controller-value');
-      const channelSelect = eventParamsCell.querySelector('.event-channel');
-      if (controllerNumberInput && controllerValueInput && channelSelect) {
-        event.controllerNumber = parseInt(controllerNumberInput.value, 10);
-        event.controllerValue = parseInt(controllerValueInput.value, 10);
-        event.channel = channelSelect.value;
-      }
-    } else if (event.type === 'programChange') {
-      const programNumberInput = eventParamsCell.querySelector('.event-program-number');
-      const channelSelect = eventParamsCell.querySelector('.event-channel');
-      if (programNumberInput && channelSelect) {
-        event.programNumber = parseInt(programNumberInput.value, 10);
-        event.channel = channelSelect.value;
-      }
-    }
-
-    events.push(event);
-  });
-
-  selectedSequence.notes = events;
-  let totalDuration = 0;
-  selectedSequence.notes.forEach((noteEvent) => {
-    if (noteEvent.time > totalDuration) {
-      totalDuration = noteEvent.time;
-    }
-  });
-  selectedSequence.duration = totalDuration;
-
-  updateMemoryList();
-  selectMemorySequence(selectedMemoryIndex);
-}
-
 function updateChannelButtonStyles() {
   let channelsWithEvents = new Set();
 
@@ -2767,20 +2626,3 @@ function clearApp() {
 
   document.getElementById('play-btn').disabled = memoryList.length === 0;
 }
-
-document.addEventListener('DOMContentLoaded', () => {
-  // ... existing code ...
-
-  const titleBar = document.querySelector('#title-container h1');
-  const originalTitleHTML = titleBar.innerHTML;
-
-  setTimeout(() => {
-    titleBar.innerHTML = "He is coming back...";
-    setTimeout(() => {
-      titleBar.innerHTML = "...are you ready?";
-      setTimeout(() => {
-        titleBar.innerHTML = originalTitleHTML;
-      }, 10000); // Revert to original title after 10 seconds
-    }, 10000); // Show second message for 10 seconds
-  }, 30000); // Start after 30 seconds
-});
