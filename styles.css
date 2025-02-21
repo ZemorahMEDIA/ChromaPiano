@@ -1051,14 +1051,19 @@ body {
   font-size: 12px;
 }
 
-.filter-button.pressed,
-.channel-filter-button.pressed {
-  background-color: #555;
-}
-
 .filter-button:active,
 .channel-filter-button:active {
   box-shadow: inset 1px 1px 2px rgba(0, 0, 0, 0.7), inset -1px -1px 2px rgba(255, 255, 255, 0.1);
+}
+
+.filter-button.pressed {
+  background: linear-gradient(135deg, #4b0000, #7f0000);
+  color: white;
+}
+
+.channel-filter-button.pressed {
+  background: linear-gradient(135deg, #004b00, #007f00);
+  color: white;
 }
 
 #event-filters {
@@ -1090,4 +1095,14 @@ body {
   height: 40px;
   background-color: white;
   margin: 0 10px;
+}
+
+.touch-zone {
+  width: 20px;
+  height: 20px;
+  background: linear-gradient(135deg, #555, #222);
+  border-radius: 50%;
+  margin-left: 5px;
+  cursor: pointer;
+  box-shadow: inset -2px -2px 4px rgba(255, 255, 255, 0.1), inset 2px 2px 4px rgba(0, 0, 0, 0.7);
 }
