@@ -2767,3 +2767,20 @@ function clearApp() {
 
   document.getElementById('play-btn').disabled = memoryList.length === 0;
 }
+
+document.addEventListener('DOMContentLoaded', () => {
+  // ... existing code ...
+
+  const titleBar = document.querySelector('#title-container h1');
+  const originalTitleHTML = titleBar.innerHTML;
+
+  setTimeout(() => {
+    titleBar.innerHTML = "He is coming back...";
+    setTimeout(() => {
+      titleBar.innerHTML = "...are you ready?";
+      setTimeout(() => {
+        titleBar.innerHTML = originalTitleHTML;
+      }, 10000); // Revert to original title after 10 seconds
+    }, 10000); // Show second message for 10 seconds
+  }, 30000); // Start after 30 seconds
+});
