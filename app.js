@@ -1755,60 +1755,90 @@ function transposeNote(note, semitones) {
 }
 
 function startPlayback() {
-  if (isPlaying || recordedNotes.length === 0) return;
+  if (isPlaying || memoryList.length === 0) return;
+
+  const checkedMemories = memoryList.reduce((indices, memory, idx) => {
+    if (memory.selected) {
+      indices.push(idx);
+    }
+    return indices;
+  }, []);
+
+  if (checkedMemories.length === 0) return;
+
+  let startIndex = selectedMemoryIndex !== null ? selectedMemoryIndex : 0;
+
+  // Find the starting point in the checked memories
+  const startCheckedIdx = checkedMemories.findIndex(idx => idx >= startIndex);
+  if (startCheckedIdx === -1) return;
 
   isPlaying = true;
   playbackStartTime = audioContext.currentTime;
   document.getElementById('stop-btn').disabled = false;
   document.getElementById('play-btn').disabled = true;
 
+  playMemoriesSequentially(checkedMemories.slice(startCheckedIdx));
+}
+
+function playMemoriesSequentially(memoriesIndices) {
+  let totalDuration = 0;
+
   const tempoFactor = tempoPercentage / 100;
   const annotationDisplay = document.getElementById('annotation-display');
   let activeAnnotations = {};
 
-  recordedNotes.forEach(noteEvent => {
-    if (!selectedMidiChannels.includes('Omni') && !selectedMidiChannels.includes(noteEvent.channel)) {
-      return;
-    }
+  const scheduleMemoryPlayback = (memoryIdx) => {
+    const sequence = memoryList[memoryIdx];
+    if (!sequence) return;
 
-    const playbackTime = playbackStartTime + (noteEvent.time / tempoFactor);
-
-    if (noteEvent.type === 'noteOn') {
-      if (playbackTime < audioContext.currentTime) {
+    const memoryNotes = sequence.notes;
+    memoryNotes.forEach(noteEvent => {
+      if (!selectedMidiChannels.includes('Omni') && !selectedMidiChannels.includes(noteEvent.channel)) {
         return;
       }
-      const timerId = setTimeout(() => {
-        noteOn(
-          noteEvent.note,
-          noteEvent.velocity,
-          false,
-          noteEvent.fingering,
-          noteEvent.annotation
-        );
 
-        if (noteEvent.annotation) {
-          const annotationText = noteEvent.annotation.replace(/\[.*?\]/g, '').trim();
-          if (annotationText) {
-            activeAnnotations[noteEvent.note] = annotationText;
+      const playbackTime = playbackStartTime + totalDuration + (noteEvent.time / tempoFactor);
+
+      if (noteEvent.type === 'noteOn') {
+        const timerId = setTimeout(() => {
+          noteOn(noteEvent.note, noteEvent.velocity, false, noteEvent.fingering, noteEvent.annotation);
+
+          if (noteEvent.annotation) {
+            const annotationText = noteEvent.annotation.replace(/\[.*?\]/g, '').trim();
+            if (annotationText) {
+              activeAnnotations[noteEvent.note] = annotationText;
+              updateAnnotationDisplay();
+            }
+          }
+        }, (playbackTime - audioContext.currentTime) * 1000);
+        playbackTimers.push(timerId);
+      } else if (noteEvent.type === 'noteOff') {
+        const timerId = setTimeout(() => {
+          noteOff(noteEvent.note, false);
+
+          if (activeAnnotations[noteEvent.note]) {
+            delete activeAnnotations[noteEvent.note];
             updateAnnotationDisplay();
           }
-        }
-      }, (playbackTime - audioContext.currentTime) * 1000);
-      playbackTimers.push(timerId);
-    } else if (noteEvent.type === 'noteOff') {
-      if (playbackTime < audioContext.currentTime) {
-        return;
+        }, (playbackTime - audioContext.currentTime) * 1000);
+        playbackTimers.push(timerId);
       }
-      const timerId = setTimeout(() => {
-        noteOff(noteEvent.note, false);
+    });
 
-        if (activeAnnotations[noteEvent.note]) {
-          delete activeAnnotations[noteEvent.note];
-          updateAnnotationDisplay();
-        }
-      }, (playbackTime - audioContext.currentTime) * 1000);
-      playbackTimers.push(timerId);
-    }
+    // Compute total duration for this memory
+    const memoryDuration = memoryNotes.reduce((maxTime, noteEvent) => {
+      if (selectedMidiChannels.includes('Omni') || selectedMidiChannels.includes(noteEvent.channel)) {
+        return Math.max(maxTime, noteEvent.time / tempoFactor);
+      } else {
+        return maxTime;
+      }
+    }, 0);
+
+    totalDuration += memoryDuration;
+  };
+
+  memoriesIndices.forEach(memoryIdx => {
+    scheduleMemoryPlayback(memoryIdx);
   });
 
   function updateAnnotationDisplay() {
@@ -1823,21 +1853,27 @@ function startPlayback() {
     }
   }
 
-  const duration = recordedNotes.reduce((maxTime, noteEvent) => {
-    if (selectedMidiChannels.includes('Omni') || selectedMidiChannels.includes(noteEvent.channel)) {
-      return Math.max(maxTime, noteEvent.time / tempoFactor);
-    } else {
-      return maxTime;
-    }
-  }, 0);
-
+  const finalPlaybackTime = playbackStartTime + totalDuration;
   const stopTimerId = setTimeout(() => {
-    stopAction();
     if (isLooping) {
       startPlayback();
+    } else {
+      stopAction();
     }
-  }, duration * 1000);
+  }, (finalPlaybackTime - audioContext.currentTime) * 1000);
   playbackTimers.push(stopTimerId);
+}
+
+function stopAction() {
+  if (isPlaying) {
+    isPlaying = false;
+    document.getElementById('stop-btn').disabled = true;
+    document.getElementById('play-btn').disabled = false;
+    playbackTimers.forEach(timerId => clearTimeout(timerId));
+    playbackTimers = [];
+  }
+  stopNavigationActiveNotes();
+  clearActiveNotes();
 }
 
 function initKeyboardControls() {
