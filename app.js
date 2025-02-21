@@ -125,6 +125,9 @@ let eventTypeFilters = {
 
 let activeChannelFilters = new Set(['1','2','3','4','5','6','7','8','9','10','11','12','13','14','15','16']);
 
+let selectedChannelFilter = 'All';
+let selectedEventIndices = [];
+
 function createPiano() {
   const piano = document.getElementById('piano');
   piano.innerHTML = '';
@@ -1224,9 +1227,6 @@ function resetMidiAndFingerings() {
 
 function populateMemoryEditor() {
   const memoryEditorContainer = document.getElementById('memory-editor-container');
-  let selectedEventIndices = [];
-  let selectedChannelFilter = 'All';
-
   if (selectedMemoryIndex === null) {
     memoryEditorContainer.innerHTML = '<p>No memory selected.</p>';
     return;
