@@ -130,6 +130,8 @@ let selectedEventIndices = [];
 
 let selectedNoteFilter = 'All';
 
+let timeFilterValue = '';
+
 function createPiano() {
   const piano = document.getElementById('piano');
   piano.innerHTML = '';
@@ -1238,61 +1240,67 @@ function populateMemoryEditor() {
   const events = selectedSequence.notes;
 
   let html = `
-  <div id="memory-editor-name">
-    <label for="memory-name-input">Memory Name:</label>
-    <input type="text" id="memory-name-input" value="${selectedSequence.name}">
-  </div>
-  <div id="memory-editor-controls">
-    <div id="memory-add-controls">
-      <div class="group-label"><span>Events</span></div>
-      <div id="memory-add-fields">
-        <input type="text" id="add-notes-input" placeholder="Notes">
-        <input type="number" id="add-velocity-input" value="100" placeholder="Velocity" min="1" max="127">
-        <input type="text" id="add-start-input" placeholder="Start">
-        <input type="text" id="add-duration-input" placeholder="Duration">
-        <select id="add-channel-select">
-          <option value="Omni">Omni</option>
-          <option value="Split">Split</option>
-          ${[...Array(16)].map((_, i) => `<option value="${i + 1}">${i + 1}</option>`).join('')}
-        </select>
-        <input type="number" id="add-cc-number-input" placeholder="CC#" min="0" max="127">
-        <input type="number" id="add-cc-value-input" placeholder="CCV" min="0" max="127">
-        <input type="number" id="add-pc-input" placeholder="PC">
-      </div>
-      <button id="add-entry-btn">Add</button>
-      <div id="event-filters">
-        <div class="filter-group">
-          <div class="group-label"><span>Hide</span></div>
-          <div id="event-type-filters" class="group-buttons">
-            <button id="filter-note-on-btn" class="filter-button ${!eventTypeFilters['noteOn'] ? 'pressed' : ''}">On</button>
-            <button id="filter-note-off-btn" class="filter-button ${!eventTypeFilters['noteOff'] ? 'pressed' : ''}">Off</button>
-            <button id="filter-cc-btn" class="filter-button ${!eventTypeFilters['controlChange'] ? 'pressed' : ''}">CC</button>
-            <button id="filter-pc-btn" class="filter-button ${!eventTypeFilters['programChange'] ? 'pressed' : ''}">PC</button>
-          </div>
+    <div id="memory-editor-name">
+      <label for="memory-name-input">Memory Name:</label>
+      <input type="text" id="memory-name-input" value="${selectedSequence.name}">
+    </div>
+    <div id="memory-editor-controls">
+      <div id="memory-add-controls">
+        <div class="group-label"><span>Events</span></div>
+        <div id="memory-add-fields">
+          <input type="text" id="add-notes-input" placeholder="Notes">
+          <input type="number" id="add-velocity-input" value="100" placeholder="Velocity" min="1" max="127">
+          <input type="text" id="add-start-input" placeholder="Start">
+          <input type="text" id="add-duration-input" placeholder="Duration">
+          <select id="add-channel-select">
+            <option value="Omni">Omni</option>
+            <option value="Split">Split</option>
+            ${[...Array(16)].map((_, i) => `<option value="${i + 1}">${i + 1}</option>`).join('')}
+          </select>
+          <input type="number" id="add-cc-number-input" placeholder="CC#" min="0" max="127">
+          <input type="number" id="add-cc-value-input" placeholder="CCV" min="0" max="127">
+          <input type="number" id="add-pc-input" placeholder="PC">
         </div>
-        <div class="separator"></div>
-        <div class="filter-group">
-          <div class="group-label"><span>Show</span></div>
-          <div id="channel-filters" class="group-buttons">
-            <button class="channel-filter-button ${selectedChannelFilter === 'All' ? 'pressed' : ''}" data-channel="All">All</button>
-            ${[...Array(16)].map((_, i) => `<button class="channel-filter-button ${selectedChannelFilter === (i + 1).toString() ? 'pressed' : ''}" data-channel="${i + 1}">${i + 1}</button>`).join('')}
-          </div>
-        </div>
-        <div class="separator"></div>
-        <div class="filter-group">
-          <div class="group-label"><span>Show</span></div>
-          <div id="note-filters" class="group-buttons">
-            <button class="note-filter-button ${selectedNoteFilter === 'All' ? 'pressed' : ''}" data-note="All">All</button>
-            ${['A', 'B', 'C', 'D', 'E', 'F', 'G'].map(note => `
-              <button class="note-filter-button ${selectedNoteFilter === note ? 'pressed' : ''}" data-note="${note}">${note}</button>
-            `).join('')}
+        <div class="add-and-filters">
+          <button id="add-entry-btn">Add</button>
+          <div class="vertical-separator"></div>
+          <div id="event-filters">
+            <div class="filter-group">
+              <div class="group-label"><span>Type</span></div>
+              <div id="event-type-filters" class="group-buttons">
+                <button id="filter-note-on-btn" class="filter-button ${!eventTypeFilters['noteOn'] ? 'pressed' : ''}">On</button>
+                <button id="filter-note-off-btn" class="filter-button ${!eventTypeFilters['noteOff'] ? 'pressed' : ''}">Off</button>
+                <button id="filter-cc-btn" class="filter-button ${!eventTypeFilters['controlChange'] ? 'pressed' : ''}">CC</button>
+                <button id="filter-pc-btn" class="filter-button ${!eventTypeFilters['programChange'] ? 'pressed' : ''}">PC</button>
+              </div>
+            </div>
+            <div class="filter-group">
+              <div class="group-label"><span>Midi Channel</span></div>
+              <div id="channel-filters" class="group-buttons">
+                <button class="channel-filter-button ${selectedChannelFilter === 'All' ? 'pressed' : ''}" data-channel="All">All</button>
+                ${[...Array(16)].map((_, i) => `<button class="channel-filter-button ${selectedChannelFilter === (i + 1).toString() ? 'pressed' : ''}" data-channel="${i + 1}">${i + 1}</button>`).join('')}
+              </div>
+            </div>
+            <div class="filter-group">
+              <div class="group-label"><span>Notes</span></div>
+              <div id="note-filters" class="group-buttons">
+                <button class="note-filter-button ${selectedNoteFilter === 'All' ? 'pressed' : ''}" data-note="All">All</button>
+                ${['A', 'B', 'C', 'D', 'E', 'F', 'G'].map(note => `
+                  <button class="note-filter-button ${selectedNoteFilter === note ? 'pressed' : ''}" data-note="${note}">${note}</button>
+                `).join('')}
+              </div>
+            </div>
+            <div class="filter-group no-label">
+              <div class="group-input">
+                <input type="text" id="time-filter-input" placeholder="Enter time value">
+              </div>
+            </div>
           </div>
         </div>
       </div>
     </div>
-  </div>
-  <table id="memory-editor-table">
-    <tr><th>Time (s)</th><th>Type</th><th>Parameters</th><th>Action</th></tr>`;
+    <table id="memory-editor-table">
+      <tr><th>Time (s)</th><th>Type</th><th>Parameters</th><th>Action</th></tr>`;
 
   events.forEach((event, index) => {
     let isVisible = true;
@@ -1302,6 +1310,14 @@ function populateMemoryEditor() {
       const noteName = event.note.replace(/[0-9]/g, '').replace('#', '');
       if (!noteName.includes(selectedNoteFilter)) {
         isVisible = false;
+      }
+    }
+    if (timeFilterValue !== '') {
+      const timeValue = parseFloat(timeFilterValue);
+      if (!isNaN(timeValue)) {
+        if (Math.abs(event.time - timeValue) > 0.0001) {
+          isVisible = false;
+        }
       }
     }
     let paramsHtml = '';
@@ -1642,6 +1658,13 @@ function populateMemoryEditor() {
       this.classList.add('pressed');
       populateMemoryEditor();
     });
+  });
+
+  const timeFilterInput = memoryEditorContainer.querySelector('#time-filter-input');
+  timeFilterInput.value = timeFilterValue;
+  timeFilterInput.addEventListener('input', function() {
+    timeFilterValue = this.value.trim();
+    populateMemoryEditor();
   });
 
   const allEditableElements = memoryEditorContainer.querySelectorAll('input, select, textarea');
