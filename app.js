@@ -1240,70 +1240,74 @@ function populateMemoryEditor() {
   const events = selectedSequence.notes;
 
   let html = `
-    <div id="memory-editor-name">
-      <label for="memory-name-input">Memory Name:</label>
-      <input type="text" id="memory-name-input" value="${selectedSequence.name}">
-    </div>
-    <div id="memory-editor-controls">
-      <div id="memory-add-controls">
-        <div class="group-label"><span>Events</span></div>
-        <div id="memory-add-fields">
-          <input type="text" id="add-notes-input" placeholder="Notes">
-          <input type="number" id="add-velocity-input" value="100" placeholder="Velocity" min="1" max="127">
-          <input type="text" id="add-start-input" placeholder="Start">
-          <input type="text" id="add-duration-input" placeholder="Duration">
-          <select id="add-channel-select">
-            <option value="Omni">Omni</option>
-            <option value="Split">Split</option>
-            ${[...Array(16)].map((_, i) => `<option value="${i + 1}">${i + 1}</option>`).join('')}
-          </select>
-          <input type="number" id="add-cc-number-input" placeholder="CC#" min="0" max="127">
-          <input type="number" id="add-cc-value-input" placeholder="CCV" min="0" max="127">
-          <input type="number" id="add-pc-input" placeholder="PC">
+  <div id="memory-editor-name">
+    <label for="memory-name-input">Memory Name:</label>
+    <input type="text" id="memory-name-input" value="${selectedSequence.name}">
+  </div>
+  <div id="memory-editor-controls">
+    <div id="memory-add-controls">
+      <div class="group-label"><span>Events</span></div>
+      <div id="memory-add-fields">
+        <input type="text" id="add-notes-input" placeholder="Notes">
+        <input type="number" id="add-velocity-input" value="100" placeholder="Velocity" min="1" max="127">
+        <input type="text" id="add-start-input" placeholder="Start">
+        <input type="text" id="add-duration-input" placeholder="Duration">
+        <select id="add-channel-select">
+          <option value="Omni">Omni</option>
+          <option value="Split">Split</option>
+          ${[...Array(16)].map((_, i) => `<option value="${i + 1}">${i + 1}</option>`).join('')}
+        </select>
+        <input type="number" id="add-cc-number-input" placeholder="CC#" min="0" max="127">
+        <input type="number" id="add-cc-value-input" placeholder="CCV" min="0" max="127">
+        <input type="number" id="add-pc-input" placeholder="PC">
+      </div>
+      <button id="add-entry-btn">Add</button>
+      <div id="event-filters">
+        <div class="filter-group">
+          <div class="group-label"><span>Hide</span></div>
+          <div id="event-type-filters" class="group-buttons">
+            <button id="filter-note-on-btn" class="filter-button ${!eventTypeFilters['noteOn'] ? 'pressed' : ''}">On</button>
+            <button id="filter-note-off-btn" class="filter-button ${!eventTypeFilters['noteOff'] ? 'pressed' : ''}">Off</button>
+            <button id="filter-cc-btn" class="filter-button ${!eventTypeFilters['controlChange'] ? 'pressed' : ''}">CC</button>
+            <button id="filter-pc-btn" class="filter-button ${!eventTypeFilters['programChange'] ? 'pressed' : ''}">PC</button>
+          </div>
         </div>
-        <div class="add-and-filters">
-          <button id="add-entry-btn">Add</button>
-          <div class="vertical-separator"></div>
-          <div id="event-filters">
-            <div class="filter-group">
-              <div class="group-label"><span>Type</span></div>
-              <div id="event-type-filters" class="group-buttons">
-                <button id="filter-note-on-btn" class="filter-button ${!eventTypeFilters['noteOn'] ? 'pressed' : ''}">On</button>
-                <button id="filter-note-off-btn" class="filter-button ${!eventTypeFilters['noteOff'] ? 'pressed' : ''}">Off</button>
-                <button id="filter-cc-btn" class="filter-button ${!eventTypeFilters['controlChange'] ? 'pressed' : ''}">CC</button>
-                <button id="filter-pc-btn" class="filter-button ${!eventTypeFilters['programChange'] ? 'pressed' : ''}">PC</button>
-              </div>
-            </div>
-            <div class="filter-group">
-              <div class="group-label"><span>Midi Channel</span></div>
-              <div id="channel-filters" class="group-buttons">
-                <button class="channel-filter-button ${selectedChannelFilter === 'All' ? 'pressed' : ''}" data-channel="All">All</button>
-                ${[...Array(16)].map((_, i) => `<button class="channel-filter-button ${selectedChannelFilter === (i + 1).toString() ? 'pressed' : ''}" data-channel="${i + 1}">${i + 1}</button>`).join('')}
-              </div>
-            </div>
-            <div class="filter-group">
-              <div class="group-label"><span>Notes</span></div>
-              <div id="note-filters" class="group-buttons">
-                <button class="note-filter-button ${selectedNoteFilter === 'All' ? 'pressed' : ''}" data-note="All">All</button>
-                ${['A', 'B', 'C', 'D', 'E', 'F', 'G'].map(note => `
-                  <button class="note-filter-button ${selectedNoteFilter === note ? 'pressed' : ''}" data-note="${note}">${note}</button>
-                `).join('')}
-              </div>
-            </div>
-            <div class="filter-group no-label">
-              <div class="group-input">
-                <input type="text" id="time-filter-input" placeholder="Enter time value">
-              </div>
-            </div>
+        <div class="separator"></div>
+        <div class="filter-group">
+          <div class="group-label"><span>Show</span></div>
+          <div id="channel-filters" class="group-buttons">
+            <button class="channel-filter-button ${selectedChannelFilter === 'All' ? 'pressed' : ''}" data-channel="All">All</button>
+            ${[...Array(16)].map((_, i) => `<button class="channel-filter-button ${selectedChannelFilter === (i + 1).toString() ? 'pressed' : ''}" data-channel="${i + 1}">${i + 1}</button>`).join('')}
+          </div>
+        </div>
+        <div class="separator"></div>
+        <div class="filter-group">
+          <div class="group-label"><span>Show</span></div>
+          <div id="note-filters" class="group-buttons">
+            <button class="note-filter-button ${selectedNoteFilter === 'All' ? 'pressed' : ''}" data-note="All">All</button>
+            ${['A', 'B', 'C', 'D', 'E', 'F', 'G'].map(note => `
+              <button class="note-filter-button ${selectedNoteFilter === note ? 'pressed' : ''}" data-note="${note}">${note}</button>
+            `).join('')}
           </div>
         </div>
       </div>
     </div>
-    <table id="memory-editor-table">
-      <tr><th>Time (s)</th><th>Type</th><th>Parameters</th><th>Action</th></tr>`;
+  </div>
+  <table id="memory-editor-table">
+    <tr>
+      <th style="position: relative;">
+        Time (s)
+        <input type="number" step="any" id="time-filter-input" placeholder="Filter" value="${timeFilterValue}">
+        <button id="time-filter-confirm-btn" class="filter-button">OK</button>
+      </th>
+      <th>Type</th>
+      <th>Parameters</th>
+      <th>Action</th>
+    </tr>`;
 
   events.forEach((event, index) => {
     let isVisible = true;
+
     if (!eventTypeFilters[event.type]) isVisible = false;
     if (selectedChannelFilter !== 'All' && event.channel !== selectedChannelFilter) isVisible = false;
     if ((event.type === 'noteOn' || event.type === 'noteOff') && selectedNoteFilter !== 'All') {
@@ -1312,94 +1316,80 @@ function populateMemoryEditor() {
         isVisible = false;
       }
     }
+
     if (timeFilterValue !== '') {
-      const timeValue = parseFloat(timeFilterValue);
-      if (!isNaN(timeValue)) {
-        if (Math.abs(event.time - timeValue) > 0.0001) {
+      const parsedTimeFilterValue = parseFloat(timeFilterValue);
+      if (!isNaN(parsedTimeFilterValue)) {
+        if (Math.abs(event.time - parsedTimeFilterValue) > 0.0001) {
           isVisible = false;
         }
       }
     }
-    let paramsHtml = '';
-    if (event.type === 'noteOn' || event.type === 'noteOff') {
-      paramsHtml = `
-        <input type="text" class="event-note" value="${formatNoteForDisplay(event.note)}">
-        <select class="event-channel">
-          <option value="Omni"${event.channel === 'Omni' ? ' selected' : ''}>Omni</option>
-          ${[...Array(16)].map((_, i) => `<option value="${i + 1}"${event.channel === (i + 1).toString() ? ' selected' : ''}>${i + 1}</option>`).join('')}
-        </select>`;
-      if (event.type === 'noteOn') {
-        paramsHtml += `
-          <input type="number" class="event-velocity" value="${event.velocity}" min="1" max="127" placeholder="Velocity">
-          <select class="event-fingering">
-            <option value="N"${event.fingering === 'N' ? ' selected' : ''}>N</option>
-            <option value="1"${event.fingering === '1' ? ' selected' : ''}>1</option>
-            <option value="2"${event.fingering === '2' ? ' selected' : ''}>2</option>
-            <option value="3"${event.fingering === '3' ? ' selected' : ''}>3</option>
-            <option value="4"${event.fingering === '4' ? ' selected' : ''}>4</option>
-            <option value="5"${event.fingering === '5' ? ' selected' : ''}>5</option>
-          </select>`;
-      }
-    } else if (event.type === 'controlChange') {
-      paramsHtml = `
-        <input type="number" class="event-controller-number" value="${event.controllerNumber}" min="0" max="127">
-        <input type="number" class="event-controller-value" value="${event.controllerValue}" min="0" max="127">
-        <select class="event-channel">
-          <option value="Omni"${event.channel === 'Omni' ? ' selected' : ''}>Omni</option>
-          ${[...Array(16)].map((_, i) => `<option value="${i + 1}"${event.channel === (i + 1).toString() ? ' selected' : ''}>${i + 1}</option>`).join('')}
-        </select>`;
-    } else if (event.type === 'programChange') {
-      paramsHtml = `
-        <input type="number" class="event-program-number" value="${event.programNumber}" min="0" max="127">
-        <select class="event-channel">
-          <option value="Omni"${event.channel === 'Omni' ? ' selected' : ''}>Omni</option>
-          ${[...Array(16)].map((_, i) => `<option value="${i + 1}"${event.channel === (i + 1).toString() ? ' selected' : ''}>${i + 1}</option>`).join('')}
-        </select>`;
+
+    if (isVisible) {
+      html += `
+      <tr class="event-row ${event.type === 'noteOn' ? 'note-on' :
+                                 event.type === 'noteOff' ? 'note-off' :
+                                 event.type === 'controlChange' ? 'control-change' :
+                                 event.type === 'programChange' ? 'program-change' : ''}"
+                     data-index="${index}">
+                   <td><input type="number" step="any" class="event-time" value="${event.time.toFixed(3)}"></td>
+                   <td>
+                     <select class="event-type">
+                       <option value="noteOn"${event.type === 'noteOn' ? ' selected' : ''}>noteOn</option>
+                       <option value="noteOff"${event.type === 'noteOff' ? ' selected' : ''}>noteOff</option>
+                       <option value="controlChange"${event.type === 'controlChange' ? ' selected' : ''}>controlChange</option>
+                       <option value="programChange"${event.type === 'programChange' ? ' selected' : ''}>programChange</option>
+                     </select>
+                   </td>
+                   <td class="event-params">
+                     ${event.type === 'noteOn' || event.type === 'noteOff' ? 
+                       `<input type="text" class="event-note" value="${formatNoteForDisplay(event.note)}">
+                       <select class="event-channel">
+                         <option value="Omni"${event.channel === 'Omni' ? ' selected' : ''}>Omni</option>
+                         ${[...Array(16)].map((_, i) => `<option value="${i + 1}"${event.channel === (i + 1).toString() ? ' selected' : ''}>${i + 1}</option>`).join('')}
+                       </select>
+                       <input type="number" class="event-velocity" value="${event.velocity}" min="1" max="127" placeholder="Velocity">
+                       <select class="event-fingering">
+                         <option value="N"${event.fingering === 'N' ? ' selected' : ''}>N</option>
+                         <option value="1"${event.fingering === '1' ? ' selected' : ''}>1</option>
+                         <option value="2"${event.fingering === '2' ? ' selected' : ''}>2</option>
+                         <option value="3"${event.fingering === '3' ? ' selected' : ''}>3</option>
+                         <option value="4"${event.fingering === '4' ? ' selected' : ''}>4</option>
+                         <option value="5"${event.fingering === '5' ? ' selected' : ''}>5</option>
+                       </select>` : 
+                       event.type === 'controlChange' ? 
+                       `<input type="number" class="event-controller-number" value="${event.controllerNumber}" min="0" max="127">
+                       <input type="number" class="event-controller-value" value="${event.controllerValue}" min="0" max="127">
+                       <select class="event-channel">
+                         <option value="Omni"${event.channel === 'Omni' ? ' selected' : ''}>Omni</option>
+                         ${[...Array(16)].map((_, i) => `<option value="${i + 1}"${event.channel === (i + 1).toString() ? ' selected' : ''}>${i + 1}</option>`).join('')}
+                       </select>` : 
+                       event.type === 'programChange' ? 
+                       `<input type="number" class="event-program-number" value="${event.programNumber}" min="0" max="127">
+                       <select class="event-channel">
+                         <option value="Omni"${event.channel === 'Omni' ? ' selected' : ''}>Omni</option>
+                         ${[...Array(16)].map((_, i) => `<option value="${i + 1}"${event.channel === (i + 1).toString() ? ' selected' : ''}>${i + 1}</option>`).join('')}
+                       </select>` : ''}
+                   </td>
+                   <td class="action-cell">
+                     <button class="annotation-toggle-btn">+</button>
+                     <button class="delete-entry-btn">X</button>
+                     <div class="touch-zone"></div>
+                   </td>
+                 </tr>
+                 <tr class="annotation-row" data-index="${index}" style="display: none;">
+                   <td colspan="4">
+                     <textarea class="event-annotation" placeholder="Annotation">${event.annotation || ''}</textarea>
+                   </td>
+                 </tr>`;
     }
-
-    const eventClass = `${event.type === 'noteOn' ? 'note-on' :
-                                   event.type === 'noteOff' ? 'note-off' :
-                                   event.type === 'controlChange' ? 'control-change' :
-                                   event.type === 'programChange' ? 'program-change' : ''}`;
-
-    const rowStyle = isVisible ? '' : ' style="display: none;"';
-
-    html += `<tr class="event-row ${eventClass}"
-                   data-index="${index}"
-                   data-event-type="${event.type}"
-                   data-channel="${event.channel || 'Omni'}"
-                   ${rowStyle}>
-                 <td><input type="number" step="0.001" class="event-time" value="${event.time.toFixed(3)}"></td>
-                 <td>
-                   <select class="event-type">
-                     <option value="noteOn"${event.type === 'noteOn' ? ' selected' : ''}>noteOn</option>
-                     <option value="noteOff"${event.type === 'noteOff' ? ' selected' : ''}>noteOff</option>
-                     <option value="controlChange"${event.type === 'controlChange' ? ' selected' : ''}>controlChange</option>
-                     <option value="programChange"${event.type === 'programChange' ? ' selected' : ''}>programChange</option>
-                   </select>
-                 </td>
-                 <td class="event-params">
-                   ${paramsHtml}
-                 </td>
-                 <td class="action-cell">
-                   <button class="annotation-toggle-btn">+</button>
-                   <button class="delete-entry-btn">X</button>
-                   <div class="touch-zone"></div>
-                 </td>
-               </tr>`;
-
-    html += `<tr class="annotation-row" data-index="${index}" style="display: none;">
-               <td colspan="4">
-                 <textarea class="event-annotation" placeholder="Annotation">${event.annotation || ''}</textarea>
-               </td>
-             </tr>`;
   });
 
   html += `</table>`;
 
   memoryEditorContainer.innerHTML = html;
 
-  // Add event listeners
   const deleteButtons = memoryEditorContainer.querySelectorAll('.delete-entry-btn');
   deleteButtons.forEach((button) => {
     button.addEventListener('click', function () {
@@ -1660,19 +1650,23 @@ function populateMemoryEditor() {
     });
   });
 
-  const timeFilterInput = memoryEditorContainer.querySelector('#time-filter-input');
-  timeFilterInput.value = timeFilterValue;
-  timeFilterInput.addEventListener('input', function() {
-    timeFilterValue = this.value.trim();
-    populateMemoryEditor();
-  });
-
   const allEditableElements = memoryEditorContainer.querySelectorAll('input, select, textarea');
   allEditableElements.forEach(element => {
     element.addEventListener('change', function() {
       updateMemoryFromEditor();
     });
   });
+
+  const timeFilterConfirmBtn = document.getElementById('time-filter-confirm-btn');
+  if (timeFilterConfirmBtn) {
+    timeFilterConfirmBtn.addEventListener('click', function() {
+      const timeFilterInput = document.getElementById('time-filter-input');
+      if (timeFilterInput) {
+        timeFilterValue = timeFilterInput.value;
+      }
+      populateMemoryEditor();
+    });
+  }
 }
 
 function selectMemoryByName(name) {
@@ -1750,7 +1744,7 @@ function transposeSelectedMemory(semitones) {
   recordedNotes = JSON.parse(JSON.stringify(sequence.notes));
   currentNoteIndex = -1;
 
-  if (memoryEditorVisible) {
+  if (document.getElementById('memory-editor-container').style.display === 'block') {
     populateMemoryEditor();
   }
 }
@@ -1817,23 +1811,24 @@ function startPlayback() {
 
   if (checkedMemories.length === 0) return;
 
-  let startIndex = selectedMemoryIndex !== null ? selectedMemoryIndex : 0;
+  let startIndex;
 
-  // Find the starting point in the checked memories
-  const startCheckedIdx = checkedMemories.findIndex(idx => idx >= startIndex);
-  if (startCheckedIdx === -1) return;
+  if (selectedMemoryIndex !== null && checkedMemories.includes(selectedMemoryIndex)) {
+    startIndex = checkedMemories.indexOf(selectedMemoryIndex);
+  } else {
+    startIndex = 0;
+  }
 
   isPlaying = true;
   playbackStartTime = audioContext.currentTime;
   document.getElementById('stop-btn').disabled = false;
   document.getElementById('play-btn').disabled = true;
 
-  playMemoriesSequentially(checkedMemories.slice(startCheckedIdx));
+  playMemoriesSequentially(checkedMemories, startIndex);
 }
 
-function playMemoriesSequentially(memoriesIndices) {
+function playMemoriesSequentially(memoriesIndices, startIndex = 0) {
   let totalDuration = 0;
-
   const tempoFactor = tempoPercentage / 100;
   const annotationDisplay = document.getElementById('annotation-display');
   let activeAnnotations = {};
@@ -1876,7 +1871,6 @@ function playMemoriesSequentially(memoriesIndices) {
       }
     });
 
-    // Compute total duration for this memory
     const memoryDuration = memoryNotes.reduce((maxTime, noteEvent) => {
       if (selectedMidiChannels.includes('Omni') || selectedMidiChannels.includes(noteEvent.channel)) {
         return Math.max(maxTime, noteEvent.time / tempoFactor);
@@ -1888,9 +1882,9 @@ function playMemoriesSequentially(memoriesIndices) {
     totalDuration += memoryDuration;
   };
 
-  memoriesIndices.forEach(memoryIdx => {
-    scheduleMemoryPlayback(memoryIdx);
-  });
+  for (let i = startIndex; i < memoriesIndices.length; i++) {
+    scheduleMemoryPlayback(memoriesIndices[i]);
+  }
 
   function updateAnnotationDisplay() {
     const annotationsArray = Object.values(activeAnnotations);
@@ -1906,12 +1900,13 @@ function playMemoriesSequentially(memoriesIndices) {
 
   const finalPlaybackTime = playbackStartTime + totalDuration;
   const stopTimerId = setTimeout(() => {
+    isPlaying = false;
     if (isLooping) {
       startPlayback();
     } else {
       stopAction();
     }
-  }, (finalPlaybackTime - audioContext.currentTime) * 1000);
+  }, Math.max(0, (finalPlaybackTime - audioContext.currentTime) * 1000));
   playbackTimers.push(stopTimerId);
 }
 
@@ -2578,11 +2573,9 @@ function duplicateSelectedMemory() {
 
   const originalSequence = memoryList[selectedMemoryIndex];
 
-  // Determine the base name (original name without duplication number suffix)
   const baseNameMatch = originalSequence.name.match(/^(.*?)(\(\d+\))?$/);
   const baseName = baseNameMatch ? baseNameMatch[1].trim() : originalSequence.name;
 
-  // Count existing duplicates
   let maxDuplicationCount = 0;
   memoryList.forEach(seq => {
     const seqNameMatch = seq.name.match(new RegExp('^' + baseName.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&') + '\\((\\d+)\\)$'));
@@ -2601,21 +2594,16 @@ function duplicateSelectedMemory() {
   duplicateSequence.selected = false;
   duplicateSequence.rank = (originalSequence.rank || memoryList.length) + 0.1;
 
-  // Insert duplicate under the original
   memoryList.splice(selectedMemoryIndex + 1, 0, duplicateSequence);
 
-  // Update the memory list display
   updateMemoryList();
 
-  // Re-select the original memory
   selectMemorySequence(selectedMemoryIndex);
 }
 
 function rearrangeMemories() {
-  // Store current selected memory name
-  let selectedMemoryName = selectedMemoryIndex !== null && memoryList[selectedMemoryIndex] ? memoryList[selectedMemoryIndex].name : null;
+  const selectedMemoryName = selectedMemoryIndex !== null && memoryList[selectedMemoryIndex] ? memoryList[selectedMemoryIndex].name : null;
 
-  // Sort the memoryList according to ranks
   memoryList.sort((a, b) => {
     let rankA = parseFloat(a.rank);
     let rankB = parseFloat(b.rank);
@@ -2624,7 +2612,6 @@ function rearrangeMemories() {
     return rankA - rankB;
   });
 
-  // Update selectedMemoryIndex
   if (selectedMemoryName !== null) {
     selectedMemoryIndex = memoryList.findIndex(sequence => sequence.name === selectedMemoryName);
   }
