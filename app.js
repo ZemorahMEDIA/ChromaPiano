@@ -1004,61 +1004,27 @@ function stopAction() {
     isRecording = false;
     const recordBtn = document.getElementById('record-btn');
     recordBtn.classList.remove('pressed');
-    document.getElementById('play-btn').disabled = false;
-    document.getElementById('save-btn').disabled = false;
-    recordingTimers.forEach(timerId => clearTimeout(timerId));
-    recordingTimers = [];
-
-    for (const note in activeNotes) {
-      if (activeNotes.hasOwnProperty(note)) {
-        recordedNotes.push({
-          type: 'noteOff',
-          note: note,
-          time: audioContext.currentTime - recordStartTime,
-          channel: selectedMidiChannels.includes('Omni') ? 'Omni' : selectedMidiChannels[0]
-        });
-      }
-    }
-
-    if (selectedMemoryIndex !== null) {
-      const sequence = memoryList[selectedMemoryIndex];
-
-      sequence.notes = sequence.notes.filter(noteEvent => !selectedMidiChannels.includes(noteEvent.channel));
-
-      sequence.notes = sequence.notes.concat(recordedNotes);
-
-      let totalDuration = 0;
-      sequence.notes.forEach(noteEvent => {
-        if (noteEvent.time > totalDuration) {
-          totalDuration = noteEvent.time;
-        }
-      });
-      sequence.duration = totalDuration;
-
-      recordedNotes = JSON.parse(JSON.stringify(sequence.notes));
-
-      processSequenceNotes(sequence);
-      updateMemoryList();
-      currentNoteIndex = -1;
-    }
+    document.getElementById('play-btn').disabled = true;
+    document.getElementById('save-btn').disabled = true;
+    document.getElementById('stop-btn').disabled = false;
   }
-  if (isPlaying) {
-    isPlaying = false;
-    playbackTimers.forEach(timerId => clearTimeout(timerId));
-    playbackTimers = [];
-    document.getElementById('stop-btn').disabled = true;
-    document.getElementById('play-btn').disabled = false;
-  }
+  // Always reset play/stop state regardless of isPlaying
+  isPlaying = false;
+  playbackTimers.forEach(timerId => clearTimeout(timerId));
+  playbackTimers = [];
+  document.getElementById('stop-btn').disabled = true;
+  document.getElementById('play-btn').disabled = false;
+  
   stopNavigationActiveNotes();
   clearActiveNotes();
-
+  
   for (const note in activeFingerings) {
     if (activeFingerings.hasOwnProperty(note)) {
       activeFingerings[note].remove();
     }
   }
   activeFingerings = {};
-
+  
   const activeAnnotations = {};
   const annotationDisplay = document.getElementById('annotation-display');
   annotationDisplay.textContent = '';
@@ -1802,6 +1768,9 @@ function transposeNote(note, semitones) {
 function startPlayback() {
   if (isPlaying || memoryList.length === 0) return;
 
+  // Reset to start from the first event of the memory
+  currentNoteIndex = -1;
+
   const checkedMemories = memoryList.reduce((indices, memory, idx) => {
     if (memory.selected) {
       indices.push(idx);
@@ -1811,13 +1780,8 @@ function startPlayback() {
 
   if (checkedMemories.length === 0) return;
 
-  let startIndex;
-
-  if (selectedMemoryIndex !== null && checkedMemories.includes(selectedMemoryIndex)) {
-    startIndex = checkedMemories.indexOf(selectedMemoryIndex);
-  } else {
-    startIndex = 0;
-  }
+  // Always start playback from the first checked memory
+  let startIndex = 0;
 
   isPlaying = true;
   playbackStartTime = audioContext.currentTime;
@@ -1911,15 +1875,35 @@ function playMemoriesSequentially(memoriesIndices, startIndex = 0) {
 }
 
 function stopAction() {
-  if (isPlaying) {
-    isPlaying = false;
-    document.getElementById('stop-btn').disabled = true;
-    document.getElementById('play-btn').disabled = false;
-    playbackTimers.forEach(timerId => clearTimeout(timerId));
-    playbackTimers = [];
+  if (isRecording) {
+    isRecording = false;
+    const recordBtn = document.getElementById('record-btn');
+    recordBtn.classList.remove('pressed');
+    document.getElementById('play-btn').disabled = true;
+    document.getElementById('save-btn').disabled = true;
+    document.getElementById('stop-btn').disabled = false;
   }
+  // Always reset play/stop state regardless of isPlaying
+  isPlaying = false;
+  playbackTimers.forEach(timerId => clearTimeout(timerId));
+  playbackTimers = [];
+  document.getElementById('stop-btn').disabled = true;
+  document.getElementById('play-btn').disabled = false;
+  
   stopNavigationActiveNotes();
   clearActiveNotes();
+  
+  for (const note in activeFingerings) {
+    if (activeFingerings.hasOwnProperty(note)) {
+      activeFingerings[note].remove();
+    }
+  }
+  activeFingerings = {};
+  
+  const activeAnnotations = {};
+  const annotationDisplay = document.getElementById('annotation-display');
+  annotationDisplay.textContent = '';
+  annotationDisplay.style.display = 'none';
 }
 
 function initKeyboardControls() {
