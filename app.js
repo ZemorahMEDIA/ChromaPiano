@@ -1203,6 +1203,7 @@ function populateMemoryEditor() {
   }
 
   const selectedSequence = memoryList[selectedMemoryIndex];
+
   const events = selectedSequence.notes;
 
   let html = `
@@ -1716,53 +1717,34 @@ function transposeSelectedMemory(semitones) {
 }
 
 function transposeNote(note, semitones) {
+  const noteOrder = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
   const match = note.match(/^([A-G]#?)(\d+)$/);
   if (!match) return note;
 
   let noteName = match[1];
   let octave = parseInt(match[2], 10);
 
-  const noteIndexMap = {
-    'C': 0,
-    'C#': 1,
-    'D': 2,
-    'D#': 3,
-    'E': 4,
-    'F': 5,
-    'F#': 6,
-    'G': 7,
-    'G#': 8,
-    'A': 9,
-    'A#': 10,
-    'B': 11
-  };
+  let noteIndex = noteOrder.indexOf(noteName);
+  if (noteIndex === -1) return note;
 
-  let noteIndex = noteIndexMap[noteName];
-  if (noteIndex === undefined) return note;
-
-  let newNoteIndex = noteIndex + semitones;
-  let newOctave = octave;
-
-  while (newNoteIndex < 0) {
-    newNoteIndex += 12;
-    newOctave -= 1;
+  noteIndex += semitones;
+  
+  // Adjust octave when crossing boundaries
+  while (noteIndex < 0) {
+    noteIndex += 12;
+    octave--;
   }
-  while (newNoteIndex > 11) {
-    newNoteIndex -= 12;
-    newOctave += 1;
+  while (noteIndex >= 12) {
+    noteIndex -= 12;
+    octave++;
   }
 
-  if (newOctave < 0 || newOctave > 9) {
+  // Check octave bounds
+  if (octave < 0 || octave > 9) {
     return note;
   }
 
-  const indexToNote = Object.keys(noteIndexMap).reduce((obj, key) => {
-    obj[noteIndexMap[key]] = key;
-    return obj;
-  }, {});
-
-  const newNoteName = indexToNote[newNoteIndex];
-  return newNoteName + newOctave;
+  return noteOrder[noteIndex] + octave;
 }
 
 function startPlayback() {
@@ -1801,7 +1783,9 @@ function playMemoriesSequentially(memoriesIndices, startIndex = 0) {
     const sequence = memoryList[memoryIdx];
     if (!sequence) return;
 
-    const memoryNotes = sequence.notes;
+    const memoryNotes = JSON.parse(JSON.stringify(sequence.notes)); // Clone the notes
+    // Do NOT apply extra transposition here, as the memory notes are already transposed
+
     memoryNotes.forEach(noteEvent => {
       if (!selectedMidiChannels.includes('Omni') && !selectedMidiChannels.includes(noteEvent.channel)) {
         return;
@@ -1864,10 +1848,12 @@ function playMemoriesSequentially(memoriesIndices, startIndex = 0) {
 
   const finalPlaybackTime = playbackStartTime + totalDuration;
   const stopTimerId = setTimeout(() => {
-    isPlaying = false;
     if (isLooping) {
+      playbackStartTime = audioContext.currentTime;
+      isPlaying = false;
       startPlayback();
     } else {
+      isPlaying = false;
       stopAction();
     }
   }, Math.max(0, (finalPlaybackTime - audioContext.currentTime) * 1000));
