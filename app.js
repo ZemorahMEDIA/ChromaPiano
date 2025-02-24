@@ -1217,6 +1217,7 @@ function resetMidiAndFingerings() {
 }
 
 function populateMemoryEditor() {
+  if (selectedMemoryIndex === null) return;
   const memoryEditorContainer = document.getElementById('memory-editor-container');
   if (selectedMemoryIndex === null) {
     memoryEditorContainer.innerHTML = '<p>No memory selected.</p>';
@@ -1224,9 +1225,8 @@ function populateMemoryEditor() {
   }
 
   const selectedSequence = memoryList[selectedMemoryIndex];
-
   const events = selectedSequence.notes;
-
+  
   let html = `
   <div id="memory-editor-name">
     <label for="memory-name-input">Memory Name:</label>
@@ -1243,7 +1243,9 @@ function populateMemoryEditor() {
         <select id="add-channel-select">
           <option value="Omni">Omni</option>
           <option value="Split">Split</option>
-          ${[...Array(16)].map((_, i) => `<option value="${i + 1}">${i + 1}</option>`).join('')}
+          ${[...Array(16)]
+            .map((_, i) => `<option value="${i + 1}">${i + 1}</option>`)
+            .join('')}
         </select>
         <input type="number" id="add-cc-number-input" placeholder="CC#" min="0" max="127">
         <input type="number" id="add-cc-value-input" placeholder="CCV" min="0" max="127">
@@ -1265,7 +1267,12 @@ function populateMemoryEditor() {
           <div class="group-label"><span>Show</span></div>
           <div id="channel-filters" class="group-buttons">
             <button class="channel-filter-button ${selectedChannelFilter === 'All' ? 'pressed' : ''}" data-channel="All">All</button>
-            ${[...Array(16)].map((_, i) => `<button class="channel-filter-button ${selectedChannelFilter === (i + 1).toString() ? 'pressed' : ''}" data-channel="${i + 1}">${i + 1}</button>`).join('')}
+            ${[...Array(16)]
+              .map(
+                (_, i) =>
+                  `<button class="channel-filter-button ${selectedChannelFilter === (i + 1).toString() ? 'pressed' : ''}" data-channel="${i + 1}">${i + 1}</button>`
+              )
+              .join('')}
           </div>
         </div>
         <div class="separator"></div>
@@ -1273,9 +1280,12 @@ function populateMemoryEditor() {
           <div class="group-label"><span>Show</span></div>
           <div id="note-filters" class="group-buttons">
             <button class="note-filter-button ${selectedNoteFilter === 'All' ? 'pressed' : ''}" data-note="All">All</button>
-            ${['A', 'B', 'C', 'D', 'E', 'F', 'G'].map(note => `
-              <button class="note-filter-button ${selectedNoteFilter === note ? 'pressed' : ''}" data-note="${note}">${note}</button>
-            `).join('')}
+            ${['A', 'B', 'C', 'D', 'E', 'F', 'G']
+              .map(
+                note => `
+              <button class="note-filter-button ${selectedNoteFilter === note ? 'pressed' : ''}" data-note="${note}">${note}</button>`
+              )
+              .join('')}
           </div>
         </div>
       </div>
@@ -1290,12 +1300,16 @@ function populateMemoryEditor() {
       </th>
       <th>Type</th>
       <th>Parameters</th>
-      <th>Action</th>
+      <th style="position: relative;">
+        Action 
+        <button id="select-all-btn" class="small-editor-btn" style="font-size: 10px; padding: 1px 3px;">S</button>
+        <button id="copy-btn" class="small-editor-btn" style="font-size: 10px; padding: 1px 3px;">C</button>
+        <button id="paste-btn" class="small-editor-btn" style="font-size: 10px; padding: 1px 3px;">P</button>
+      </th>
     </tr>`;
-
+  
   events.forEach((event, index) => {
     let isVisible = true;
-
     if (!eventTypeFilters[event.type]) isVisible = false;
     if (selectedChannelFilter !== 'All' && event.channel !== selectedChannelFilter) isVisible = false;
     if ((event.type === 'noteOn' || event.type === 'noteOff') && selectedNoteFilter !== 'All') {
@@ -1304,7 +1318,6 @@ function populateMemoryEditor() {
         isVisible = false;
       }
     }
-
     if (timeFilterValue !== '') {
       const parsedTimeFilterValue = parseFloat(timeFilterValue);
       if (!isNaN(parsedTimeFilterValue)) {
@@ -1313,7 +1326,6 @@ function populateMemoryEditor() {
         }
       }
     }
-
     if (isVisible) {
       html += `
       <tr class="event-row ${event.type === 'noteOn' ? 'note-on' :
@@ -1373,11 +1385,10 @@ function populateMemoryEditor() {
                  </tr>`;
     }
   });
-
   html += `</table>`;
-
   memoryEditorContainer.innerHTML = html;
-
+  
+  // Existing event listeners on delete, annotation toggle, touch zones, etc.
   const deleteButtons = memoryEditorContainer.querySelectorAll('.delete-entry-btn');
   deleteButtons.forEach((button) => {
     button.addEventListener('click', function () {
@@ -1403,7 +1414,7 @@ function populateMemoryEditor() {
   const touchZones = memoryEditorContainer.querySelectorAll('.touch-zone');
   touchZones.forEach(touchZone => {
     touchZone.addEventListener('click', function(e) {
-      e.stopPropagation(); // Prevent event from bubbling up
+      e.stopPropagation();
       const row = this.closest('tr');
       const eventIndex = parseInt(row.dataset.index, 10);
       if (selectedEventIndices.includes(eventIndex)) {
@@ -1432,7 +1443,6 @@ function populateMemoryEditor() {
       if (selectedEventIndices.includes(eventIndex)) {
         selectedEventIndices.forEach(idx => {
           selectedSequence.notes[idx].type = newType;
-
           if (idx !== eventIndex) {
             const otherRow = memoryEditorContainer.querySelector(`.event-row[data-index="${idx}"]`);
             if (otherRow) {
@@ -1446,7 +1456,6 @@ function populateMemoryEditor() {
       } else {
         selectedSequence.notes[eventIndex].type = newType;
       }
-
       updateMemoryFromEditor();
     });
   });
@@ -1461,7 +1470,6 @@ function populateMemoryEditor() {
       if (selectedEventIndices.includes(eventIndex)) {
         selectedEventIndices.forEach(idx => {
           selectedSequence.notes[idx].time = newTime;
-
           if (idx !== eventIndex) {
             const otherRow = memoryEditorContainer.querySelector(`.event-row[data-index="${idx}"]`);
             if (otherRow) {
@@ -1475,7 +1483,6 @@ function populateMemoryEditor() {
       } else {
         selectedSequence.notes[eventIndex].time = newTime;
       }
-
       updateMemoryFromEditor();
     });
   });
@@ -1485,7 +1492,7 @@ function populateMemoryEditor() {
     input.addEventListener('change', function() {
       const row = this.closest('tr');
       const eventIndex = parseInt(row.dataset.index, 10);
-      const inputClass = this.classList[0]; // e.g., 'event-note', 'event-velocity', etc.
+      const inputClass = this.classList[0];
       let newValue = this.value;
 
       if (selectedEventIndices.includes(eventIndex)) {
@@ -1516,7 +1523,6 @@ function populateMemoryEditor() {
             default:
               break;
           }
-
           if (idx !== eventIndex) {
             const otherRow = memoryEditorContainer.querySelector(`.event-row[data-index="${idx}"]`);
             if (otherRow) {
@@ -1555,7 +1561,6 @@ function populateMemoryEditor() {
             break;
         }
       }
-
       updateMemoryFromEditor();
     });
   });
@@ -1570,7 +1575,6 @@ function populateMemoryEditor() {
       if (selectedEventIndices.includes(eventIndex)) {
         selectedEventIndices.forEach(idx => {
           selectedSequence.notes[idx].annotation = newValue;
-
           if (idx !== eventIndex) {
             const annotationRow = memoryEditorContainer.querySelector(`.annotation-row[data-index="${idx}"]`);
             if (annotationRow) {
@@ -1584,7 +1588,6 @@ function populateMemoryEditor() {
       } else {
         selectedSequence.notes[eventIndex].annotation = newValue;
       }
-
       updateMemoryFromEditor();
     });
   });
@@ -1655,6 +1658,76 @@ function populateMemoryEditor() {
       populateMemoryEditor();
     });
   }
+
+  // --- New behavior: S, C, and P buttons ---
+  const selectAllBtn = memoryEditorContainer.querySelector('#select-all-btn');
+  const copyBtn = memoryEditorContainer.querySelector('#copy-btn');
+  const pasteBtn = memoryEditorContainer.querySelector('#paste-btn');
+  let selectAllActive = false;
+  if (selectAllBtn) {
+    selectAllBtn.addEventListener('click', function() {
+      const eventRows = memoryEditorContainer.querySelectorAll('tr.event-row');
+      if (!selectAllActive) {
+        selectedEventIndices = [];
+        eventRows.forEach(row => {
+          if (row.style.display !== 'none') {
+            const idx = parseInt(row.getAttribute('data-index'), 10);
+            if (!selectedEventIndices.includes(idx)) {
+              selectedEventIndices.push(idx);
+            }
+            row.classList.add('selected');
+          }
+        });
+        selectAllActive = true;
+        selectAllBtn.classList.add('pressed');
+      } else {
+        selectedEventIndices = [];
+        eventRows.forEach(row => {
+          row.classList.remove('selected');
+        });
+        selectAllActive = false;
+        selectAllBtn.classList.remove('pressed');
+      }
+    });
+  }
+  if (copyBtn) {
+    copyBtn.addEventListener('click', function() {
+      const eventRows = memoryEditorContainer.querySelectorAll('tr.event-row');
+      let copied = [];
+      eventRows.forEach(row => {
+        if (row.style.display !== 'none') {
+          const idx = parseInt(row.getAttribute('data-index'), 10);
+          if (selectedMemoryIndex !== null) {
+            let sequence = memoryList[selectedMemoryIndex];
+            copied.push(sequence.notes[idx]);
+          }
+        }
+      });
+      window.copiedEvents = copied;
+      const copyText = JSON.stringify(copied, null, 2);
+      if (navigator.clipboard) {
+        navigator.clipboard.writeText(copyText).catch(err => {
+          console.error("Clipboard write failed", err);
+        });
+      }
+    });
+  }
+  if (pasteBtn) {
+    pasteBtn.addEventListener('click', function() {
+      if (!window.copiedEvents || !Array.isArray(window.copiedEvents) || window.copiedEvents.length === 0) {
+        return;
+      }
+      if (selectedMemoryIndex === null) return;
+      let sequence = memoryList[selectedMemoryIndex];
+      // Deep copy the copied events so that pasted events behave as new events.
+      const pastedEvents = window.copiedEvents.map(event => JSON.parse(JSON.stringify(event)));
+      sequence.notes = sequence.notes.concat(pastedEvents);
+      sequence.notes.sort((a, b) => a.time - b.time);
+      populateMemoryEditor();
+    });
+  }
+  
+  // ...existing event listeners for updates and change events...
 }
 
 function selectMemoryByName(name) {
