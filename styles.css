@@ -320,7 +320,7 @@ body {
   border: 1px solid #aaa;
   box-shadow: 0 0 10px 2px red;
   animation: rainbowGlow 5s linear infinite;
-  margin-top: -4px; /* Adjust to vertically center the slider thumb */
+  margin-top: -4px;
 }
 
 @keyframes rainbowGlow {
@@ -804,7 +804,7 @@ body {
 #add-entry-btn {
   margin-top: 10px;
   width: 100%;
-  background: linear-gradient(135deg, #004b00, #007f00); /* Dark metallic green */
+  background: linear-gradient(135deg, #004b00, #007f00);
   border: 1px solid #000;
   color: white;
   padding: 4px 8px;
@@ -928,7 +928,7 @@ body {
 }
 
 .action-cell {
-  cursor: pointer; /* Indicate that the cell is clickable */
+  cursor: pointer;
   display: flex;
   align-items: center;
   gap: 5px;
@@ -1056,13 +1056,13 @@ body {
 }
 
 .filter-button.pressed {
-  background: linear-gradient(135deg, #4b0000, #7f0000); /* Dark metallic red */
+  background: linear-gradient(135deg, #4b0000, #7f0000);
   color: white;
 }
 
 .channel-filter-button.pressed,
 .note-filter-button.pressed {
-  background: linear-gradient(135deg, #004b00, #007f00); /* Dark metallic green */
+  background: linear-gradient(135deg, #004b00, #007f00);
   color: white;
 }
 
