@@ -919,11 +919,32 @@ function loadMemoryList() {
       try {
         const data = JSON.parse(e.target.result);
         if (Array.isArray(data)) {
-          memoryList = data;
-          updateMemoryList();
           if (memoryList.length > 0) {
-            selectMemorySequence(0);
+            // MemoryList already has some memories.
+            // Determine the current maximum ranking.
+            let maxRank = 0;
+            memoryList.forEach(mem => {
+              if (mem.rank && mem.rank > maxRank) {
+                maxRank = mem.rank;
+              }
+            });
+            if (maxRank === 0) {
+              maxRank = memoryList.length;
+            }
+            // Append new memories with adjusted ranking.
+            data.forEach((mem, idx) => {
+              mem.rank = maxRank + idx + 1;
+              memoryList.push(mem);
+            });
           } else {
+            // No existing memories, simply load the data.
+            memoryList = data;
+          }
+          updateMemoryList();
+          // If there is no currently selected memory, select the first one.
+          if (memoryList.length > 0 && selectedMemoryIndex === null) {
+            selectMemorySequence(0);
+          } else if (memoryList.length === 0) {
             selectedMemoryIndex = null;
             document.getElementById('selected-memory').textContent = 'No Memory Selected';
             quill.setContents([]);
