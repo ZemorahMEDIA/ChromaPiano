@@ -1146,24 +1146,9 @@ function selectMemorySequence(index) {
 
 function addToMemory() {
   let sequenceName = `Sequence ${sequenceCounter}`;
-  let quantizedNotes = JSON.parse(JSON.stringify(recordedNotes));
-
-  if (quantizedNotes.length > 0) {
-    const firstNoteTime = quantizedNotes[0].time;
-    quantizedNotes.forEach(noteEvent => {
-      noteEvent.time -= firstNoteTime;
-    });
-  }
-
+  let quantizedNotes = [];
   let totalDuration = 0;
-  quantizedNotes.forEach(noteEvent => {
-    if (noteEvent.time > totalDuration) {
-      totalDuration = noteEvent.time;
-    }
-  });
-
-  quantizedNotes = quantizedNotes.filter(noteEvent => noteEvent.time <= totalDuration);
-
+  
   const sequenceData = {
     name: sequenceName,
     notes: quantizedNotes,
@@ -2599,7 +2584,7 @@ document.addEventListener('DOMContentLoaded', () => {
           var reader = new FileReader();
           reader.onload = function(event) {
             var base64ImageSrc = event.target.result;
-            var range = quill.setSelection(true);
+            var range = quill.getSelection(true);
             quill.insertEmbed(range.index, 'image', base64ImageSrc);
             quill.setSelection(range.index + 1);
           };
