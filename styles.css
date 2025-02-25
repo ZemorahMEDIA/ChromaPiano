@@ -424,7 +424,6 @@ body {
 .fingering {
   position: absolute;
   top: 100%;
-  left: 50%;
   transform: translateX(-50%);
   color: white;
   font-size: 0.8em;
