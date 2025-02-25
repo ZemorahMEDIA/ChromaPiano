@@ -2029,16 +2029,25 @@ function handleKeyDown(event) {
     return;
   }
 
+  // Modified arrow key handling:
   if (event.key === 'ArrowLeft' && !event.repeat) {
     event.preventDefault();
-    selectPreviousMemory();
-    startPlayback();
+    goToPreviousNoteOrChord();
     return;
   }
   if (event.key === 'ArrowRight' && !event.repeat) {
     event.preventDefault();
+    goToNextNoteOrChord();
+    return;
+  }
+  if (event.key === 'ArrowUp' && !event.repeat) {
+    event.preventDefault();
+    selectPreviousMemory();
+    return;
+  }
+  if (event.key === 'ArrowDown' && !event.repeat) {
+    event.preventDefault();
     selectNextMemory();
-    startPlayback();
     return;
   }
 
@@ -2590,7 +2599,7 @@ document.addEventListener('DOMContentLoaded', () => {
           var reader = new FileReader();
           reader.onload = function(event) {
             var base64ImageSrc = event.target.result;
-            var range = quill.getSelection(true);
+            var range = quill.setSelection(true);
             quill.insertEmbed(range.index, 'image', base64ImageSrc);
             quill.setSelection(range.index + 1);
           };
