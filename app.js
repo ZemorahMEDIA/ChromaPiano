@@ -305,6 +305,14 @@ function noteOn(note, velocity = 127, isUserInteraction = false, fingering = nul
         const fingeringDiv = document.createElement('div');
         fingeringDiv.classList.add('fingering');
         fingeringDiv.textContent = fingering;
+        if (key.classList.contains('black')) {
+          const containerRect = key.parentElement.getBoundingClientRect();
+          const keyRect = key.getBoundingClientRect();
+          const relativeCenter = keyRect.left - containerRect.left + (keyRect.width / 2);
+          fingeringDiv.style.left = relativeCenter + 'px';
+        } else {
+          fingeringDiv.style.left = '50%';
+        }
         key.parentElement.appendChild(fingeringDiv);
         activeFingerings[note] = fingeringDiv;
       }
@@ -1889,7 +1897,7 @@ function playMemoriesSequentially(memoriesIndices, startIndex = 0) {
 
       if (noteEvent.type === 'noteOn') {
         const timerId = setTimeout(() => {
-          noteOn(noteEvent.note, noteEvent.velocity, false, noteEvent.fingering, noteEvent.annotation);
+          noteOn(noteEvent.note, noteEvent.velocity, false);
 
           if (noteEvent.annotation) {
             const annotationText = noteEvent.annotation.replace(/\[.*?\]/g, '').trim();
@@ -2182,6 +2190,14 @@ function noteOnNavigation(note, fingering = 'N', annotation = null) {
         const fingeringDiv = document.createElement('div');
         fingeringDiv.classList.add('fingering');
         fingeringDiv.textContent = fingering;
+        if (key.classList.contains('black')) {
+          const containerRect = key.parentElement.getBoundingClientRect();
+          const keyRect = key.getBoundingClientRect();
+          const relativeCenter = keyRect.left - containerRect.left + (keyRect.width / 2);
+          fingeringDiv.style.left = relativeCenter + 'px';
+        } else {
+          fingeringDiv.style.left = '50%';
+        }
         key.parentElement.appendChild(fingeringDiv);
         activeFingerings[note] = fingeringDiv;
       }
