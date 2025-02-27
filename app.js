@@ -519,7 +519,7 @@ function highlightKey(note, isPressed) {
 
 function initMIDI() {
   if (navigator.requestMIDIAccess) {
-    navigator.requestMIDIAccess().then(onMIDISuccess, onMIDIFailure);
+    navigator.requestMIDIAccess({ sysex: false }).then(onMIDISuccess, onMIDIFailure);
   } else {
     console.warn('Web MIDI API not supported in this browser.');
     updateMIDIStatus('Web MIDI API not supported in this browser.', 'red');
@@ -1146,9 +1146,24 @@ function selectMemorySequence(index) {
 
 function addToMemory() {
   let sequenceName = `Sequence ${sequenceCounter}`;
-  let quantizedNotes = [];
+  let quantizedNotes = JSON.parse(JSON.stringify(recordedNotes));
+
+  if (quantizedNotes.length > 0) {
+    const firstNoteTime = quantizedNotes[0].time;
+    quantizedNotes.forEach(noteEvent => {
+      noteEvent.time -= firstNoteTime;
+    });
+  }
+
   let totalDuration = 0;
-  
+  quantizedNotes.forEach(noteEvent => {
+    if (noteEvent.time > totalDuration) {
+      totalDuration = noteEvent.time;
+    }
+  });
+
+  quantizedNotes = quantizedNotes.filter(noteEvent => noteEvent.time <= totalDuration);
+
   const sequenceData = {
     name: sequenceName,
     notes: quantizedNotes,
@@ -2640,7 +2655,27 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const duplicateMemoryBtn = document.getElementById('duplicate-memory-btn');
   duplicateMemoryBtn.addEventListener('click', duplicateSelectedMemory);
+
+  const newMemoryBtn = document.getElementById('new-memory-btn');
+  newMemoryBtn.addEventListener('click', newBlankMemory);
 });
+
+function newBlankMemory() {
+  let sequenceName = `Sequence ${sequenceCounter}`;
+  let newSequenceData = {
+    name: sequenceName,
+    notes: [],
+    editorContent: [], // blank content
+    selected: false,
+    duration: 0,
+    tempo: 100,
+    rank: memoryList.length + 1
+  };
+  memoryList.push(newSequenceData);
+  sequenceCounter++;
+  updateMemoryList();
+  selectMemorySequence(memoryList.length - 1);
+}
 
 function duplicateSelectedMemory() {
   if (selectedMemoryIndex === null) return;
@@ -2706,7 +2741,7 @@ function updateEditorAssociationButton() {
 }
 
 function isContentEmpty(content) {
-  if (!content) return true;
+  if (!content || !content.ops) return true;
 
   const text = content.ops
     .map(op => (typeof op.insert === 'string' ? op.insert : ''))
