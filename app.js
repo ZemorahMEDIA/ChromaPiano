@@ -132,6 +132,8 @@ let selectedNoteFilter = 'All';
 
 let timeFilterValue = '';
 
+let volumeAdjustmentDb = 0;
+
 function createPiano() {
   const piano = document.getElementById('piano');
   piano.innerHTML = '';
@@ -292,7 +294,7 @@ function noteOn(note, velocity = 127, isUserInteraction = false, fingering = nul
   if (activeNotes[note]) return;
   if (!pianoInstrument) return;
 
-  const gain = velocity / 127;
+  const gain = (velocity / 127) * Math.pow(10, volumeAdjustmentDb / 20);
   const playableNote = getPlayableNoteName(note);
   const playedNote = pianoInstrument.play(playableNote, audioContext.currentTime, { gain });
 
@@ -2189,7 +2191,7 @@ function noteOnNavigation(note, fingering = 'N', annotation = null) {
   if (!pianoInstrument) return;
 
   const playableNote = getPlayableNoteName(note);
-  const playedNote = pianoInstrument.play(playableNote);
+  const playedNote = pianoInstrument.play(playableNote, audioContext.currentTime, { gain: Math.pow(10, volumeAdjustmentDb / 20) });
   navigationActiveNotes[note] = playedNote;
   highlightKey(note, true);
 
@@ -2483,6 +2485,17 @@ document.addEventListener('DOMContentLoaded', () => {
     keyboardEnabled = !keyboardEnabled;
     keyboardToggleBtn.classList.toggle('pressed', keyboardEnabled);
     updateKeyLabels();
+  });
+
+  document.getElementById('vol-plus-btn').addEventListener('click', function() {
+    if (volumeAdjustmentDb < 25) {
+      volumeAdjustmentDb += 5;
+    }
+  });
+  document.getElementById('vol-minus-btn').addEventListener('click', function() {
+    if (volumeAdjustmentDb > -25) {
+      volumeAdjustmentDb -= 5;
+    }
   });
 
   const BlockEmbed = Quill.import('blots/block/embed');
