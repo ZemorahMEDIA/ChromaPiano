@@ -100,6 +100,7 @@ const keyNoteMap = {
 };
 
 let colorfulNotesEnabled = false;
+let lastDurationValue = '';
 
 const tempoSlider = document.getElementById('tempo-slider');
 const tempoValueDisplay = document.getElementById('tempo-value');
@@ -858,6 +859,8 @@ function addEntryToMemory() {
     return;
   }
 
+  lastDurationValue = durationInputValue;
+
   events.sort((a, b) => a.time - b.time);
 
   populateMemoryEditor();
@@ -1249,7 +1252,7 @@ function populateMemoryEditor() {
         <input type="text" id="add-notes-input" placeholder="Notes">
         <input type="number" id="add-velocity-input" value="100" placeholder="Velocity" min="1" max="127">
         <input type="text" id="add-start-input" placeholder="Start">
-        <input type="text" id="add-duration-input" placeholder="Duration">
+        <input type="text" id="add-duration-input" placeholder="Duration" value="${lastDurationValue}">
         <select id="add-channel-select">
           <option value="Omni">Omni</option>
           <option value="Split">Split</option>
@@ -2822,3 +2825,35 @@ function clearApp() {
 
   document.getElementById('play-btn').disabled = memoryList.length === 0;
 }
+
+document.addEventListener('DOMContentLoaded', () => {
+  const memoryEditor = document.getElementById('memory-editor-container');
+  if (memoryEditor) {
+    memoryEditor.addEventListener('keydown', function(e) {
+      // Only trigger the Add action if the focused element is not a textarea
+      if (e.key === "Enter" && e.target.tagName.toLowerCase() !== "textarea") {
+        e.preventDefault();
+        document.getElementById('add-entry-btn').click();
+      }
+    });
+  }
+});
+
+document.addEventListener('keydown', function(e) {
+  if (e.defaultPrevented) return; // Skip if already handled
+  if (e.key === "Enter") {
+    // Only trigger when the focused element is NOT an input/select (unless it is the Notes field)
+    const tag = e.target.tagName.toLowerCase();
+    if ((tag === 'input' || tag === 'select') && e.target.id !== 'add-notes-input') {
+      return;
+    }
+    const memEditor = document.getElementById('memory-editor-container');
+    if (memEditor && memEditor.style.display !== "none") {
+      const notesInput = document.getElementById('add-notes-input');
+      if (notesInput && notesInput.value.trim() !== "") {
+        e.preventDefault();
+        document.getElementById('add-entry-btn').click();
+      }
+    }
+  }
+}, false);
