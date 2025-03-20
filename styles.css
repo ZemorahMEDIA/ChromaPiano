@@ -1144,3 +1144,30 @@ body {
 .mini-button:hover {
   background-color: #555;
 }
+
+#instrument-selection {
+  display: flex;
+  justify-content: center;
+  margin: 10px 0;
+}
+
+#instrument-selection .instrument-button {
+  background-color: #444;
+  border: 1px solid #000;
+  box-shadow: inset -1.2px -1.2px 3px rgba(0,0,0,0.7), inset 1.2px 1.2px 3px rgba(255,255,255,0.1);
+  color: white;
+  margin: 2px;
+  padding: 4px 6px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+#instrument-selection .instrument-button:hover {
+  background-color: #555;
+}
+
+#instrument-selection .instrument-button.selected {
+  box-shadow: inset 1.2px 1.2px 3px rgba(0,0,0,0.7), inset -1.2px -1.2px 3px rgba(255,255,255,0.1);
+  background-color: #333;
+}
