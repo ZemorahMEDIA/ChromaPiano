@@ -59,6 +59,14 @@ Soundfont.instrument(audioContext, 'acoustic_grand_piano', { soundfont: 'MusyngK
   pianoInstrument = piano;
 });
 
+function changeInstrument(instrumentName) {
+  Soundfont.instrument(audioContext, instrumentName, { soundfont: 'MusyngKite' }).then(instr => {
+    pianoInstrument = instr;
+  }).catch(error => {
+    console.error("Error loading instrument:", error);
+  });
+}
+
 let quill;
 let activeNotes = {};
 let pianoKeys = {};
@@ -2668,6 +2676,23 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
   updateChannelButtonStyles();
+
+  const instrumentButtons = document.querySelectorAll('#instrument-selection .instrument-button');
+  instrumentButtons.forEach(button => {
+    button.addEventListener('click', () => {
+      // Remove 'selected' class from all instrument buttons
+      instrumentButtons.forEach(btn => btn.classList.remove('selected'));
+      // Mark the clicked button as selected
+      button.classList.add('selected');
+      const instrument = button.getAttribute('data-instrument');
+      changeInstrument(instrument);
+    });
+  });
+  // Ensure the default instrument (Piano) is selected on load
+  const defaultInstrumentButton = document.querySelector('#instrument-selection .instrument-button[data-instrument="acoustic_grand_piano"]');
+  if (defaultInstrumentButton) {
+    defaultInstrumentButton.classList.add('selected');
+  }
 
   const duplicateMemoryBtn = document.getElementById('duplicate-memory-btn');
   duplicateMemoryBtn.addEventListener('click', duplicateSelectedMemory);
